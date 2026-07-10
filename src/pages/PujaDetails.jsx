@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import Header from "../components/layout/Header";
 import Footer from "../components/layout/Footer";
 import SideMenu from "../components/layout/SideMenu";
@@ -8,11 +8,82 @@ import ScrollTop from "../components/common/ScrollTop";
 import "./Pujadetails.css";
 import PujaService from "../services/pujaServices";
 import { Link, useParams } from "react-router-dom";
+import PujaUserDetailsModal from "./pujaUserDetailsModel";
+import LoginOTPModal from "../components/accounts/LoginOTPModel";
+import { useStorage } from "../context/StorageContext";
 
-/* ─────────────────────────────────────────────
-   FIX: Import the modal (was commented out before)
-───────────────────────────────────────────── */
-import PujaUserDetailsModal from "./pujaUserDetailsModel"; // same folder
+/* ══════════════════════════════════════
+   IMAGE FALLBACKS
+   Inline SVG data URIs — these never touch the network, so they can
+   never themselves fail to load or trigger a retry loop.
+══════════════════════════════════════ */
+const IMAGE_PLACEHOLDER =
+  "data:image/svg+xml;charset=UTF-8," +
+  encodeURIComponent(`
+    <svg xmlns="http://www.w3.org/2000/svg" width="400" height="260" viewBox="0 0 400 260">
+      <rect width="400" height="260" fill="#f5ede0"/>
+      <text x="50%" y="52%" font-size="120" text-anchor="middle" dominant-baseline="middle" fill="#c9962f" font-family="serif">ॐ</text>
+    </svg>
+  `);
+
+const AVATAR_PLACEHOLDER =
+  "data:image/svg+xml;charset=UTF-8," +
+  encodeURIComponent(`
+    <svg xmlns="http://www.w3.org/2000/svg" width="80" height="80" viewBox="0 0 80 80">
+      <rect width="80" height="80" fill="#f5ede0"/>
+      <circle cx="40" cy="32" r="14" fill="#c9962f"/>
+      <path d="M14 70c0-16 12-24 26-24s26 8 26 24" fill="#c9962f"/>
+    </svg>
+  `);
+
+// Swaps to a placeholder exactly once — the dataset flag rules out any
+// possibility of a retry loop even if this somehow fires more than once.
+const handleImgError = (fallbackSrc) => (e) => {
+  const img = e.currentTarget;
+  if (img.dataset.fallback === "done") return;
+  img.dataset.fallback = "done";
+  img.src = fallbackSrc;
+};
+
+/* ══════════════════════════════════════
+   EXPANDABLE TEXT — "Read More / Show Less"
+   Props:
+     text        – the full string from API
+     maxChars    – character limit before truncating (default 300)
+     maxLines    – optional CSS line-clamp count (default 4)
+══════════════════════════════════════ */
+const ExpandableText = ({ text = "", maxChars = 300, className = "" }) => {
+  const [expanded, setExpanded] = useState(false);
+  const needsTruncation = text.length > maxChars;
+  const displayed = expanded || !needsTruncation ? text : text.slice(0, maxChars) + "…";
+
+  return (
+    <span className={className}>
+      {displayed}
+      {needsTruncation && (
+        <button
+          onClick={() => setExpanded((e) => !e)}
+          style={{
+            background: "none",
+            border: "none",
+            cursor: "pointer",
+            color: "#d4a057",
+            fontWeight: 600,
+            fontSize: "0.92em",
+            marginLeft: 6,
+            padding: 0,
+            textDecoration: "underline",
+            textUnderlineOffset: 2,
+            whiteSpace: "nowrap",
+          }}
+        >
+          {expanded ? "Show Less ▲" : "Read More ▼"}
+        </button>
+      )}
+    </span>
+  );
+};
+
 /* ══════════════════════════════════════
    COUNTDOWN HOOK
 ══════════════════════════════════════ */
@@ -143,11 +214,24 @@ const FaqItem = ({ num, q, a }) => {
     </div>
   );
 };
+const ReviewsSection = ({ reviews = [] }) => {
+  // Merge API reviews with static fallback, normalize field names
+  const allReviews = reviews.length > 0
+    ? reviews.map(r => ({
+      name: r.name || "Devotee",
+      loc: "India",
+      av: r.photo || AVATAR_PLACEHOLDER,
+      stars: 5,
+      date: "",
+      text: r.review || "",
+      reviewType: r.reviewType || "text",
+      videoUrl: r.videoUrl || r.review || "",
+    }))
+    : REVIEWS;
 
-const ReviewsSection = () => {
   const [current, setCurrent] = useState(0);
   const perPage = 2;
-  const total = REVIEWS.length - perPage + 1;
+  const total = Math.max(allReviews.length - perPage + 1, 1);
 
   useEffect(() => {
     const t = setInterval(
@@ -159,8 +243,7 @@ const ReviewsSection = () => {
 
   const prev = () => setCurrent((c) => (c - 1 + total) % total);
   const next = () => setCurrent((c) => (c + 1) % total);
-  const visible = REVIEWS.slice(current, current + perPage);
-
+  const visible = allReviews.slice(current, current + perPage);
   return (
     <div className="pd-reviews-wrap">
       <div className="pd-sec-eyebrow">
@@ -176,15 +259,24 @@ const ReviewsSection = () => {
         <div className="pd-rev-grid">
           {visible.map((r, i) => (
             <div key={`${current}-${i}`} className="pd-rev-card">
+              {r.reviewType === "video" && r.videoUrl ? (
+                <div style={{ marginBottom: 10 }}>
+                  <iframe
+                    width="100%"
+                    height="160"
+                    src={r.videoUrl.replace("youtu.be/", "www.youtube.com/embed/").replace(/\?.*/, "")}
+                    frameBorder="0"
+                    allowFullScreen
+                    style={{ borderRadius: 8 }}
+                  />
+                </div>
+              ) : null}
               <div className="pd-rev-user">
                 <img
                   className="pd-rev-av"
                   src={r.av}
                   alt={r.name}
-                  onError={(e) => {
-                    e.target.style.background = "#d4a070";
-                    e.target.removeAttribute("src");
-                  }}
+                  onError={handleImgError(AVATAR_PLACEHOLDER)}
                 />
                 <div>
                   <div className="pd-rev-name">{r.name}</div>
@@ -214,7 +306,8 @@ const ReviewsSection = () => {
         </button>
       </div>
       <div className="pd-rev-dots">
-        {Array.from({ length: total }).map((_, i) => (
+        {Array.from({ length: Math.max(total, 1) }).map((_, i) => (
+
           <div
             key={i}
             className={`pd-rev-dot${i === current ? " active" : ""}`}
@@ -232,6 +325,7 @@ const ReviewsSection = () => {
 const PujaDetails = () => {
   const { name, id } = useParams();
   const timer = useCountdown();
+  const { isLoggedIn } = useStorage();
 
   const [showSideMenu, setShowSideMenu] = useState(false);
   const [showMobileMenu, setShowMobileMenu] = useState(false);
@@ -239,11 +333,15 @@ const PujaDetails = () => {
   const [pujaDetails, setPujaDetails] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  /* ─────────────────────────────────────────────
-     FIX: Modal state + package data state
-  ───────────────────────────────────────────── */
   const [showUserModal, setShowUserModal] = useState(false);
   const [selectedPackageData, setSelectedPackageData] = useState(null);
+  const [showLoginModal, setShowLoginModal] = useState(false);
+  const [pendingPackageType, setPendingPackageType] = useState(null);
+
+  // Tracks whether the packages section is currently on screen, so the
+  // mobile sticky "Select Puja Package" bar can hide itself there instead
+  // of overlapping that section.
+  const [packagesSectionVisible, setPackagesSectionVisible] = useState(false);
 
   useEffect(() => {
     fetchPujaDetails();
@@ -253,7 +351,7 @@ const PujaDetails = () => {
     try {
       setLoading(true);
       const response = await PujaService.getPujaListById(id);
-      if (response) {
+      if (response?.status && response.data) {
         setPujaDetails(response.data);
       }
     } catch (error) {
@@ -263,32 +361,87 @@ const PujaDetails = () => {
     }
   };
 
-  /* ─────────────────────────────────────────────
-     FIX: handleSelectPackage builds both objects
-     that PujaUserDetailsModal needs, then opens
-     the modal (NOT navigating directly)
-  ───────────────────────────────────────────── */
+  // Watch the packages section so the mobile sticky button can hide
+  // itself while that section is already on screen. Uses two different
+  // thresholds for showing vs. hiding (hysteresis) so it doesn't flicker
+  // right at the boundary, and is debounced on scroll only — no 'resize'
+  // listener, since mobile browsers fire resize events as their address
+  // bar auto-hides/shows while scrolling, which would otherwise cause
+  // this to re-fire dozens of times a second and flicker.
+  useEffect(() => {
+    if (!pujaDetails) return undefined;
+    const el = document.getElementById("pd-packages-section");
+    if (!el) return undefined;
+
+    let debounceTimer = null;
+    const checkVisibility = () => {
+      const rect = el.getBoundingClientRect();
+      const viewportHeight = window.innerHeight;
+      setPackagesSectionVisible((prev) =>
+        prev
+          ? rect.bottom > 80 && rect.top < viewportHeight
+          : rect.top < viewportHeight * 0.6 && rect.bottom > 0
+      );
+    };
+
+    const onScroll = () => {
+      if (debounceTimer) clearTimeout(debounceTimer);
+      debounceTimer = setTimeout(checkVisibility, 120);
+    };
+
+    checkVisibility();
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => {
+      if (debounceTimer) clearTimeout(debounceTimer);
+      window.removeEventListener("scroll", onScroll);
+    };
+  }, [pujaDetails]);
+
   const handleSelectPackage = (type) => {
+    if (!isLoggedIn) {
+      setPendingPackageType(type);
+      setShowLoginModal(true);
+      return;
+    }
+    proceedSelectPackage(type);
+  };
+
+  const proceedSelectPackage = (type) => {
     const isFamily = type === "family";
 
+    // Find actual package from API packages array
+    const chosenPkg = isFamily
+      ? pujaDetails?.packages?.find(p =>
+        p.packageType?.toLowerCase() === "family"
+      ) || pujaDetails?.packages?.[pujaDetails.packages.length - 1]
+      : pujaDetails?.packages?.find(p =>
+        p.packageType?.toLowerCase() === "individual"
+      ) || pujaDetails?.packages?.[0];
+
     const selectedPackage = {
-      // _id is used as package_id in the cart API payload
-      _id: isFamily ? "family" : "individual",
-      packageName: isFamily ? "Family" : "Individual",
-      packagePrice: isFamily ? pujaDetails?.family_price : pujaDetails?.price,
+      _id: chosenPkg?._id || "",
+      packageName: chosenPkg?.packageName || "",
+      packagePrice: chosenPkg?.packagePrice || 0,
+      packageType: chosenPkg?.packageType || "",
+      packageDescription: chosenPkg?.packageDescription || [],
     };
 
     const pujaData = {
       _id: pujaDetails?._id,
-      title: pujaDetails?.puja_name,
-      mandirName: pujaDetails?.mandir_name,
-      purposeOfPooja: pujaDetails?.purpose,
-      pujaImage: pujaDetails?.image,
-      pujaDatetime: pujaDetails?.puja_date,
-      duration: pujaDetails?.duration,
-      pujaType: pujaDetails?.puja_type,
+      title: pujaDetails?.title || "",
+      mandirName: pujaDetails?.mandirName || "",
+      purposeOfPooja: pujaDetails?.purposeOfPooja || "",
+      aboutPuja: pujaDetails?.aboutPuja || "",
+      pujaImage: pujaDetails?.pujaImage || "",
+      pujaDatetime: pujaDetails?.pujaDatetime || pujaDetails?.pujaDate || null,
+      pujaDate: pujaDetails?.pujaDate || "",
+      duration: pujaDetails?.duration || "45–60 Min",
+      pujaType: chosenPkg?.packageType || "Vedic Ritual",
       addons: pujaDetails?.addons || [],
       homeDeliveryAddons: pujaDetails?.homeDeliveryAddons || [],
+      packages: pujaDetails?.packages || [],
+      faq: pujaDetails?.faq || [],
+      reviews: pujaDetails?.reviews || [],
     };
 
     setSelectedPackageData({ pujaData, selectedPackage });
@@ -297,10 +450,95 @@ const PujaDetails = () => {
 
   const handleModalClose = () => {
     setShowUserModal(false);
-    // Navigation is handled inside the modal after form submission
   };
 
-  if (loading) return <h2 style={{ textAlign: "center", padding: "80px 0" }}>Loading...</h2>;
+  // Builds the share text/url once so both handlers stay in sync
+  const getShareData = () => {
+    const url = window.location.href;
+    const title = pujaDetails?.title || "Sacred Puja";
+    const text = `Join me in this sacred puja "${title}" on DiviniQ 🙏`;
+    return { url, title, text };
+  };
+
+  const handleWhatsAppShare = () => {
+    const { url, text } = getShareData();
+    const waUrl = `https://wa.me/?text=${encodeURIComponent(`${text}\n${url}`)}`;
+    window.open(waUrl, "_blank", "noopener,noreferrer");
+  };
+
+  const handleNativeShare = async () => {
+    const { url, title, text } = getShareData();
+    if (navigator.share) {
+      try {
+        await navigator.share({ title, text, url });
+      } catch (err) {
+        // user cancelled the share sheet — nothing to do
+      }
+    } else {
+      try {
+        await navigator.clipboard.writeText(url);
+        alert("Link copied to clipboard!");
+      } catch (err) {
+        console.log(err);
+      }
+    }
+  };
+
+  // If the user completes login while a package selection was pending,
+  // automatically continue on to the booking form.
+  useEffect(() => {
+    if (isLoggedIn && pendingPackageType) {
+      setShowLoginModal(false);
+      proceedSelectPackage(pendingPackageType);
+      setPendingPackageType(null);
+    }
+  }, [isLoggedIn, pendingPackageType])
+  if (loading) {
+    return (
+      <div
+        style={{
+          minHeight: "70vh",
+          display: "flex",
+          flexDirection: "column",
+          alignItems: "center",
+          justifyContent: "center",
+          gap: 18,
+        }}
+      >
+        <style>{`
+          @keyframes pd-spin {
+            to { transform: rotate(360deg); }
+          }
+          @keyframes pd-pulse {
+            0%, 100% { opacity: 0.5; }
+            50% { opacity: 1; }
+          }
+        `}</style>
+        <div
+          style={{
+            width: 64,
+            height: 64,
+            borderRadius: "50%",
+            border: "4px solid #f0e0c0",
+            borderTopColor: "#7B1F3A",
+            animation: "pd-spin 0.9s linear infinite",
+          }}
+        />
+        <div
+          style={{
+            fontSize: 15,
+            fontWeight: 600,
+            color: "#7B1F3A",
+            letterSpacing: 0.3,
+            animation: "pd-pulse 1.4s ease-in-out infinite",
+          }}
+        >
+          <i className="fas fa-om" style={{ marginRight: 8, color: "#c8952a" }} />
+          Loading Puja Details...
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="pd-page">
@@ -312,9 +550,6 @@ const PujaDetails = () => {
         onClose={() => setShowMobileMenu(false)}
       />
 
-      {/* ─────────────────────────────────────────────
-          FIX: Modal is now properly rendered
-      ───────────────────────────────────────────── */}
       <PujaUserDetailsModal
         isOpen={showUserModal}
         onClose={handleModalClose}
@@ -324,11 +559,51 @@ const PujaDetails = () => {
         selectedPackage={selectedPackageData?.selectedPackage}
       />
 
+      <LoginOTPModal
+        isOpen={showLoginModal}
+        onClose={() => {
+          setShowLoginModal(false);
+          setPendingPackageType(null);
+        }}
+      />
+
       <Header
         onMenuToggle={() => setShowMobileMenu(true)}
         onSideMenuToggle={() => setShowSideMenu(true)}
         onSearchToggle={() => setShowSearch(true)}
       />
+
+      <style>{`
+        .pd-mobile-proceed-wrap { display: none; }
+        @media (max-width: 767px) {
+          .pd-mobile-proceed-wrap {
+            display: block;
+            position: fixed;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            z-index: 998;
+            padding: 12px 16px calc(12px + env(safe-area-inset-bottom, 0px));
+            background: #fff;
+            box-shadow: 0 -4px 20px rgba(0,0,0,0.08);
+          }
+          .pd-mobile-proceed-btn {
+            width: 100%;
+            background: linear-gradient(135deg, #7B1F3A, #5a1329);
+            color: #fff;
+            border: none;
+            border-radius: 999px;
+            padding: 14px;
+            font-weight: 700;
+            font-size: 15px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            cursor: pointer;
+          }
+        }
+      `}</style>
 
       {/* ── BREADCRUMB ── */}
       <div className="pd-bc">
@@ -351,14 +626,42 @@ const PujaDetails = () => {
             Final Day to Participate
           </div>
           <div className="pd-featured-lbl">FEATURED PUJA</div>
-          <h1 className="pd-hero-title">{pujaDetails?.puja_name}</h1>
-          <p className="pd-hero-desc">{pujaDetails?.puja_description}</p>
+          <h1 className="pd-hero-title">{pujaDetails?.title}</h1>
+
+          {/* ─── ABOUT PUJA: 3-line clamp, no toggle ─── */}
+          <p
+            className="pd-hero-desc"
+            style={{
+              display: "-webkit-box",
+              WebkitLineClamp: 3,
+              WebkitBoxOrient: "vertical",
+              overflow: "hidden",
+            }}
+          >
+            {pujaDetails?.aboutPuja}
+          </p>
+
           <div className="pd-hero-tags">
             <span className="pd-hero-tag">
-              <i className="fas fa-map-marker-alt" /> {pujaDetails?.mandir_name}
+              <i className="fas fa-map-marker-alt" /> {pujaDetails?.mandirName}
             </span>
             <span className="pd-hero-tag">
-              <i className="fas fa-calendar-alt" /> {pujaDetails?.puja_date}
+              <i className="fas fa-calendar-alt" />{" "}
+              {pujaDetails?.pujaDate
+                ? (() => {
+                  const d = new Date(pujaDetails.pujaDate);
+                  return isNaN(d.getTime())
+                    ? pujaDetails.pujaDate
+                    : d.toLocaleString("en-IN", {
+                      day: "numeric",
+                      month: "long",
+                      year: "numeric",
+                      hour: "2-digit",
+                      minute: "2-digit",
+                      hour12: true,
+                    });
+                })()
+                : ""}
             </span>
           </div>
           <p className="pd-devotee-note">
@@ -392,19 +695,24 @@ const PujaDetails = () => {
           <div className="pd-bc-price-row">
             <div className="pd-bc-price">
               <span className="pd-bc-price-sym">₹</span>
-              {pujaDetails?.price}
+              {pujaDetails?.packages?.[0]?.packagePrice || 0}
             </div>
             <div className="pd-bc-per">per person</div>
           </div>
           <div className="pd-bc-checks">
-            {[pujaDetails?.purpose, pujaDetails?.mandir_name, pujaDetails?.puja_type].map(
-              (item, i) => (
-                <div key={i} className="pd-bc-check">
-                  <i className="fas fa-check-circle" />
-                  <span>{item}</span>
-                </div>
-              )
-            )}
+            {[pujaDetails?.purposeOfPooja, pujaDetails?.mandirName, pujaDetails?.packages?.[0]?.packageType].map((item, i) => (
+              <div key={i} className="pd-bc-check">
+                <i className="fas fa-check-circle" />
+                {/* ─── purposeOfPooja can be long — truncate at 80 chars ─── */}
+                <span>
+                  {i === 0 && item && item.length > 80 ? (
+                    <ExpandableText text={item} maxChars={80} />
+                  ) : (
+                    item
+                  )}
+                </span>
+              </div>
+            ))}
             <div className="pd-bc-check pd-bc-check--devotee">
               <i className="fas fa-check-circle" />
               <span>
@@ -419,13 +727,17 @@ const PujaDetails = () => {
           >
             Select Puja Package
           </button>
-          <div className="pd-bc-secure">
+          <div className="pd-bc-secure mb-5"  >
             <span className="pd-bc-secure-lbl">Secure Payments</span>
             <div className="pd-bc-pay-icons">
-              <img src="/assets/img/about/upi.png" alt="UPI" className="pd-pay-img" />
-              <img src="/assets/img/about/visa.png" alt="Visa" className="pd-pay-img" />
-              <img src="/assets/img/about/mastercard.png" alt="Mastercard" className="pd-pay-img pd-pay-img--mc" />
-              <img src="/assets/img/about/rupay.png" alt="RuPay" className="pd-pay-img" />
+              <img src="/assets/img/about/upi.png" alt="UPI" className="pd-pay-img"
+                onError={(e) => { e.target.style.display = "none"; }} />
+              <img src="/assets/img/about/visa.png" alt="Visa" className="pd-pay-img"
+                onError={(e) => { e.target.style.display = "none"; }} />
+              <img src="/assets/img/about/mastercard.png" alt="Mastercard" className="pd-pay-img pd-pay-img--mc"
+                onError={(e) => { e.target.style.display = "none"; }} />
+              <img src="/assets/img/about/rupay.png" alt="RuPay" className="pd-pay-img"
+                onError={(e) => { e.target.style.display = "none"; }} />
             </div>
           </div>
         </div>
@@ -451,6 +763,7 @@ const PujaDetails = () => {
           </div>
           <div className="pd-cd-timer">
             {[
+          
               { val: timer.d, len: 3, lbl: "Days" },
               { val: timer.h, len: 2, lbl: "Hours" },
               { val: timer.m, len: 2, lbl: "Minutes" },
@@ -467,10 +780,24 @@ const PujaDetails = () => {
           </div>
         </div>
         <div className="pd-cd-right">
-          <a href="#" className="pd-cd-share">
+          
+           <a href="#"
+            className="pd-cd-share"
+            onClick={(e) => {
+              e.preventDefault();
+              handleNativeShare();
+            }}
+          >
             <i className="fas fa-share-alt" /> Share with your loved ones
           </a>
-          <a href="#" className="pd-cd-share whatsapp">
+          
+          <a  href="#"
+            className="pd-cd-share whatsapp"
+            onClick={(e) => {
+              e.preventDefault();
+              handleWhatsAppShare();
+            }}
+          >
             <i className="fab fa-whatsapp" /> Share on WhatsApp
           </a>
         </div>
@@ -496,7 +823,9 @@ const PujaDetails = () => {
               </div>
               <div className="pd-benefit-title">{b.title}</div>
               <div className="pd-benefit-sub">{b.sub}</div>
-              <p className="pd-benefit-text">{b.text}</p>
+              <p className="pd-benefit-text">
+                <ExpandableText text={b.text} maxChars={160} />
+              </p>
             </div>
           ))}
         </div>
@@ -544,58 +873,210 @@ const PujaDetails = () => {
       </div>
 
       {/* ══ PACKAGES ══ */}
-      <div className="pd-packages-wrap">
+      <div className="pd-packages-wrap" id="pd-packages-section">
         <div className="pd-pkg-eyebrow">
           <span className="pd-eyebrow-line" />
           <i className="fas fa-om" /> Choose Your Puja Package{" "}
           <i className="fas fa-om" />
           <span className="pd-eyebrow-line" />
         </div>
-        <div className="pd-pkg-grid">
-          {[
-            {
-              type: "Individual",
-              ideal: "Ideal for 1 person",
-              price: `₹${pujaDetails?.price}`,
-              per: "per person",
-              img: "/assets/img/about/devotee-woman (3).png",
-            },
-            {
-              type: "Family",
-              ideal: "Ideal for Family Participation",
-              price: `₹${pujaDetails?.family_price}`,
-              per: "per family /time",
-              img: "/assets/img/about/family.png",
-            },
-          ].map((pkg, i) => (
-            <div key={i} className="pd-pkg-card">
-              <img
-                className="pd-pkg-img"
-                src={pkg.img}
-                alt={pkg.type}
-                onError={(e) => {
-                  e.target.style.background = "#e8d5c0";
-                  e.target.removeAttribute("src");
-                }}
-              />
-              <div className="pd-pkg-info">
-                <div className="pd-pkg-type">{pkg.type}</div>
-                <div className="pd-pkg-ideal">{pkg.ideal}</div>
-                <div className="pd-pkg-price">{pkg.price}</div>
-                <div className="pd-pkg-per">{pkg.per}</div>
-                <button
-                  className="pd-pkg-btn"
-                  onClick={() =>
-                    handleSelectPackage(
-                      pkg.type === "Family" ? "family" : "individual"
-                    )
-                  }
-                >
-                  Select Package
-                </button>
+       <div className="pd-pkg-scroll-grid" style={{
+          gap: "16px",
+          width: "100%",
+          padding: "0 0 24px"
+        }}>
+          {(pujaDetails?.packages || []).map((pkg, i) => {
+            const pkgImgs = [
+              "/assets/img/about/devotee-woman (3).png",
+              "/assets/img/about/family.png",
+              "/assets/img/about/family.png",
+              "/assets/img/about/family.png",
+            ];
+            const iconMap = ["fa-user", "fa-user-friends", "fa-users", "fa-home"];
+            const btnStyles = [
+              { background: "#7B1F3A", color: "#fff", border: "none" },
+              { background: "#F5A623", color: "#fff", border: "none" },
+              { background: "#fff", color: "#7B1F3A", border: "2px solid #7B1F3A" },
+              { background: "#7B1F3A", color: "#fff", border: "none" },
+            ];
+            return (
+            <div key={pkg._id || i} className="pd-pkg-card-inner" style={{
+                background: "#fff",
+                borderRadius: "20px",
+                border: "1.5px solid #f0e6d3",
+                overflow: "hidden",
+                display: "flex",
+                flexDirection: "column",
+                alignItems: "center",
+                padding: "0 0 14px",
+                minWidth: 0,
+                position: "relative",
+              }}>
+                {/* IMAGE */}
+                <div className="pd-pkg-card-image" style={{
+                  width: "100%",
+                  aspectRatio: "5/3",
+                  overflow: "hidden",
+                  marginBottom: 8,
+                  background: "#fdf8f2",
+                }}>
+                  <img
+                    src={pkgImgs[i] || pkgImgs[0]}
+                    alt={pkg.packageName}
+                    style={{ width: "100%", height: "100%", objectFit: "cover" }}
+                    onError={handleImgError(IMAGE_PLACEHOLDER)}
+                  />
+                </div>
+
+                <div className="pd-pkg-card-content" style={{
+                  display: "flex",
+                  flexDirection: "column",
+                  alignItems: "center",
+                  width: "100%",
+                }}>
+                  {/* TOP ICON CIRCLE */}
+                  <div style={{
+                    marginTop: "-1px",
+                    width: 54,
+                    height: 54,
+                    borderRadius: "50%",
+                    background: "#fdf3e7",
+                    border: "1.5px solid #f0e6d3",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    marginBottom: 6,
+                    marginTop: 10,
+                    flexShrink: 0,
+                  }}>
+                    <i className={`fas ${iconMap[i] || "fa-user"}`} style={{ color: "#c8952a", fontSize: 22 }} />
+                  </div>
+
+                  {/* PACKAGE NAME */}
+                  <div style={{
+                    fontWeight: 700,
+                    fontSize: "clamp(13px, 1.4vw, 17px)",
+                    color: "#3d1a1a",
+                    textAlign: "center",
+                    padding: "0 12px",
+                    lineHeight: 1.25,
+                    marginBottom: 8,
+                    wordBreak: "break-word",
+                  }}>
+                    {pkg.packageName}
+                  </div>
+
+                  {/* TYPE BADGE */}
+                  <div style={{
+                    background: "#fdf3e7",
+                    border: "1px solid #f0e6d3",
+                    borderRadius: 20,
+                    padding: "3px 14px",
+                    fontSize: 11,
+                    color: "#c8952a",
+                    fontWeight: 600,
+                    marginBottom: 12,
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 6,
+                  }}>
+                    <span style={{ color: "#c8952a", fontSize: 8 }}>◆</span>
+                    {pkg.packageType}
+                    <span style={{ color: "#c8952a", fontSize: 8 }}>◆</span>
+                  </div>
+
+                  {/* PRICE */}
+                  <div style={{
+                   fontSize: "clamp(18px, 1.8vw, 26px)",
+                    fontWeight: 800,
+                    color: "#7B1F3A",
+                    marginBottom: 2,
+                  }}>
+                    ₹{pkg.packagePrice}
+                  </div>
+
+                  {/* DIVIDER LINE */}
+                {/* DIVIDER LINE */}
+                  <div style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 6,
+                    marginBottom: 14,
+                  }}>
+                    {/* <span style={{ width: 20, height: 1, background: "#f0c070", display: "block" }} />
+                    <span style={{ fontSize: 11, color: "#c8952a" }}>per booking</span>
+                    <span style={{ width: 20, height: 1, background: "#f0c070", display: "block" }} /> */}
+                  </div>
+
+                  {/* CTA BUTTON */}
+                  <button
+                    className="pd-pkg-select-btn"
+                    onClick={() => handleSelectPackage(pkg.packageType?.toLowerCase() === "individual" ? "individual" : "family")}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.transform = "translateY(-2px)";
+                      e.currentTarget.style.opacity = "0.88";
+                      e.currentTarget.style.boxShadow = "0 6px 18px rgba(123,31,58,0.28)";
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.transform = "translateY(0)";
+                      e.currentTarget.style.opacity = "1";
+                      e.currentTarget.style.boxShadow = "none";
+                    }}
+                    style={{
+                      ...btnStyles[i] || btnStyles[0],
+                      borderRadius: 50,
+                      padding: "8px 16px",
+                      fontSize: "clamp(10px, 1vw, 13px)",
+                      fontWeight: 700,
+                      cursor: "pointer",
+                      width: "100%",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      gap: 8,
+                      marginBottom: 12,
+                      transition: "transform 0.2s ease, opacity 0.2s ease, box-shadow 0.2s ease",
+                    }}
+                  >
+                    Select Package
+                    <span style={{
+                      width: 22,
+                      height: 22,
+                      borderRadius: "50%",
+                      background: "rgba(0,0,0,0.15)",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      flexShrink: 0,
+                    }}>
+                      <i className="fas fa-chevron-right" style={{ fontSize: 9 }} />
+                    </span>
+                  </button>
+
+                  {/* DIVIDER LINE */}
+                  <div style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 6,
+                    marginBottom: 14,
+                  }}>
+                    {/* <span style={{ width: 20, height: 1, background: "#f0c070", display: "block" }} />
+                    {/* <span style={{ fontSize: 11, color: "#c8952a" }}>per booking</span> 
+                    <span style={{ width: 20, height: 1, background: "#f0c070", display: "block" }} /> */}
+                  </div>
+
+                  {/* DESCRIPTION if any */}
+                  {pkg.packageDescription?.length > 0 && (
+                    <ul style={{ textAlign: "left", paddingLeft: 16, marginBottom: 12, fontSize: 11, color: "#888", width: "90%" }}>
+                      {pkg.packageDescription.map((d, di) => (
+                        <li key={di} style={{ marginBottom: 3 }}>✔ {d}</li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
         <div className="pd-trust-strip">
           {[
@@ -612,7 +1093,8 @@ const PujaDetails = () => {
       </div>
 
       {/* ══ REVIEWS ══ */}
-      <ReviewsSection />
+      {/* ══ REVIEWS ══ */}
+      <ReviewsSection reviews={pujaDetails?.reviews || []} />
 
       {/* ══ STATS BANNER ══ */}
       <div
@@ -644,8 +1126,13 @@ const PujaDetails = () => {
           <span className="pd-eyebrow-line" />
         </div>
         <div className="pd-faq-grid">
-          {FAQS.map((f, i) => (
-            <FaqItem key={i} num={i + 1} q={f.q} a={f.a} />
+          {(pujaDetails?.faq || FAQS).map((f, i) => (
+            <FaqItem
+              key={i}
+              num={i + 1}
+              q={f.question || f.q}
+              a={f.answer || f.a}
+            />
           ))}
         </div>
       </div>
@@ -662,7 +1149,7 @@ const PujaDetails = () => {
           <div className="pd-cta-sub">Divine blessings into your life.</div>
         </div>
         <button
-          className="pd-bc-btn"
+          className="pd-bc-btn-botom"
           onClick={() => handleSelectPackage("individual")}
         >
           Select Puja Package
@@ -670,7 +1157,70 @@ const PujaDetails = () => {
       </div>
 
       <Footer />
+
+      {/* ══ MOBILE STICKY SELECT PACKAGE BAR ══
+          Hidden while the packages section is already on screen, so it
+          doesn't overlap the "Choose Your Puja Package" cards. */}
+      {!packagesSectionVisible && (
+        <div className="pd-mobile-proceed-wrap">
+          <button
+            type="button"
+            className="pd-mobile-proceed-btn"
+            onClick={() => {
+              document.getElementById("pd-packages-section")?.scrollIntoView({
+                behavior: "smooth",
+                block: "start",
+              });
+            }}
+          >
+            Select Puja Package <i className="fas fa-arrow-right" />
+          </button>
+        </div>
+      )}
     </div>
+  );
+};
+
+/* ══════════════════════════════════════
+   PACKAGE DESCRIPTION LIST
+   Shows first 3 items, "Show X More" toggles the rest
+══════════════════════════════════════ */
+const PackageDescList = ({ items = [], initialShow = 3 }) => {
+  const [showAll, setShowAll] = useState(false);
+  const visible = showAll ? items : items.slice(0, initialShow);
+  const remaining = items.length - initialShow;
+
+  return (
+    <ul className="pd-pkg-desc-list">
+      {visible.map((item, i) => (
+        <li key={i} className="pd-pkg-desc-item">
+          <i className="fas fa-check-circle" style={{ color: "#c8952a", marginRight: 6 }} />
+          {typeof item === "string" ? item : item?.text || item?.name || JSON.stringify(item)}
+        </li>
+      ))}
+      {items.length > initialShow && (
+        <li>
+          <button
+            onClick={() => setShowAll((s) => !s)}
+            style={{
+              background: "none",
+              border: "none",
+              cursor: "pointer",
+              color: "#c8952a",
+              fontWeight: 600,
+              fontSize: "0.88em",
+              padding: "4px 0 0 0",
+              textDecoration: "underline",
+              textUnderlineOffset: 2,
+            }}
+          >
+            {showAll
+              ? "Show Less ▲"
+              : `+ ${remaining} more benefit${remaining !== 1 ? "s" : ""} ▼`}
+          </button>
+        </li>
+      )}
+    </ul>
   );
 };
 

@@ -127,12 +127,9 @@ const Chadhava = ({ chadhava }) => {
                                         {/* Description */}
                                         <DescriptionBlock text={chadhava.description} />
                                         <p className="box-text mb-25 summary-desc temple-line">
-  <i className="fa-solid fa-gopuram temple-fa"></i>
-  {chadhava.templeName}
-</p>
-
-
-
+                                            <i className="fa-solid fa-gopuram temple-fa"></i>
+                                            {chadhava.templeName}
+                                        </p>
 
                                         {/* CTA */}
                                         <a href="#" className="th-btn style3 w-100 modern-cta">
@@ -165,31 +162,31 @@ const Chadhava = ({ chadhava }) => {
             </div>
             <BenefitOfOfferingsWidget />
             <FaqSection faq={[
-              {
-                question: "How do I begin the process of purchasing a home?",
-                answer: "Start by defining your budget, getting pre-approved for a loan, and identifying your preferred location. This ensures a smooth and confident buying journey."
-              },
-              {
-                question: "What should I look for when selecting a neighborhood?",
-                answer: "Consider safety, accessibility, nearby amenities, schools, future development plans, and overall lifestyle compatibility before making a decision."
-              },
-              {
-                question: "How can I determine the right selling price for my property?",
-                answer: "Analyze local market trends, recent comparable sales, and consult a professional valuation to set a competitive and realistic price."
-              },
-              {
-                question: "What are closing costs and who typically pays them?",
-                answer: "Closing costs include legal fees, taxes, and administrative charges. Payment responsibility varies based on negotiation and local regulations."
-              },
-              {
-                question: "How can I negotiate effectively when buying property?",
-                answer: "Research the market thoroughly, stay within budget, remain flexible, and be prepared to walk away if the deal doesn’t align with your goals."
-              },
-              {
-                question: "Is a home inspection really necessary?",
-                answer: "Yes. A professional inspection helps identify structural or maintenance issues early, protecting you from unexpected expenses later."
-              },
-            ]}/>
+                {
+                    question: "How do I begin the process of purchasing a home?",
+                    answer: "Start by defining your budget, getting pre-approved for a loan, and identifying your preferred location. This ensures a smooth and confident buying journey."
+                },
+                {
+                    question: "What should I look for when selecting a neighborhood?",
+                    answer: "Consider safety, accessibility, nearby amenities, schools, future development plans, and overall lifestyle compatibility before making a decision."
+                },
+                {
+                    question: "How can I determine the right selling price for my property?",
+                    answer: "Analyze local market trends, recent comparable sales, and consult a professional valuation to set a competitive and realistic price."
+                },
+                {
+                    question: "What are closing costs and who typically pays them?",
+                    answer: "Closing costs include legal fees, taxes, and administrative charges. Payment responsibility varies based on negotiation and local regulations."
+                },
+                {
+                    question: "How can I negotiate effectively when buying property?",
+                    answer: "Research the market thoroughly, stay within budget, remain flexible, and be prepared to walk away if the deal doesn’t align with your goals."
+                },
+                {
+                    question: "Is a home inspection really necessary?",
+                    answer: "Yes. A professional inspection helps identify structural or maintenance issues early, protecting you from unexpected expenses later."
+                },
+            ]} />
             <TestimonialSection />
         </div>
     );

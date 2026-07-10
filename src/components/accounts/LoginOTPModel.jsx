@@ -1,484 +1,609 @@
-import { useState, useEffect } from 'react';
-import AuthService from '../../services/authServices';
-import { useNavigate } from 'react-router-dom';
-import { useStorage } from '../../context/StorageContext';
-import styles from './LoginOTPModel.module.css';
-import ProfileDetailsModal from './ProfileDetailsModal';
+import { useState, useRef, useEffect } from "react";
+import AuthService from "../../services/authServices";
+import { useStorage } from "../../context/StorageContext";
+import ProfileDetailsModal from "./ProfileDetailsModal";
 
-const LoginOTPModal = ({ isOpen, onClose }) => {
-	const navigate = useNavigate();
-	const [step, setStep] = useState('login');
-	const [loginType, setLoginType] = useState('');
-	const [showProfileModal, setShowProfileModal] = useState(false);
-	const [phone, setPhone] = useState('');
-	const [otp, setOtp] = useState(['', '', '', '']);
-	const [isLoading, setIsLoading] = useState(false);
-	const [error, setError] = useState('');
-	const [resendTimer, setResendTimer] = useState(0);
-	const [agreedToTerms, setAgreedToTerms] = useState(false);
+/* ── COLOUR PALETTE ── */
+const C = {
+	panelBg1: "#0D0118",
+	panelBg2: "#200840",
+	panelBg3: "#4A0E82",
+	gold: "#C8862A",
+	goldLight: "#E5A83A",
+	goldBorder: "rgba(200,134,42,0.55)",
+	titleBlack: "#111827",
+	textMed: "#374151",
+	textGray: "#6B7280",
+	textHint: "#9CA3AF",
+	borderLight: "#E5E7EB",
+	btnPurple: "#4A0E82",
+	btnVerify1: "#6B1459",
+	btnVerify2: "#9D1B6E",
+	linkPurple: "#8B1E6B",
+	labelPurple: "#7C3AED",
+	phonePill: "#F3EDF8",
+	createBg: "#F5EEF8",
+	secureBg: "#F5EEF8",
+	otpBorder: "#C084FC",
+	otpFocus: "#7C3AED",
+	expireRed: "#DC2626",
+	successGreen: "#059669",
+};
 
+const OTP_LEN = 4; // matches existing AuthService OTP length
+
+/* ── SPINNER ── */
+function Spinner({ size = 18, color = "#fff" }) {
+	return (
+		<span style={{
+			display: "inline-block",
+			width: size, height: size,
+			border: `2.5px solid rgba(255,255,255,0.3)`,
+			borderTopColor: color,
+			borderRadius: "50%",
+			animation: "diq-spin 0.7s linear infinite",
+		}} />
+	);
+}
+
+/* ── TOAST ── */
+function Toast({ msg, type = "error", onDone }) {
 	useEffect(() => {
-		if (resendTimer > 0) {
-			const timer = setTimeout(() => setResendTimer(resendTimer - 1), 1000);
-			return () => clearTimeout(timer);
-		}
-	}, [resendTimer]);
+		const id = setTimeout(onDone, 3500);
+		return () => clearTimeout(id);
+	}, [msg]);
+	return (
+		<div style={{
+			position: "fixed", top: 24, left: "50%", transform: "translateX(-50%)",
+			zIndex: 100001,
+			background: type === "success" ? C.successGreen : "#DC2626",
+			color: "#fff", padding: "12px 22px", borderRadius: 10,
+			fontSize: 13.5, fontWeight: 600,
+			boxShadow: "0 8px 32px rgba(0,0,0,0.35)",
+			display: "flex", alignItems: "center", gap: 8,
+			animation: "diq-fadein 0.25s ease", whiteSpace: "nowrap",
+		}}>
+			{type === "success" ? "✅" : "⚠️"} {msg}
+		</div>
+	);
+}
 
+/* ── LEFT PANEL ── */
+function LeftPanel() {
+	return (
+		<div className="diq-left-panel" style={{
+			width: 300,
+			minWidth: 300,
+			backgroundImage: `url('/assets/img/whtspic.jpeg')`,
+			backgroundSize: "cover",
+			backgroundPosition: "center",
+			backgroundRepeat: "no-repeat",
+			borderRadius: "20px 0 0 20px",
+			display: "flex",
+			flexDirection: "column",
+			alignItems: "center",
+			padding: "32px 24px 28px",
+			position: "relative",
+			overflow: "hidden",
+		}}>
+		</div>
+	);
+}
+
+/* ── LOGIN SCREEN ──
+   Controlled phone value so it persists if the user goes back from OTP screen. */
+function LoginScreen({ phone, setPhone, agreedToTerms, setAgreedToTerms, onSendOTP }) {
+	const [loading, setLoading] = useState(false);
+	const [error, setError] = useState(null);
+	const ok = phone.length === 10 && !loading;
+
+	const handleSend = async () => {
+		setError(null);
+
+		if (!phone) {
+			setError("Please enter your phone number");
+			return;
+		}
+		if (!agreedToTerms) {
+			setError("Please accept our terms to continue");
+			return;
+		}
+		const phoneRegex = /^\d{10}$/;
+		if (!phoneRegex.test(phone)) {
+			setError("Please enter a valid 10-digit phone number");
+			return;
+		}
+
+		setLoading(true);
+		const res = await AuthService.checkNumber({ phone, otp: "" });
+		setLoading(false);
+
+		if (!res || !res.success) {
+			setError(res?.message || "Failed to send OTP.");
+			return;
+		}
+
+		onSendOTP(phone, { expiresIn: 60, type: res.type });
+	};
+
+	return (
+		<div className="diq-login-pad" style={{ padding: "36px 36px 32px", display: "flex", flexDirection: "column", flex: 1 }}>
+			<h1 className="diq-title" style={{ fontSize: 27, fontWeight: 800, color: C.titleBlack, margin: "0 0 4px", lineHeight: 1.2 }}>Login to Your Account</h1>
+			<p style={{ fontSize: 13.5, color: C.textGray, margin: "0 0 26px" }}>We're happy to have you back! 🙏</p>
+
+			<div style={{ position: "relative", textAlign: "center", marginBottom: 22 }}>
+				<div style={{ position: "absolute", top: "50%", left: 0, right: 0, height: 1, background: C.borderLight }} />
+				<span style={{ position: "relative", background: "#fff", padding: "0 14px", fontSize: 12.5, fontWeight: 700, color: C.labelPurple, letterSpacing: 0.3 }}>Login with Mobile Number</span>
+			</div>
+
+			<label style={{ fontSize: 13.5, fontWeight: 700, color: C.titleBlack, marginBottom: 8, display: "block" }}>Mobile Number</label>
+			<div style={{
+				display: "flex",
+				border: `1.5px solid ${error ? C.expireRed : C.borderLight}`,
+				borderRadius: 10, overflow: "hidden", marginBottom: 7, transition: "border-color 0.2s",
+			}}>
+				<div style={{ display: "flex", alignItems: "center", gap: 5, padding: "0 12px", background: "#FAFAFA", borderRight: `1.5px solid ${C.borderLight}`, fontSize: 13, color: C.textMed, whiteSpace: "nowrap", minWidth: 82 }}>
+					<span style={{ fontSize: 18 }}>🇮🇳</span>
+					<span style={{ fontSize: 11, color: "#aaa" }}>▾</span>
+					<span style={{ fontWeight: 600 }}>+91</span>
+				</div>
+				<input
+					type="tel"
+					value={phone}
+					onChange={e => { setError(null); setPhone(e.target.value.replace(/\D/g, "").slice(0, 10)); }}
+					onKeyDown={e => e.key === "Enter" && handleSend()}
+					onPaste={e => {
+						e.preventDefault();
+						const digitsOnly = e.clipboardData.getData("text").replace(/\D/g, "").slice(0, 10);
+						if (digitsOnly) setPhone(digitsOnly);
+					}}
+					placeholder="Enter your mobile number"
+					disabled={loading}
+					style={{ flex: 1, padding: "13px 14px", border: "none", outline: "none", fontSize: 13.5, color: C.titleBlack, background: "transparent" }}
+				/>
+			</div>
+
+			<div style={{ display: "flex", alignItems: "flex-start", gap: 8, margin: "6px 0 4px" }}>
+				<input
+					type="checkbox"
+					id="diq-terms"
+					checked={agreedToTerms}
+					onChange={e => setAgreedToTerms(e.target.checked)}
+					disabled={loading}
+					style={{ marginTop: 3, width: 15, height: 15, flexShrink: 0, cursor: "pointer" }}
+				/>
+				<label htmlFor="diq-terms" style={{ fontSize: 12, color: C.textGray, lineHeight: 1.5, cursor: "pointer" }}>
+					I accept the{" "}
+					<a href="/terms_of_use" style={{ color: C.linkPurple, fontWeight: 600, textDecoration: "none" }}>Terms of Service</a>{" "}
+					&{" "}
+					<a href="/privacy_policy" style={{ color: C.linkPurple, fontWeight: 600, textDecoration: "none" }}>Privacy Policy</a>
+				</label>
+			</div>
+
+			{error && (
+				<p style={{ fontSize: 12.5, color: C.expireRed, margin: "6px 0", display: "flex", alignItems: "center", gap: 4 }}>
+					<span>⚠️</span> {error}
+				</p>
+			)}
+			<p style={{ fontSize: 12, color: C.textHint, margin: "0 0 20px" }}>We will send you a 4-digit OTP on this number</p>
+
+			<button
+				onClick={handleSend}
+				disabled={!ok}
+				style={{
+					width: "100%", padding: "15px",
+					background: ok ? C.btnPurple : "#6c1191be",
+					border: "none", borderRadius: 10, color: "#eaeff1", fontSize: 15.5, fontWeight: 700,
+					cursor: ok ? "pointer" : "not-allowed",
+					display: "flex", alignItems: "center", justifyContent: "center",
+					gap: 10, letterSpacing: 0.2, marginBottom: 22, transition: "background 0.2s",
+				}}
+			>
+				{loading ? <><Spinner /> Sending OTP…</> : <>Send OTP <span style={{ fontSize: 20 }}>→</span></>}
+			</button>
+
+			<div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 18 }}>
+				<div style={{ flex: 1, height: 1, background: C.borderLight }} />
+				<span style={{ fontSize: 12, color: C.textHint, fontWeight: 500 }}>OR</span>
+				<div style={{ flex: 1, height: 1, background: C.borderLight }} />
+			</div>
+
+			<div className="diq-features-row" style={{ border: `1px solid ${C.borderLight}`, borderRadius: 12, padding: "16px 8px", display: "flex", justifyContent: "space-around", marginBottom: 20 }}>
+				{[
+					{ bg: "#FFF7ED", icon: "⚡", title: "Quick Login", desc: "Sign in within\nseconds" },
+					{ bg: "#F5F0FF", icon: "🛡️", title: "Secure & Safe", desc: "Your data is always\nprotected" },
+					{ bg: "#F5F0FF", icon: "✅", title: "Trusted Platform", desc: "Used by lakhs of\ndevotees" },
+				].map((f, i) => (
+					<div key={i} style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: 6, padding: "0 4px" }}>
+						<div style={{ width: 42, height: 42, borderRadius: "50%", background: f.bg, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18 }}>{f.icon}</div>
+						<span style={{ fontSize: 11.5, fontWeight: 700, color: C.titleBlack, textAlign: "center" }}>{f.title}</span>
+						<span style={{ fontSize: 10.5, color: C.textGray, textAlign: "center", lineHeight: 1.45, whiteSpace: "pre-line" }}>{f.desc}</span>
+					</div>
+				))}
+			</div>
+
+			<div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 5 }}>
+				<span style={{ fontSize: 13, color: C.textHint }}>🔒</span>
+				<span style={{ fontSize: 11.5, color: C.textHint }}>Your data is safe with us. We never share your information.</span>
+			</div>
+		</div>
+	);
+}
+
+/* ── OTP SCREEN ── */
+function OTPScreen({ phone, otpMeta, onBack, onVerified, shieldSrc }) {
+	const [digits, setDigits] = useState(Array(OTP_LEN).fill(""));
+	const [focused, setFocused] = useState(0);
+	const [secs, setSecs] = useState(otpMeta?.expiresIn ?? 60);
+	const [loading, setLoading] = useState(false);
+	const [error, setError] = useState(null);
+	const [resending, setResending] = useState(false);
+	const refs = useRef([]);
+
+	useEffect(() => { refs.current[0]?.focus(); }, []);
+	useEffect(() => {
+		if (secs <= 0) return;
+		const id = setInterval(() => setSecs(s => s - 1), 1000);
+		return () => clearInterval(id);
+	}, [secs]);
+
+	const mm = String(Math.floor(secs / 60)).padStart(2, "0");
+	const ss = String(secs % 60).padStart(2, "0");
+
+	const handleChange = (i, val) => {
+		const d = val.replace(/\D/g, "").slice(-1);
+		const next = [...digits]; next[i] = d; setDigits(next);
+		setError(null);
+		if (d && i < OTP_LEN - 1) { refs.current[i + 1]?.focus(); setFocused(i + 1); }
+	};
+
+	const handleKeyDown = (i, e) => {
+		if (e.key === "Backspace") {
+			if (digits[i]) { const n = [...digits]; n[i] = ""; setDigits(n); }
+			else if (i > 0) { refs.current[i - 1]?.focus(); setFocused(i - 1); }
+		}
+		if (e.key === "Enter" && allFilled) handleVerify();
+	};
+
+	const handlePaste = (e) => {
+		e.preventDefault();
+		const pasted = e.clipboardData.getData("text").replace(/\D/g, "").slice(0, OTP_LEN);
+		if (!pasted) return;
+		const next = Array(OTP_LEN).fill("");
+		[...pasted].forEach((ch, i) => { next[i] = ch; });
+		setDigits(next);
+		const focusIdx = Math.min(pasted.length, OTP_LEN - 1);
+		refs.current[focusIdx]?.focus();
+		setFocused(focusIdx);
+	};
+
+	const allFilled = digits.every(Boolean);
+
+	const handleVerify = async () => {
+		if (!allFilled || loading || secs === 0) return;
+		setError(null);
+		setLoading(true);
+		const otpValue = digits.join("");
+		const res = await AuthService.verifyOtp({ phone, otp: otpValue });
+		setLoading(false);
+
+		if (res.success || res.status) {
+			const token = res.token;
+			const userData = res.results || res.user;
+			onVerified({ token, user: userData });
+		} else {
+			setError(res.message || "OTP verification failed.");
+			setDigits(Array(OTP_LEN).fill(""));
+			setTimeout(() => refs.current[0]?.focus(), 50);
+		}
+	};
+
+	const handleResend = async () => {
+		if (secs > 0 || resending) return;
+		setError(null);
+		setResending(true);
+		const res = await AuthService.checkNumber({ phone, otp: "" });
+		setResending(false);
+		if (res && res.success) {
+			setSecs(60);
+			setDigits(Array(OTP_LEN).fill(""));
+			setTimeout(() => refs.current[0]?.focus(), 50);
+		} else {
+			setError(res?.message || "Failed to resend OTP.");
+		}
+	};
+
+	return (
+		<div className="diq-otp-pad" style={{ padding: "20px 20px 20px", display: "flex", flexDirection: "column", flex: 1 }}>
+			<button onClick={onBack} style={{ background: "none", border: "none", cursor: "pointer", display: "flex", alignItems: "center", gap: 6, fontSize: 14, fontWeight: 600, color: C.textMed, padding: 0, marginBottom: 12, alignSelf: "flex-start" }}>
+				<span style={{ fontSize: 16 }}>←</span> Back
+			</button>
+
+			<div style={{ display: "flex", justifyContent: "center", marginBottom: 14 }}>
+				<div style={{ width: 82, height: 82, borderRadius: "50%", background: "linear-gradient(135deg,#F3E8FF 0%,#FCE7F3 100%)", border: "2px solid rgba(139,30,107,0.10)", display: "flex", alignItems: "center", justifyContent: "center", overflow: "hidden", position: "relative" }}>
+					{shieldSrc
+						? <img src={shieldSrc} alt="Secure" style={{ width: 54, height: 54, objectFit: "contain", filter: "drop-shadow(0 2px 8px rgba(100,0,80,0.3))" }} />
+						: <span style={{ fontSize: 36 }}>🛡️</span>
+					}
+					<div style={{ position: "absolute", right: 4, top: 6, fontSize: 13, transform: "rotate(-20deg)" }}>✉️</div>
+				</div>
+			</div>
+
+			<div style={{ textAlign: "center", marginBottom: 14 }}>
+				<h2 style={{ fontSize: 22, fontWeight: 800, color: C.titleBlack, margin: "0 0 4px" }}>Verify Your Mobile Number</h2>
+				<p style={{ fontSize: 13, color: C.textGray, margin: 0 }}>We've sent a 4-digit OTP to</p>
+			</div>
+
+			<div style={{ display: "flex", alignItems: "center", gap: 10, background: C.phonePill, borderRadius: 10, padding: "12px 16px", marginBottom: 18, border: "1.5px solid rgba(139,30,107,0.10)" }}>
+				<span style={{ fontSize: 20 }}>🇮🇳</span>
+				<span style={{ flex: 1, fontSize: 15, fontWeight: 700, color: C.titleBlack }}>+91 {phone.slice(0, 5)} {phone.slice(5)}</span>
+				<button onClick={onBack} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 13, fontWeight: 600, color: C.linkPurple, display: "flex", alignItems: "center", gap: 3, padding: 0 }}>
+					Edit <span style={{ fontSize: 12 }}>✏️</span>
+				</button>
+			</div>
+
+			<label style={{ fontSize: 13.5, fontWeight: 700, color: C.titleBlack, marginBottom: 10, display: "block" }}>Enter 4-digit OTP</label>
+
+			<div style={{ display: "flex", gap: 8, marginBottom: 10 }}>
+				{digits.map((d, i) => (
+					<input
+						key={i}
+						ref={el => refs.current[i] = el}
+						type="tel"
+						inputMode="numeric"
+						maxLength={1}
+						value={d}
+						onChange={e => handleChange(i, e.target.value)}
+						onKeyDown={e => handleKeyDown(i, e)}
+						onFocus={() => setFocused(i)}
+						onPaste={i === 0 ? handlePaste : undefined}
+						disabled={loading}
+						style={{
+							flex: 1, height: 52,
+							border: `2px solid ${error ? C.expireRed : focused === i ? C.otpFocus : (d ? C.otpBorder : C.borderLight)}`,
+							borderRadius: 10, textAlign: "center",
+							fontSize: 22, fontWeight: 700, color: C.titleBlack,
+							outline: "none", background: "#fff",
+							transition: "border-color 0.15s",
+						}}
+					/>
+				))}
+			</div>
+
+			{error && (
+				<p style={{ fontSize: 12.5, color: C.expireRed, margin: "0 0 8px", display: "flex", alignItems: "center", gap: 4 }}>
+					<span>⚠️</span> {error}
+				</p>
+			)}
+
+			<div style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 12, color: C.textGray, marginBottom: 18 }}>
+				<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={C.linkPurple} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
+					<rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+					<path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+				</svg>
+				{secs > 0
+					? <><span>OTP will expire in </span><span style={{ color: C.expireRed, fontWeight: 700 }}>{mm}:{ss}</span></>
+					: <span style={{ color: C.expireRed, fontWeight: 700 }}>OTP expired. Please resend.</span>
+				}
+			</div>
+
+			<button
+				onClick={handleVerify}
+				disabled={!allFilled || loading || secs === 0}
+				style={{
+					width: "100%", padding: "15px",
+					background: `linear-gradient(135deg,${C.btnVerify1} 0%,${C.btnVerify2} 100%)`,
+					opacity: (allFilled && !loading && secs > 0) ? 1 : 0.55,
+					border: "none", borderRadius: 10, color: "#fff", fontSize: 15.5, fontWeight: 700,
+					cursor: (allFilled && !loading && secs > 0) ? "pointer" : "not-allowed",
+					display: "flex", alignItems: "center", justifyContent: "center",
+					gap: 10, letterSpacing: 0.2, marginBottom: 16,
+				}}
+			>
+				{loading ? <><Spinner /> Verifying…</> : <>Verify OTP <span style={{ fontSize: 20 }}>→</span></>}
+			</button>
+
+			<div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: 13, color: C.textGray, marginBottom: 16 }}>
+				<span>Didn't receive OTP?</span>
+				<button onClick={handleResend} disabled={secs > 0 || resending} style={{ background: "none", border: "none", cursor: (secs > 0 || resending) ? "not-allowed" : "pointer", fontSize: 13, fontWeight: 700, color: (secs > 0 || resending) ? C.textHint : C.linkPurple, display: "flex", alignItems: "center", gap: 4, padding: 0 }}>
+					{resending ? "Sending…" : <>Resend OTP <span style={{ fontSize: 14 }}>↺</span></>}
+				</button>
+			</div>
+
+			<div style={{ background: C.secureBg, borderRadius: 12, padding: "14px 16px", display: "flex", alignItems: "center", gap: 12, border: "1px solid rgba(139,30,107,0.10)" }}>
+				<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={C.linkPurple} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
+					<rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+					<path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+				</svg>
+				<div style={{ flex: 1 }}>
+					<p style={{ fontSize: 13, fontWeight: 700, color: C.titleBlack, margin: "0 0 3px" }}>Secure & Confidential</p>
+					<p style={{ fontSize: 11.5, color: C.textGray, margin: 0, lineHeight: 1.5 }}>Your information is safe with us and<br />never shared with anyone.</p>
+				</div>
+				{shieldSrc && (
+					<img src={shieldSrc} alt="Secure" style={{ width: 46, height: 46, objectFit: "contain", flexShrink: 0, filter: "drop-shadow(0 2px 6px rgba(100,0,80,0.25))" }} />
+				)}
+			</div>
+		</div>
+	);
+}
+
+/* ─────────────────────────────────────────────────────────────────────────
+   Root export — same props Header.jsx already uses:
+	 isOpen, onClose
+   Behaves exactly like the old modal internally:
+	 - AuthService.checkNumber / AuthService.verifyOtp
+	 - useStorage().setToken / setUser on success
+	 - shows ProfileDetailsModal for new registrations (loginType !== 'login')
+   ───────────────────────────────────────────────────────────────────────── */
+export default function LoginOTPModal({
+	isOpen,
+	onClose,
+	shieldSrc = "/assets/img/shield.png",
+}) {
+	const { setToken, setUser } = useStorage();
+
+	const [screen, setScreen] = useState("login");
+	const [phone, setPhone] = useState("");
+	const [agreedToTerms, setAgreedToTerms] = useState(false);
+	const [otpMeta, setOtpMeta] = useState(null);
+	const [loginType, setLoginType] = useState("");
+	const [toast, setToast] = useState(null);
+	const [showProfileModal, setShowProfileModal] = useState(false);
+
+	// Close on Escape
+	useEffect(() => {
+		if (!isOpen) return;
+		const onKey = e => { if (e.key === "Escape") handleClose(); };
+		document.addEventListener("keydown", onKey);
+		return () => document.removeEventListener("keydown", onKey);
+	}, [isOpen]);
+
+	// Reset state every time modal opens/closes
 	useEffect(() => {
 		if (!isOpen) {
 			setTimeout(() => {
-				setStep('login');
-				setPhone('');
-				setOtp(['', '', '', '']);
-				setError('');
-				setResendTimer(0);
+				setScreen("login");
+				setPhone("");
 				setAgreedToTerms(false);
+				setOtpMeta(null);
+				setLoginType("");
+				setToast(null);
 				setShowProfileModal(false);
 			}, 300);
 		}
 	}, [isOpen]);
 
-	const handlePhoneSubmit = async () => {
-		setError('');
+	// Lock body scroll while open
+	useEffect(() => {
+		document.body.style.overflow = isOpen ? "hidden" : "";
+		return () => { document.body.style.overflow = ""; };
+	}, [isOpen]);
 
-		if (!phone) {
-			setError('Please enter your phone number');
-			return;
-		}
+	const handleClose = () => { setToast(null); onClose(); };
 
-		if (!agreedToTerms) {
-			setError('Please accept our terms to continue');
-			return;
-		}
-
-		const phoneRegex = /^\d{10}$/;
-		if (!phoneRegex.test(phone.replace(/\s/g, ''))) {
-			setError('Please enter a valid 10-digit phone number');
-			return;
-		}
-
-		setIsLoading(true);
-		const res = await AuthService.checkNumber({ phone, otp: '' });
-		if (!res || !res.success) {
-			setError(res.message);
-			return;
-		}
-
-		setStep('otp');
-		setLoginType(res.type);
-		setResendTimer(60);
-
-		setIsLoading(false);
+	const handleSendOTP = (p, meta) => {
+		setPhone(p);
+		setOtpMeta(meta);
+		setLoginType(meta?.type || "");
+		setScreen("otp");
+		setToast({ msg: `OTP sent to +91 ${p.slice(0, 5)} ${p.slice(5)}`, type: "success" });
 	};
 
-	const handleOtpChange = (index, value) => {
-		if (value.length > 1) value = value[0];
-		if (!/^\d*$/.test(value)) return;
+	const handleVerified = ({ token, user }) => {
+		setToken(token);
+		setUser(user);
 
-		const newOtp = [...otp];
-		newOtp[index] = value;
-		setOtp(newOtp);
+		setToast({ msg: "Login successful! Welcome 🙏", type: "success" });
 
-		if (value && index < 3) {
-			const nextInput = document.getElementById(`otp-${index + 1}`);
-			nextInput?.focus();
-		}
-	};
-
-	const handleOtpKeyDown = (index, e) => {
-		if (e.key === 'Backspace' && !otp[index] && index > 0) {
-			const prevInput = document.getElementById(`otp-${index - 1}`);
-			prevInput?.focus();
-		} else if (e.key === 'Enter') {
-			handleOtpSubmit();
-		}
-	};
-
-	const handleOtpPaste = e => {
-		e.preventDefault();
-		const pastedData = e.clipboardData.getData('text').replace(/\D/g, '');
-
-		// If pasted number is larger than 4 digits, don't paste
-		if (pastedData.length > 4) return;
-
-		// If pasted data is empty or not digits, return
-		if (!pastedData) return;
-
-		const pastedDigits = pastedData.split('');
-
-		if (pastedData.length === 4) {
-			// If exactly 4 digits, paste from first input
-			setOtp(pastedDigits);
-			document.getElementById('otp-3')?.focus();
-		} else {
-			// If shorter than 4 digits
-			// Find the last filled input index
-			let lastFilledIndex = -1;
-			for (let i = 3; i >= 0; i--) {
-				if (otp[i] !== '') {
-					lastFilledIndex = i;
-					break;
-				}
-			}
-
-			if (lastFilledIndex === -1) {
-				// No input field is filled, paste from first
-				const newOtp = [
-					...pastedDigits,
-					...Array(4 - pastedDigits.length).fill(''),
-				];
-				setOtp(newOtp);
-				const focusIndex = Math.min(pastedDigits.length - 1, 3);
-				document.getElementById(`otp-${focusIndex}`)?.focus();
-			} else {
-				// Some fields are filled, paste from next position after last filled
-				const startIndex = lastFilledIndex + 1;
-				const availableSlots = 4 - startIndex;
-
-				// Only paste if there's room for all digits
-				if (pastedDigits.length <= availableSlots) {
-					const newOtp = [...otp];
-					pastedDigits.forEach((digit, i) => {
-						if (startIndex + i < 4) {
-							newOtp[startIndex + i] = digit;
-						}
-					});
-					setOtp(newOtp);
-					const focusIndex = Math.min(startIndex + pastedDigits.length - 1, 3);
-					document.getElementById(`otp-${focusIndex}`)?.focus();
-				}
-			}
-		}
-	};
-
-	const { setToken, setUser } = useStorage();
-
-	const handleOtpSubmit = async () => {
-		setError('');
-
-		const otpValue = otp.join('');
-		if (otpValue.length !== 4) {
-			setError('Please enter the complete 4-digit code');
-			return;
-		}
-
-		setIsLoading(true);
-		const res = await AuthService.verifyOtp({ phone, otp: otp.join('') });
-		if (res.success || res.status) {
-			// Handle both success formats just in case
-			const token = res.token;
-			const userData = res.results || res.user;
-
-			setToken(token);
-			setUser(userData);
-
-			if (loginType?.toLowerCase() !== 'login') {
-				// For new registrations, show profile details modal
+		if (loginType?.toLowerCase() !== "login") {
+			// New registration — collect profile details next
+			setTimeout(() => {
+				setToast(null);
 				setShowProfileModal(true);
-			} else {
-				onClose();
-			}
+			}, 700);
 		} else {
-			setError(res.message);
+			setTimeout(handleClose, 900);
 		}
-
-		setIsLoading(false);
-	};
-
-	const handleResendOtp = async () => {
-		if (resendTimer > 0) return;
-
-		setError('');
-		setIsLoading(true);
-		await new Promise(resolve => setTimeout(resolve, 1000));
-		setIsLoading(false);
-		setResendTimer(60);
-		setOtp(['', '', '', '']);
-
-		const successMsg = document.createElement('div');
-		successMsg.style.cssText =
-			'position: fixed; top: 20px; right: 20px; background: linear-gradient(to right, #9333ea, #f97316); color: white; padding: 12px 24px; border-radius: 12px; box-shadow: 0 10px 25px rgba(0,0,0,0.3); z-index: 10000; font-weight: 500;';
-		successMsg.textContent = 'Verification code sent!';
-		document.body.appendChild(successMsg);
-		setTimeout(() => successMsg.remove(), 3000);
-	};
-
-	const handlePhoneKeyPress = e => {
-		if (e.key === 'Enter') handlePhoneSubmit();
-	};
-
-	const formatPhoneDisplay = value => {
-		const cleaned = value.replace(/\D/g, '');
-		if (cleaned.length <= 3) return cleaned;
-		if (cleaned.length <= 6)
-			return `${cleaned.slice(0, 3)} ${cleaned.slice(3)}`;
-		return `${cleaned.slice(0, 3)} ${cleaned.slice(3, 6)} ${cleaned.slice(
-			6,
-			10
-		)}`;
-	};
-
-	const handlePhoneChange = e => {
-		const value = e.target.value.replace(/\D/g, '');
-		if (value.length <= 10) setPhone(value);
-	};
-
-	const handlePhonePaste = e => {
-		e.preventDefault();
-		const pastedData = e.clipboardData.getData('text');
-		const digitsOnly = pastedData.replace(/\D/g, '').slice(0, 10);
-		if (digitsOnly) setPhone(digitsOnly);
 	};
 
 	if (!isOpen) return null;
 
 	return (
 		<>
-			<div className={styles.backdrop} onClick={onClose} />
+			<style>{`
+        @keyframes diq-spin   { to { transform: rotate(360deg); } }
+        @keyframes diq-fadein { from { opacity:0; transform:translateX(-50%) translateY(-10px); } to { opacity:1; transform:translateX(-50%) translateY(0); } }
+        @keyframes diq-modalin{ from { opacity:0; transform:scale(0.96); } to { opacity:1; transform:scale(1); } }
 
-			<div className={styles.modalContainer}>
-				<div className={styles.modal} onClick={e => e.stopPropagation()}>
-					<div className={styles.topBorder}></div>
+        /* ── RESPONSIVE (mobile/small screens) ──
+           Only visual overrides — no logic changes. The decorative left
+           panel becomes a full-width image strip placed AFTER the form
+           (via flex order) instead of a fixed side panel, and padding &
+           a few font sizes shrink so nothing overflows narrow screens. */
+        @media (max-width: 700px) {
+          .diq-modal-shell {
+            flex-direction: column !important;
+            width: 100% !important;
+            max-height: 92vh !important;
+            overflow-y: auto !important;
+          }
+          .diq-left-panel { display: none !important; }
+          .diq-right-panel { border-radius: 20px !important; }
+          .diq-login-pad { padding: 24px 18px 20px !important; }
+          .diq-otp-pad { padding: 18px 16px 16px !important; }
+          .diq-title { font-size: 21px !important; }
+          .diq-features-row {
+            flex-wrap: nowrap !important;
+            padding: 12px 4px !important;
+            gap: 2px !important;
+          }
+          .diq-features-row > div { flex: 1 1 0 !important; gap: 4px !important; padding: 0 2px !important; }
+          .diq-features-row > div > div:first-child { width: 32px !important; height: 32px !important; font-size: 14px !important; }
+          .diq-features-row > div > span:nth-child(2) { font-size: 10px !important; }
+          .diq-features-row > div > span:nth-child(3) { font-size: 9px !important; }
+        }
+      `}</style>
 
-					<button onClick={onClose} className={styles.closeButton}>
-						<svg
-							className={styles.closeIcon}
-							fill="none"
-							viewBox="0 0 24 24"
-							stroke="currentColor"
-						>
-							<path
-								strokeLinecap="round"
-								strokeLinejoin="round"
-								strokeWidth={2}
-								d="M6 18L18 6M6 6l12 12"
+			{toast && <Toast msg={toast.msg} type={toast.type} onDone={() => setToast(null)} />}
+
+			{/* Backdrop — click outside closes */}
+			<div
+				onClick={handleClose}
+				style={{
+					position: "fixed", inset: 0, zIndex: 99998,
+					background: "rgba(8,2,22,0.75)",
+					backdropFilter: "blur(6px)",
+					WebkitBackdropFilter: "blur(6px)",
+					display: "flex", alignItems: "center", justifyContent: "center",
+					padding: 16,
+					fontFamily: "-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif",
+				}}
+			>
+				{/* Modal shell — stop click propagation */}
+				<div
+					onClick={e => e.stopPropagation()}
+					className="diq-modal-shell"
+					style={{
+						display: "flex",
+						width: "min(750px,100%)",
+						maxHeight: "min(680px,95vh)",
+						borderRadius: 20, overflow: "hidden",
+						boxShadow: "0 32px 100px rgba(0,0,0,0.65)",
+						background: "#fff",
+						animation: "diq-modalin 0.25s ease",
+					}}
+				>
+					<LeftPanel screen={screen} />
+					<div className="diq-right-panel" style={{ flex: 1, background: "#fff", position: "relative", display: "flex", flexDirection: "column" }}>
+						{/* Close × */}
+						<button
+							onClick={handleClose}
+							style={{
+								position: "absolute", top: 14, right: 14,
+								width: 30, height: 30, borderRadius: "50%",
+								background: "#F3F4F6", border: "none", cursor: "pointer",
+								fontSize: 15, color: "#6B7280",
+								display: "flex", alignItems: "center", justifyContent: "center",
+								fontWeight: 600, zIndex: 10,
+							}}
+						>✕</button>
+
+						{screen === "login" ? (
+							<LoginScreen
+								phone={phone}
+								setPhone={setPhone}
+								agreedToTerms={agreedToTerms}
+								setAgreedToTerms={setAgreedToTerms}
+								onSendOTP={handleSendOTP}
 							/>
-						</svg>
-					</button>
-
-					<div className={styles.content}>
-						{step === 'login' ? (
-							<>
-								<div className={styles.headerSection}>
-									<div className={styles.iconContainer}>
-										<div className={styles.iconGlow}></div>
-										<div className={styles.icon}>
-											<svg
-												className={styles.iconSvg}
-												fill="none"
-												viewBox="0 0 24 24"
-												stroke="currentColor"
-											>
-												<path
-													strokeLinecap="round"
-													strokeLinejoin="round"
-													strokeWidth={2}
-													d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z"
-												/>
-											</svg>
-										</div>
-									</div>
-									<h2 className={styles.title}>Welcome to DivinIQ</h2>
-									<p className={styles.subtitle}>
-										Sign in with your mobile number
-									</p>
-								</div>
-
-								<div>
-									<label className={styles.label}>Mobile Number</label>
-									<div className={styles.inputWrapper}>
-										<span className={styles.phonePrefix}>+91</span>
-										<input
-											type="tel"
-											value={formatPhoneDisplay(phone)}
-											onChange={handlePhoneChange}
-											onKeyDown={handlePhoneKeyPress}
-											onPaste={handlePhonePaste}
-											placeholder="000 000 0000"
-											className={styles.input}
-											disabled={isLoading}
-										/>
-										<svg
-											className={styles.inputIcon}
-											width="20"
-											height="20"
-											fill="none"
-											viewBox="0 0 24 24"
-											stroke="currentColor"
-										>
-											<path
-												strokeLinecap="round"
-												strokeLinejoin="round"
-												strokeWidth={2}
-												d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z"
-											/>
-										</svg>
-									</div>
-
-									<div className={styles.checkboxWrapper}>
-										<input
-											type="checkbox"
-											id="terms"
-											checked={agreedToTerms}
-											onChange={e => setAgreedToTerms(e.target.checked)}
-											className={styles.checkbox}
-											disabled={isLoading}
-										/>
-										<label htmlFor="terms" className={styles.checkboxLabel}>
-											I accept the{' '}
-											<a href="/terms_of_use" className={styles.link}>
-												Terms of Service
-											</a>{' '}
-											&{' '}
-											<a href="/privacy_policy" className={styles.link}>
-												Privacy Policy
-											</a>
-										</label>
-									</div>
-
-									{error && <div className={styles.error}>{error}</div>}
-
-									<button
-										onClick={handlePhoneSubmit}
-										disabled={isLoading}
-										className={styles.button}
-									>
-										{isLoading ? (
-											<>
-												<div className={styles.spinner}></div>
-												Sending Code...
-											</>
-										) : (
-											<>
-												Continue
-												<svg
-													className={styles.buttonIcon}
-													fill="none"
-													viewBox="0 0 24 24"
-													stroke="currentColor"
-												>
-													<path
-														strokeLinecap="round"
-														strokeLinejoin="round"
-														strokeWidth={2}
-														d="M13 7l5 5m0 0l-5 5m5-5H6"
-													/>
-												</svg>
-											</>
-										)}
-									</button>
-								</div>
-							</>
 						) : (
-							<>
-								<div className={styles.headerSection}>
-									<div className={styles.iconContainer}>
-										<div className={styles.iconGlow}></div>
-										<div className={styles.icon}>
-											<svg
-												className={styles.iconSvg}
-												fill="none"
-												viewBox="0 0 24 24"
-												stroke="currentColor"
-											>
-												<path
-													strokeLinecap="round"
-													strokeLinejoin="round"
-													strokeWidth={2}
-													d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
-												/>
-											</svg>
-										</div>
-									</div>
-									<h2 className={styles.title}>Verify Your Number</h2>
-									<p className={`${styles.subtitle} ${styles.subtitleSpacing}`}>
-										Code sent to
-									</p>
-									<p className={styles.phoneDisplay}>
-										+91 {formatPhoneDisplay(phone)}
-									</p>
-									<button
-										onClick={() => setStep('login')}
-										className={`${styles.link} ${styles.changeNumberBtn}`}
-									>
-										Change Number
-									</button>
-								</div>
-
-								<div>
-									<label className={`${styles.label} ${styles.labelCenter}`}>
-										Enter Verification Code
-									</label>
-									<div className={styles.otpContainer}>
-										{otp.map((digit, index) => (
-											<input
-												key={index}
-												id={`otp-${index}`}
-												type="text"
-												inputMode="numeric"
-												maxLength={1}
-												value={digit}
-												onChange={e => handleOtpChange(index, e.target.value)}
-												onKeyDown={e => handleOtpKeyDown(index, e)}
-												onPaste={index === 0 ? handleOtpPaste : undefined}
-												className={styles.otpInput}
-												disabled={isLoading}
-											/>
-										))}
-									</div>
-
-									{error && (
-										<div className={`${styles.error} ${styles.errorCenter}`}>
-											{error}
-										</div>
-									)}
-
-									<button
-										onClick={handleOtpSubmit}
-										disabled={isLoading}
-										className={styles.button}
-									>
-										{isLoading ? (
-											<>
-												<div className={styles.spinner}></div>
-												Verifying...
-											</>
-										) : (
-											<>
-												Verify & Sign In
-												<svg
-													className={styles.buttonIcon}
-													fill="none"
-													viewBox="0 0 24 24"
-													stroke="currentColor"
-												>
-													<path
-														strokeLinecap="round"
-														strokeLinejoin="round"
-														strokeWidth={2}
-														d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
-													/>
-												</svg>
-											</>
-										)}
-									</button>
-
-									<div className={`${styles.footer} ${styles.footerMt}`}>
-										Didn't receive the code?{' '}
-										{resendTimer > 0 ? (
-											<span className={styles.resendTimer}>{resendTimer}s</span>
-										) : (
-											<button
-												onClick={handleResendOtp}
-												disabled={isLoading}
-												className={`${styles.link} ${styles.resendBtn}`}
-											>
-												Resend Code
-											</button>
-										)}
-									</div>
-								</div>
-							</>
+							<OTPScreen
+								phone={phone}
+								otpMeta={otpMeta}
+								onBack={() => setScreen("login")}
+								shieldSrc={shieldSrc}
+								onVerified={handleVerified}
+							/>
 						)}
 					</div>
 				</div>
@@ -491,10 +616,8 @@ const LoginOTPModal = ({ isOpen, onClose }) => {
 					setShowProfileModal(false);
 					onClose();
 				}}
-				userData={{ phone, country_code: '91' }}
+				userData={{ phone, country_code: "91" }}
 			/>
 		</>
 	);
-};
-
-export default LoginOTPModal;
+}

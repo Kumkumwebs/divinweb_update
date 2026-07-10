@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useStorage } from "../../context/StorageContext";
+import "../sections/Userdetailsmodal.css";
 
 const UserDetailsModal = ({
   isOpen,
@@ -21,7 +22,6 @@ const UserDetailsModal = ({
     if (isOpen) {
       let name = "";
       let whatsapp = "";
-      debugger;
 
       // Try to prefill from logged-in user in sessionStorage
       try {
@@ -54,18 +54,16 @@ const UserDetailsModal = ({
 
     onClose();
 
-    // If we are already on the checkout page, we just need to refresh the data
-    // If not, we navigate to it.
+    // If we are already on the checkout page, onClose() above already
+    // triggers fetchCartFromServer() in the parent, so the devotee
+    // details update without needing a disruptive full page reload.
+    // Only navigate when we're NOT already on the relevant page.
     if (page == "chadhava") {
-      if (window.location.pathname.includes("chadhava_review_booking")) {
-        window.location.reload(); // Quickest way to refresh the parent view
-      } else {
+      if (!window.location.pathname.includes("chadhava_review_booking")) {
         navigate("/chadhava_review_booking");
       }
     } else {
-      if (window.location.pathname.includes("puja_review_booking")) {
-        window.location.reload(); // Quickest way to refresh the parent view
-      } else {
+      if (!window.location.pathname.includes("puja_review_booking")) {
         navigate("/puja_review_booking", {
           state: {
             pujaData: puja,
@@ -77,32 +75,51 @@ const UserDetailsModal = ({
   };
 
   return (
-    <div className="diviniq-modal-overlay" onClick={onClose}>
-      <div className="diviniq-modal-card" onClick={(e) => e.stopPropagation()}>
-        <div className="modal-accent-line"></div>
+    <div className="udm-overlay" onClick={onClose}>
+      <div className="udm-card" onClick={(e) => e.stopPropagation()}>
+        {/* Header art strip */}
+        <div className="udm-header">
+          <img
+            className="udm-header-img"
+            src="/assets/img/chadawa_detail/kalashchadawa.png"
+            alt=""
+            onError={(e) => { e.target.style.display = "none"; }}
+          />
+          <div className="udm-header-pattern" />
+          <div className="udm-handle" />
+          <button className="udm-close" onClick={onClose} aria-label="Close">
+            &times;
+          </button>
+        </div>
 
-        <button className="modal-close-icon" onClick={onClose}>
-          &times;
-        </button>
+        {/* Floating avatar straddling the header */}
+        <div className="udm-avatar">
+          <i className="fas fa-user"></i>
+        </div>
 
-        <div className="modal-body-content text-center">
-          <div className="diviniq-icon-circle">👤</div>
-          <h3 className="modal-title">Update Details</h3>
-          <p className="modal-subtitle">
+        <div className="udm-body">
+          <h3 className="udm-title">Update Details</h3>
+          <div className="udm-subtitle-row">
+            <span className="udm-line" />
+            <i className="fas fa-spa"></i>
+            <span className="udm-line" />
+          </div>
+          <p className="udm-subtitle">
             Ensure your details are correct for the Sankalp
           </p>
 
-          <form
-            onSubmit={handleSubmit}
-            className="diviniq-form-container text-start"
-          >
-            <div className="input-wrapper-field">
-              <label className="fw-bold mb-1 d-block">Full Name</label>
+          <form onSubmit={handleSubmit} className="udm-form">
+            <div className="udm-field">
+              <label>
+                <span className="udm-field-icon">
+                  <i className="fas fa-user"></i>
+                </span>
+                Full Name
+              </label>
               <input
                 type="text"
                 placeholder="eg. Rahul Sharma"
                 required
-                className="form-control py-2"
                 value={formData.name}
                 onChange={(e) =>
                   setFormData({ ...formData, name: e.target.value })
@@ -110,18 +127,22 @@ const UserDetailsModal = ({
               />
             </div>
 
-            <div className="input-wrapper-field mt-3">
-              <label className="fw-bold mb-1 d-block">WhatsApp Number</label>
-              <div className="phone-input-row d-flex gap-2">
-                <span className="country-code-tag p-2 bg-light border rounded">
-                  +91
+            <div className="udm-field">
+              <label>
+                <span className="udm-field-icon">
+                  <i className="fab fa-whatsapp"></i>
+                </span>
+                WhatsApp Number
+              </label>
+              <div className="udm-phone-row">
+                <span className="udm-country-code">
+                  +91 <i className="fas fa-chevron-down"></i>
                 </span>
                 <input
                   type="tel"
                   placeholder="98765 43210"
                   pattern="[0-9]{10}"
                   required
-                  className="form-control py-2"
                   value={formData.whatsapp}
                   onChange={(e) =>
                     setFormData({ ...formData, whatsapp: e.target.value })
@@ -130,8 +151,15 @@ const UserDetailsModal = ({
               </div>
             </div>
 
-            <button type="submit" className="diviniq-submit-btn mt-4 w-100">
-              Save & Continue <span className="ms-2">→</span>
+            <div className="udm-secure-note">
+              <span className="udm-secure-icon">
+                <i className="fas fa-check"></i>
+              </span>
+              Your information is secure with us and will never be shared.
+            </div>
+
+            <button type="submit" className="udm-submit-btn">
+              Save & Continue <i className="fas fa-arrow-right"></i>
             </button>
           </form>
         </div>

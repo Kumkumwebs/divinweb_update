@@ -61,7 +61,7 @@
 .ad-stat-lbl { font-size:11px; color:#6b7280; margin-top:1px; }
 
 /* ── WHITE CARD ── */
-.ad-card { background:#fff; border-radius:14px; border:1px solid #ebebeb; padding:16px; margin-bottom:12px; box-shadow:0 1px 5px rgba(0,0,0,.04); }
+.ad-card { background:#fff; border-radius:14px; border:1px solid #ebebeb; padding:16px; margin-bottom:12px; box-shadow:0 1px 5px rgba(0,0,0,.04); overflow-x:hidden; }
 .ad-card-title { font-size:15px; font-weight:800; color:#111827; margin-bottom:14px; display:flex; align-items:center; gap:8px; }
 .ad-card-title i { color:#7c1d40; }
 
@@ -97,8 +97,8 @@
 
 /* Video */
 .ad-vid-wrap { position:relative; border-radius:12px; overflow:hidden; background:#111; cursor:pointer; }
-.ad-vid-wrap img { width:100%; height:100%; object-fit:cover; display:block; opacity:.78; }
-.ad-vid-play { position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); width:48px; height:48px; border-radius:50%; background:rgba(255,255,255,.92); display:flex; align-items:center; justify-content:center; font-size:16px; color:#7c1d40; border:none; cursor:pointer; box-shadow:0 4px 16px rgba(0,0,0,.22); }
+.ad-vid-wrap img { width:100%; height:310%; object-fit:cover; display:block; opacity:.78; }
+.ad-vid-play { position:absolute; top:57%; left:50%; transform:translate(-50%,-50%); width:48px; height:48px; border-radius:50%; background:rgba(255,255,255,.92); display:flex; align-items:center; justify-content:center; font-size:16px; color:#7c1d40; border:none; cursor:pointer; box-shadow:0 4px 16px rgba(0,0,0,.22); }
 .ad-vid-lbl { font-size:11px; color:#6b7280; margin-top:6px; text-align:center; }
 
 /* ── CONSULTATION PROCESS ── */
@@ -170,9 +170,9 @@
 .ad-popup-rev:last-child { border-bottom:none; }
 
 /* ── STICKY SIDEBAR ── */
-.ad-sticky { position:sticky; top:78px; max-height:calc(100vh - 90px); overflow-y:auto; scrollbar-width:none; }
-.ad-sticky::-webkit-scrollbar { display:none; }
-.ad-fee-card { background:#fff; border-radius:16px; border:1px solid #f3d9e3; padding:20px 18px 16px; margin-bottom:12px; box-shadow:0 2px 14px rgba(124,29,64,.07); }
+.ad-sticky { position:sticky; top:78px; max-height:none; overflow-y:visible; }
+.ad-fee-card { background:#fff; border-radius:16px; border:1px solid #f3d9e3; padding:20px 18px 16px; margin-bottom:12px;  box-shadow:0 2px 14px rgba(124,29,64,.07); }
+.ad-fee-card-new{ background:#fff; border-radius:16px; border:1px solid #f3d9e3; padding:20px 18px 16px; margin-bottom:12px; margin-bottom:-250x;  box-shadow:0 2px 14px rgba(124,29,64,.07); }
 .ad-fee-lbl { font-size:10px; color:#9ca3af; font-weight:700; text-transform:uppercase; letter-spacing:1.2px; margin-bottom:5px; }
 .ad-fee-row { display:flex; align-items:baseline; gap:3px; margin-bottom:10px; }
 .ad-fee-amt { font-size:2.4rem; font-weight:900; color:#111827; line-height:1; }
@@ -204,7 +204,7 @@
 .ad-gifts-card { background:#fff; border-radius:16px; border:1px solid #f3d9e3; padding:16px; box-shadow:0 2px 14px rgba(124,29,64,.07); }
 .ad-gifts-title { font-size:14px; font-weight:800; color:#111827; margin-bottom:12px; display:flex; align-items:center; gap:7px; }
 .ad-gifts-title i { color:#d97706; }
-.ad-gift-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:8px; margin-bottom:10px; }
+.ad-gift-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:8px; margin-bottom:86px; }
 .ad-gift-item { text-align:center; padding:8px 4px; border-radius:9px; border:1.5px solid transparent; cursor:pointer; transition:all .18s; }
 .ad-gift-item:hover { border-color:#f3d9e3; background:#fdf4f7; }
 .ad-gift-img { width:50px; height:50px; object-fit:cover; border-radius:9px; margin-bottom:4px; }

@@ -30,16 +30,45 @@ import TermsAndConditions from './pages/TermsAndConditions';
 import CancellationAndRefund from './pages/CancellationAndRefund';
 import HelpCenter from './pages/HelpCenter';
 import PanchangPage from './pages/PanchangPage';
-import AstrologerRegistration from './pages/AstrologerRegistration';
 import Profile from './pages/Profile';
 import AstrologerList from './pages/AstrologerList';
 import AstrologerDetail from './pages/AstrologerDetail';
 import ChatConsultation from './pages/Chatconsultation';
 import AudioCall from './pages/AudioCall';
 import Check from './pages/check';
+import PujaBookingDetailsPage from "./pages/PujaBookingDetailsPage";
+import ChadhavaBookingDetailsPage from "./pages/ChadhavaBookingDetailsPage";
+import WalletPage from "./components/common/Walletpage";
+import RechargeAmountPage from "./components/common/Rechargeamountpage";
+import RechargeCheckoutPage from "./components/common/RechargeCheckoutPage";
+import AstrologerRegistration from "./pages/AstrologerRegistration";
+import Horoscope from "./pages/Horoscope";
+import SendGiftModal from "./pages/Sendgiftmodal";
+import { AudioCallProvider } from './context/AudioCallContext';
+import { ChatProvider } from './context/ChatContext';
+import ActiveCallBar from './components/common/ActiveCallBar';   // next batch
+import ActiveChatBar from './components/common/ActiveChatBar';   // next batch
+import ChatCallingScreen from './pages/ChatCallingScreen';    
+import FAQSection from './components/home_comp/FAQSection';
+import { LanguageProvider } from './context/LanguageContext';
+import Orders from './pages/Orders';
+import BlogList from './pages/BlogList';
+import BlogDetail from './pages/BlogDetail';
+
+function NotFound() {
+	return (
+		<div style={{ textAlign: 'center', padding: '120px 20px' }}>
+			<h2>404 — Page Not Found</h2>
+			<p>The page you're looking for doesn't exist.</p>
+		</div>
+	);
+}
 
 function App() {
 	return (
+		<LanguageProvider>
+		 <AudioCallProvider>
+      <ChatProvider>
 		<Router>
 			<ScrollToTop />
 			{/* Cursor Follower - Same as original */}
@@ -56,6 +85,7 @@ function App() {
 				<Route path="/chadhava" element={<ChadhavaListing />} />
 				<Route path="/puja" element={<PujaListing />} />
 				<Route path="/chadhava/:name/:id" element={<ChadhavaDetails />} />
+				<Route path="/chadhava/:id" element={<ChadhavaDetails />} />
 				<Route path="/puja/:name/:id" element={<PujaDetails />} />
 				<Route path="/astrologer" element={<AstrologerList />} />
 				<Route path="/astrologer/:id" element={<AstrologerDetail />} />
@@ -63,13 +93,18 @@ function App() {
 				<Route path="/janm_rashi_finder" element={<JanmaRashiFinder />} />
 				<Route path="/panchang" element={<PanchangPage />} />
 				<Route path="/consultation/chat/:id" element={<ChatConsultation />} />
-				
-
-				<Route
-					path="/mangal_dosh_calculator"
-					element={<MangalDoshaCalculator />}
+				<Route path="/wallet" element={<WalletPage />} />
+				<Route path="/recharge-now" element={<RechargeAmountPage />} />
+				<Route path="/recharge-checkout" element={<RechargeCheckoutPage />} />
+				<Route path="/mangal_dosh_calculator" element={<MangalDoshaCalculator />}
 				/>
 				<Route path="/love_calculator" element={<LoveCalculator />} />
+				<Route path="/horoscope" element={<Horoscope />} />
+				<Route path="/send_gift/:id" element={<SendGiftModal />} />
+				<Route Path="/faqs" element={<FAQSection />} />
+				<Route path="/orders" element={<Orders />} />
+				<Route path="/blog" element={<BlogList />} />
+				<Route path="/blog/:id" element={<BlogDetail />} />
 				<Route
 					path="/friendship_calculator"
 					element={<FriendshipCalculator />}
@@ -78,10 +113,9 @@ function App() {
 					path="/destiny_number_calculator"
 					element={<DestinyNumberCalculator />}
 				/>
-				<Route
-					path="/astrologer_registration"
-					element={<AstrologerRegistration />}
-				/>
+				<Route path="/astrologer_registration"
+					element={<AstrologerRegistration />} />
+
 				<Route
 					path="/mobile_numerology_calculator"
 					element={<MobileNumerologyCalculator />}
@@ -96,6 +130,7 @@ function App() {
 				<Route path="/help" element={<HelpCenter />} />
 				<Route path="/chadhava_review_booking" element={<ChadhavaCartPage />} />
 				<Route path="/consultation/call/:id" element={<AudioCall />} />
+				<Route path="/consultation/calling/:id" element={<ChatCallingScreen />} />
 				<Route path="/consultation/check" element={<Check />} />
 				<Route
 					path="/puja_review_booking"
@@ -103,7 +138,9 @@ function App() {
 				/>
 				<Route path="/puja_fill_form" element={<PujaFillForm />} />
 				<Route path="/my_puja_booking" element={<PujaBookingListPage />} />
-				
+				<Route path="/my-puja-booking/:id" element={<PujaBookingDetailsPage />} />
+				<Route path="/my-chadhava-booking/:id" element={<ChadhavaBookingDetailsPage />} />
+
 				<Route
 					path="/my_chadhava_booking"
 					element={<ChadhavaBookingListPage />}
@@ -115,8 +152,15 @@ function App() {
 					element={<CancellationAndRefund />}
 				/>
 				<Route path="/profile" element={<Profile />} />
+				<Route path="*" element={<NotFound />} />
 			</Routes>
+			    <ActiveCallBar /> 
+          <ActiveChatBar />
 		</Router>
+		 </ChatProvider>
+    </AudioCallProvider>
+	</LanguageProvider>
+
 	);
 }
 

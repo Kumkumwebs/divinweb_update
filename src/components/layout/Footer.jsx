@@ -43,9 +43,8 @@ const Footer = () => {
             ] 
         }
     ];
-
-    return (
-        <footer className="footer-diviniq-final">
+return (
+        <footer className="footer-diviniq-final" style={{ background: "linear-gradient(135deg, #6E2A22, #2A0C10)" }}>
             {/* Twinkling Background Layer */}
             {starField.map(star => (
                 <div key={star.id} className="footer-star" style={{
@@ -57,7 +56,7 @@ const Footer = () => {
             <div className="container-fluid p-0 position-relative z-index-1">
                 
                 {/* --- 1. Top Section: Branding & App --- */}
-                <div className="row align-items-center mb-80 pb-60  border-white-10">
+                <div className="row align-items-center mb-5 pb-5  border-white-10">
                     <div className="col-lg-6 mb-4 mb-lg-0">
                         <motion.div initial={{ opacity: 0, x: -20 }} whileInView={{ opacity: 1, x: 0 }}>
                             <img src="/assets/img/logo123.svg" width="180" alt="DivinIQ" className="mb-4" />
@@ -66,7 +65,7 @@ const Footer = () => {
                         </motion.div>
                     </div>
                     <div className="col-lg-6">
-                        <div className="d-flex flex-wrap justify-content-lg-end gap-3">
+                        <div className="d-md-flex flex-wrap justify-content-lg-end gap-3">
                             <a href="https://play.google.com/store/apps/details?id=com.diviniq.app" className="app-btn-elite">
                                 <i className="fab fa-apple fs-4"></i>
                                 <div className="text-start">
@@ -74,7 +73,7 @@ const Footer = () => {
                                     <span className="fw-bold">App Store</span>
                                 </div>
                             </a>
-                            <a href="https://play.google.com/store/apps/details?id=com.diviniq.app" className="app-btn-elite">
+                            <a href="https://play.google.com/store/apps/details?id=com.diviniq.app" className="app-btn-elite my-2 my-md-0">
                                 <i className="fab fa-google-play fs-4 text-warning"></i>
                                 <div className="text-start">
                                     <small className="d-block opacity-50" style={{fontSize: '9px'}}>GET IT ON</small>

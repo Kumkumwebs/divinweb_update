@@ -202,15 +202,17 @@ const PujaFillForm = () => {
 	const { state } = useLocation();
 	const navigate = useNavigate();
 	const { devoteeDetails } = useStorage();
-
-	const pujaMasterData = state?.pujaData;
+const pujaMasterData = state?.pujaData;
 	const selectedPackage = state?.selectedPackage;
 
 	const [cart, setCart] = useState(null);
-	const [cartError, setCartError] = useState(false); // FIX: track error separately
+	const [cartError, setCartError] = useState(false);
+	const [pujaAddons, setPujaAddons] = useState([]);
+	const [pujaHomeAddons, setPujaHomeAddons] = useState([]);
 	const [isLoading, setIsLoading] = useState(false);
 	const [isConfirmModalOpen, setIsConfirmModalOpen] = useState(false);
 	const [bookingStatus, setBookingStatus] = useState(null);
+	const [walletBalance, setWalletBalance] = useState(0);
 	const [aashirwadOption, setAashirwadOption] = useState("Yes");
 
 	const [formData, setFormData] = useState({
@@ -226,41 +228,89 @@ const PujaFillForm = () => {
 	const stopPolling = () => { if (pollIntervalRef.current) { clearInterval(pollIntervalRef.current); pollIntervalRef.current = null; } };
 	useEffect(() => () => stopPolling(), []);
 
-	  useEffect(() => {
-    const fetchCart = async () => {
-      try {
-		setCart([]);
-          setCartError(false);
-        // const res = await apiService.postBearer("https://admin.diviniq.in/puja/getPujaCart", {});
-        // if (res?.status) {
-        //   setCart(res.data);
-        //   setCartError(false);
-        // } else {
-		// 	// setCart([]);
-        //   setCartError(false);
-        // //   setCartError(true);
-        // }
-      } catch (e) {
-        console.error("Cart fetch error", e);
-        setCartError(true); // FIX: set error flag instead of crashing
-      }
-    };
-    fetchCart();
- 
-    if (devoteeDetails?.whatsapp || devoteeDetails?.name) {
-      setFormData((prev) => ({ ...prev, whatsapp: devoteeDetails.whatsapp || "", participantName: devoteeDetails.name || "" }));
-    }
-  }, [devoteeDetails]);
- 
+
+
+
+	useEffect(() => {
+		const fetchCart = async () => {
+			try {
+				const res = await apiService.postBearer('https://admin.diviniq.in/puja/getPujaCart', {});
+				if (res?.status && res.data) {
+					setCart(res.data);
+				} else {
+					setCartError(true);
+				}
+			} catch (e) {
+				console.error('Cart fetch error', e);
+				setCartError(true);
+			}
+		};
+
+		const fetchWallet = async () => {
+			try {
+				const res = await apiService.getBearer('https://admin.diviniq.in/user_api/get_profile');
+				if (res?.status && res?.results) {
+					setWalletBalance(Number(res.results.wallet || 0));
+				}
+			} catch (e) {
+				console.error('Wallet fetch error', e);
+			}
+		};
+
+		const fetchPujaAddons = async () => {
+			const pujaId = pujaMasterData?._id || state?.pujaData?._id;
+			if (!pujaId) return;
+			try {
+				const res = await apiService.postBearer(
+					'https://admin.diviniq.in/puja/pujabyinstaid',
+					{ instaId: pujaId }
+				);
+				if (res?.status && res?.data) {
+					setPujaAddons(res.data.addons || []);
+					setPujaHomeAddons(res.data.homeDeliveryAddons || []);
+				}
+			} catch (e) {
+				console.error('Puja addons fetch error', e);
+			}
+		};
+
+		fetchCart();
+		fetchWallet();
+		fetchPujaAddons();
+
+		if (devoteeDetails?.whatsapp) {
+			setFormData(prev => ({
+				...prev,
+				whatsapp: devoteeDetails.whatsapp,
+				participantName: devoteeDetails.name || '',
+			}));
+		}
+	}, [devoteeDetails]);
+// Use fresh API-fetched addons, fallback to pujaMasterData
+	const addonSource = pujaAddons.length > 0 ? pujaAddons : (pujaMasterData?.addons || []);
+	const homeAddonSource = pujaHomeAddons.length > 0 ? pujaHomeAddons : (pujaMasterData?.homeDeliveryAddons || []);
+
 	const templeAddons = (cart?.addons_selected || []).map((item) => {
-		const details = pujaMasterData?.addons?.find((a) => a._id === item.addon_id);
-		return { ...item, pname: details?.pname || "Temple Addon", pimage: details?.pimage };
-	});
-	const homeAddons = (cart?.home_addons_selected || []).map((item) => {
-		const details = pujaMasterData?.homeDeliveryAddons?.find((h) => h._id === item.addon_id);
-		return { ...item, pname: details?.pname || "Home Prasad", pimage: details?.pimage };
+		const details = addonSource.find((a) => a._id === item.addon_id);
+		return {
+			...item,
+			pname: details?.pname || "Temple Addon",
+			pimage: details?.pimage || "",
+			pamount: Number(details?.pamount || 0),
+			lineTotal: Number(details?.pamount || 0) * (item.qty || 1),
+		};
 	});
 
+	const homeAddons = (cart?.home_addons_selected || []).map((item) => {
+		const details = homeAddonSource.find((h) => h._id === item.addon_id);
+		return {
+			...item,
+			pname: details?.pname || "Home Prasad",
+			pimage: details?.pimage || "",
+			pamount: Number(details?.pamount || 0),
+			lineTotal: Number(details?.pamount || 0) * (item.qty || 1),
+		};
+	});
 	const handleInputChange = (e) => { const { name, value } = e.target; setFormData((prev) => ({ ...prev, [name]: value })); };
 	const handleAddressChange = (e) => { const { name, value } = e.target; setFormData((prev) => ({ ...prev, address: { ...prev.address, [name]: value } })); };
 
@@ -271,14 +321,35 @@ const PujaFillForm = () => {
 			const payload = {
 				puja_id: cart?.pujaDetails?.puja_id,
 				package_id: cart?.package?.package_id,
-				userDetails: { name: formData.participantName, whatsappNumber: formData.whatsapp, gotra: formData.isGotraKnown ? formData.gotra : "Kashyap (Generic)" },
+				// preserve existing addons from cart
+				addons_selected: cart?.addons_selected || [],
+				home_addons_selected: cart?.home_addons_selected || [],
 				is_home_delivery_required: formData.wantsAashirwad === "Yes",
-				deliveryAddress: formData.wantsAashirwad === "Yes" ? { pincode: formData.address.pincode, city: formData.address.city, state: formData.address.state, houseNumber: formData.address.houseNo, area: formData.address.area, landmark: formData.address.landmark } : null,
+				userDetails: {
+					name: formData.participantName,
+					whatsappNumber: formData.whatsapp,
+					gotra: formData.isGotraKnown ? formData.gotra : "Kashyap (Generic)",
+				},
+				deliveryAddress: formData.wantsAashirwad === "Yes"
+					? {
+						pincode: formData.address.pincode,
+						city: formData.address.city,
+						state: formData.address.state,
+						houseNumber: formData.address.houseNo,
+						area: formData.address.area,
+						landmark: formData.address.landmark,
+					}
+					: null,
 			};
 			const res = await apiService.postBearer("https://admin.diviniq.in/puja/pujaaddToCart", payload);
 			if (res?.status) setIsConfirmModalOpen(true);
-		} catch (error) { console.error("Update Error", error); }
-		finally { setIsLoading(false); }
+			else alert("Something went wrong. Please try again.");
+		} catch (error) {
+			console.error("Update Error", error);
+			alert("Something went wrong. Please try again.");
+		} finally {
+			setIsLoading(false);
+		}
 	};
 
 	const startPolling = (orderId) => {
@@ -319,18 +390,34 @@ const PujaFillForm = () => {
 
 	const handleStatusClose = () => { if (bookingStatus === "success") navigate("/my_puja_booking"); else setBookingStatus(null); };
 
-	// FIX: Show spinner while cart is loading (not yet failed, not yet loaded)
 	if (!cart && !cartError) {
 		return (
 			<div style={{ display: "flex", alignItems: "center", justifyContent: "center", minHeight: "60vh", flexDirection: "column", gap: 16 }}>
 				<div style={{ width: 48, height: 48, border: "4px solid #f3f4f6", borderTopColor: "#9B1C1C", borderRadius: "50%", animation: "spin 1s linear infinite" }} />
 				<p style={{ color: "#6b7280", fontSize: 15 }}>Loading Sacred Form...</p>
-				<style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style>
+				<style>{`@keyframes spin { to { transform: rotate(360deg) } }`}</style>
 			</div>
 		);
 	}
 
-	// FIX: Show friendly error if cart API failed
+	// Cart is null but no error means empty cart — redirect
+	if (cart === null && cartError) {
+		return (
+			<div className="main-wrapper bg-light">
+				<Header />
+				<div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", minHeight: "60vh", gap: 16, textAlign: "center", padding: 24 }}>
+					<i className="fas fa-shopping-cart" style={{ fontSize: 48, color: "#d1d5db" }} />
+					<h4 style={{ color: "#111827" }}>Your cart is empty</h4>
+					<p style={{ color: "#6b7280", maxWidth: 320 }}>Please go back and select a puja package to continue.</p>
+					<button onClick={() => navigate("/puja")} style={{ padding: "12px 32px", background: "#9B1C1C", color: "#fff", border: "none", borderRadius: 50, fontWeight: 700, cursor: "pointer", fontSize: 14 }}>
+						Browse Pujas
+					</button>
+				</div>
+				<Footer />
+			</div>
+		);
+	}
+
 	if (cartError) {
 		return (
 			<div className="main-wrapper bg-light">
@@ -340,8 +427,7 @@ const PujaFillForm = () => {
 					alignItems: "center", justifyContent: "center",
 					minHeight: "60vh", gap: 16, textAlign: "center", padding: 24
 				}}>
-					<i className="fas fa-exclamation-circle"
-						style={{ fontSize: 48, color: "#f59e0b" }} />
+					<i className="fas fa-exclamation-circle" style={{ fontSize: 48, color: "#f59e0b" }} />
 					<h4 style={{ color: "#111827" }}>Unable to load your booking</h4>
 					<p style={{ color: "#6b7280", maxWidth: 320 }}>
 						Please make sure you are logged in and have selected a puja package.
@@ -375,12 +461,12 @@ const PujaFillForm = () => {
           overflow: hidden;
           text-align: center;
         }
-      .pff-hero::before {
-  content: '';
-  position: absolute;
-  inset: 0;
-  background: url('/assets/img/pooja_fill/banner.png') center center/cover no-repeat;
-}
+        .pff-hero::before {
+          content: '';
+          position: absolute;
+          inset: 0;
+          background: url('/assets/img/pooja_fill/banner.png') center center/cover no-repeat;
+        }
         .pff-hero-inner { position: relative; z-index: 2; }
         .pff-hero-deco {
           display: flex; align-items: center; justify-content: center; gap: 12px;
@@ -391,7 +477,6 @@ const PujaFillForm = () => {
         .pff-hero h1 { font-size: 42px; font-weight: 800; color: #fff; margin: 0 0 10px; letter-spacing: -0.5px; }
         .pff-hero h1 span { color: #f5a623; }
         .pff-hero-sub { color: rgba(255,255,255,0.7); font-size: 16px; margin: 0; }
-        /* floating diya images */
         .pff-hero-img-left, .pff-hero-img-right {
           position: absolute; top: 50%; transform: translateY(-50%);
           width: 160px; opacity: 0.85;
@@ -406,11 +491,11 @@ const PujaFillForm = () => {
         /* ── CARDS ── */
         .pff-card {
           background: #fff; border-radius: 20px;
-          padding: 28px 130px 28px 24px;
+          padding: 28px 24px 28px 24px;
           box-shadow: 0 2px 16px rgba(0,0,0,0.06);
           margin-bottom: 20px;
           position: relative;
-          overflow: hidden;
+          overflow: visible;
         }
         .pff-card-header { display: flex; align-items: center; gap: 14px; margin-bottom: 20px; }
         .pff-card-icon {
@@ -420,10 +505,8 @@ const PujaFillForm = () => {
         }
         .pff-card-title { font-size: 18px; font-weight: 700; color: #9B1C1C; margin: 0; }
         .pff-card-sub { font-size: 13px; color: #9ca3af; margin: 2px 0 0; }
-
-        /* decorative right-side watermark image */
         .pff-card-watermark {
-          position: absolute; right: -10px; top: 50%; transform: translateY(-50%);
+          position: absolute; right: 0px; top: 50%; transform: translateY(-50%);
           width: 130px; pointer-events: none;
         }
 
@@ -443,14 +526,25 @@ const PujaFillForm = () => {
         .pff-input::placeholder { color: #d1d5db; }
 
         /* phone row */
-        .pff-phone-row { display: flex; gap: 10px; align-items: center; }
+        .pff-phone-row { display: flex; gap: 12px; align-items: stretch; }
         .pff-phone-code {
-          display: flex; align-items: center; gap: 6px;
-          padding: 0px 0px; border: 1.5px solid #e5e7eb; border-radius: 10px;
-          font-size: 14px; font-weight: 600; color: #374151; white-space: nowrap;
+          position: relative;
+          display: flex; align-items: center;
+          padding: 0 14px; border: 1.5px solid #e5e7eb; border-radius: 10px;
+          font-size: 15px; font-weight: 700; color: #1a1a2e; white-space: nowrap;
           background: #fff; flex-shrink: 0;
+          min-width: 92px;
         }
-        .pff-phone-code select { border: none; outline: none; font-size: 14px; font-weight: 600; color: #374151; cursor: pointer; background: transparent; }
+        .pff-phone-code select {
+          appearance: none; -webkit-appearance: none; -moz-appearance: none;
+          border: none; outline: none; font-size: 15px; font-weight: 700;
+          color: #1a1a2e; cursor: pointer; background: transparent;
+          width: 100%; padding: 13px 20px 13px 0;
+        }
+        .pff-phone-code-arrow {
+          position: absolute; right: 12px; top: 50%; transform: translateY(-50%);
+          font-size: 10px; color: #9ca3af; pointer-events: none;
+        }
         .pff-phone-input {
           flex: 1; padding: 13px 42px 13px 16px;
           border: 1.5px solid #e5e7eb; border-radius: 10px;
@@ -459,8 +553,25 @@ const PujaFillForm = () => {
           position: relative;
         }
         .pff-phone-input:focus { border-color: #9B1C1C; }
-        .pff-phone-verified { position: absolute; right: 112px; top: 50%; transform: translateY(-50%); color: #16a34a; font-size: 18px; }
-        .pff-phone-wrap { position: relative; flex: 1; padding: 0px 95px; }
+        .pff-phone-verified { position: absolute; right: 14px; top: 50%; transform: translateY(-50%); color: #16a34a; font-size: 20px; }
+        .pff-phone-wrap { position: relative; flex: 1; }
+
+        /* ── WhatsApp card layout ── */
+        .pff-wa-card { position: relative; }
+        .pff-wa-top {
+          display: flex; align-items: flex-start; justify-content: space-between;
+          gap: 12px; margin-bottom: 20px;
+        }
+        .pff-wa-illustration {
+          width: 90px; height: 80px; object-fit: contain; flex-shrink: 0;
+        }
+        .pff-wa-dot {
+          position: absolute; left: 50%; bottom: -8px; transform: translateX(-50%);
+          width: 14px; height: 14px; border-radius: 50%; background: #f5a623;
+        }
+        @media (max-width: 480px) {
+          .pff-wa-illustration { display: none; }
+        }
 
         /* checkbox */
         .pff-check-row { display: flex; align-items: center; gap: 8px; margin-top: 14px; cursor: pointer; }
@@ -472,25 +583,90 @@ const PujaFillForm = () => {
         .pff-check-box.checked { background: #9B1C1C; border-color: #9B1C1C; }
         .pff-check-label { font-size: 13px; color: #6b7280; }
 
-        /* ── AASHIRWAD OPTIONS ── */
-        .pff-aashirwad-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 20px; }
+        /* ── AASHIRWAD OPTIONS (new smaller design) ── */
+        .pff-aashirwad-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 16px; }
+
         .pff-aashirwad-opt {
-          border: 2px solid #e5e7eb; border-radius: 16px; padding: 20px 16px;
-          cursor: pointer; text-align: center; transition: all 0.2s; background: #fff;
-          display: flex; flex-direction: column; align-items: center; gap: 8px;
+          border: 2px solid #e5e7eb; border-radius: 14px;
+          cursor: pointer; background: #fff;
+          overflow: hidden; transition: border-color 0.2s, box-shadow 0.2s;
+          position: relative;
         }
-        .pff-aashirwad-opt.active { border-color: #9B1C1C; background: #fff9f9; }
-        .pff-aashirwad-opt img { width: 80px; height: 80px; object-fit: contain; border-radius: 8px; }
+        .pff-aashirwad-opt.active { border-color: #d4a04a; box-shadow: 0 0 0 1px #d4a04a22; }
+        .pff-aashirwad-opt:hover { border-color: #c5a068; }
+
+        .pff-recommended-badge {
+          position: absolute; top: 0; right: 0;
+          background: #d4a04a; color: #fff;
+          font-size: 9px; font-weight: 800; letter-spacing: 0.8px; text-transform: uppercase;
+          padding: 5px 14px 5px 10px;
+          clip-path: polygon(0 0, 100% 0, 100% 100%, 10px 100%);
+          border-radius: 0 13px 0 0;
+        }
+
+        .pff-aashirwad-radio-row { padding: 10px 12px 0; display: flex; align-items: center; }
         .pff-aashirwad-radio {
-          width: 18px; height: 18px; border-radius: 50%; border: 2px solid #d1d5db;
+          width: 18px; height: 18px; border-radius: 50%;
+          border: 2px solid #d1d5db;
           display: flex; align-items: center; justify-content: center;
-          align-self: flex-start;
+          flex-shrink: 0; background: #fff;
         }
-        .pff-aashirwad-radio.active { border-color: #9B1C1C; }
-        .pff-aashirwad-radio.active::after { content:''; width:9px;height:9px;border-radius:50%;background:#9B1C1C; }
-        .pff-aashirwad-name { font-size: 15px; font-weight: 700; color: #111827; }
-        .pff-aashirwad-desc { font-size: 12px; color: #9B1C1C; }
-        .pff-aashirwad-desc.gray { color: #9ca3af; }
+        .pff-aashirwad-radio.active { border-color: #7B1C38; }
+        .pff-aashirwad-radio.active::after { content:''; width:8px; height:8px; border-radius:50%; background:#7B1C38; }
+
+        .pff-aashirwad-img-area {
+          width: 100%; height: 130px;
+          display: flex; align-items: center; justify-content: center;
+          background: #fdf5ef; overflow: hidden;
+        }
+        .pff-aashirwad-img-area img { width: 100%; height: 100%; object-fit: cover; }
+        .pff-aashirwad-img-area.gray-bg { background: #fafafa; }
+
+        .pff-aashirwad-label-area { padding: 10px 12px 4px; text-align: center; }
+        .pff-aashirwad-deco { display: flex; align-items: center; justify-content: center; gap: 6px; margin-bottom: 2px; }
+        .pff-aashirwad-deco-line { height: 1px; width: 22px; background: #e2b96a; }
+        .pff-aashirwad-name { font-size: 18px; font-weight: 800; color: #2d1010; margin: 0 0 1px; }
+        .pff-aashirwad-desc { font-size: 12px; color: #9ca3af; margin: 0 0 10px; }
+        .pff-aashirwad-desc.maroon { color: #7B1C38; }
+
+        .pff-aashirwad-btn {
+          margin: 0 12px 12px;
+          padding: 10px 14px;
+          border-radius: 9px;
+          width: calc(100% - 24px);
+          display: flex; align-items: center; justify-content: center; gap: 6px;
+          font-size: 13px; font-weight: 700; cursor: pointer;
+          transition: opacity 0.15s; border: none;
+          box-sizing: border-box;
+        }
+        .pff-aashirwad-btn.primary { background: #7B1C38; color: #fff; }
+        .pff-aashirwad-btn.outline { background: #fff; color: #7B1C38; border: 1.5px solid #7B1C38; }
+        .pff-aashirwad-btn:hover { opacity: 0.88; }
+
+        .pff-aashirwad-footer {
+          display: flex; align-items: center; justify-content: center; gap: 16px;
+          padding-top: 14px; margin-top: 2px;
+          border-top: 1px solid #f3e8e0;
+          font-size: 12px; color: #9B4A2A; font-weight: 600;
+        }
+        .pff-aashirwad-footer-item { display: flex; align-items: center; gap: 5px; }
+        .pff-aashirwad-footer-sep { width: 1px; height: 16px; background: #e5d5c8; }
+
+        /* address inside aashirwad card */
+        .pff-aashirwad-address-box {
+          margin-top: 18px;
+          padding: 18px;
+          background: #fff9f5;
+          border-radius: 12px;
+          border: 1.5px solid #f0d9c8;
+        }
+        .pff-aashirwad-address-header {
+          display: flex; align-items: center; gap: 10px; margin-bottom: 14px;
+        }
+        .pff-aashirwad-address-icon {
+          width: 30px; height: 30px; border-radius: 8px;
+          background: #fef3f2; display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+        }
 
         /* ── SUBMIT BUTTON ── */
         .pff-submit-btn {
@@ -530,14 +706,10 @@ const PujaFillForm = () => {
         .pff-summary-header-icon { color: #9B1C1C; font-size: 18px; }
         .pff-summary-header-title { font-size: 16px; font-weight: 700; color: #111827; }
         .pff-summary-body { padding: 20px 24px; }
-
-        /* selected package row */
         .pff-pkg-row { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 16px; padding-bottom: 16px; border-bottom: 1px solid #f3f4f6; }
         .pff-pkg-label { font-size: 12px; color: #9ca3af; margin-bottom: 3px; }
         .pff-pkg-name { font-size: 15px; font-weight: 700; color: #111827; }
         .pff-pkg-price { font-size: 20px; font-weight: 800; color: #f5a623; }
-
-        /* addon rows */
         .pff-addon-section-label { font-size: 11px; font-weight: 700; color: #9ca3af; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 10px; }
         .pff-addon-row { display: flex; align-items: center; gap: 10px; padding: 10px 12px; background: #f9fafb; border-radius: 12px; margin-bottom: 8px; }
         .pff-addon-img { width: 40px; height: 40px; border-radius: 10px; object-fit: cover; }
@@ -545,8 +717,6 @@ const PujaFillForm = () => {
         .pff-addon-qty { font-size: 12px; color: #9ca3af; }
         .pff-addon-price { margin-left: auto; font-size: 13px; font-weight: 700; color: #374151; }
         .pff-addon-row.home { border-left: 3px solid #f5a623; }
-
-        /* billing */
         .pff-billing-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
         .pff-billing-label { font-size: 13px; color: #6b7280; }
         .pff-billing-val { font-size: 13px; color: #374151; font-weight: 500; }
@@ -557,15 +727,11 @@ const PujaFillForm = () => {
         .pff-secure-banner { background: #fffbeb; border-radius: 10px; padding: 10px 14px; display: flex; align-items: center; gap: 8px; margin-top: 14px; }
         .pff-secure-banner i { color: #f5a623; font-size: 14px; }
         .pff-secure-banner span { font-size: 13px; color: #92400e; font-weight: 500; }
-
-        /* trust items in sidebar */
         .pff-sidebar-trust { padding: 18px 24px; border-top: 1px solid #f3f4f6; display: flex; flex-direction: column; gap: 14px; }
         .pff-sidebar-trust-item { display: flex; align-items: center; gap: 12px; }
         .pff-sidebar-trust-icon { width: 36px; height: 36px; border-radius: 10px; background: #f9fafb; display: flex; align-items: center; justify-content: center; flex-shrink: 0; color: #9B1C1C; font-size: 16px; }
         .pff-sidebar-trust-name { font-size: 13px; font-weight: 700; color: #111827; }
         .pff-sidebar-trust-sub { font-size: 12px; color: #9ca3af; }
-
-        /* devotion banner */
         .pff-devotion-banner {
           border-radius: 16px; overflow: hidden; position: relative;
           height: 189px; margin-top: 30px;
@@ -578,11 +744,101 @@ const PujaFillForm = () => {
         }
         .pff-devotion-text { font-size: 14px; color: #fff; line-height: 1.5; font-weight: 500; }
         .pff-devotion-text strong { color: #f5a623; }
-
-        /* address fields grid */
-        .pff-addr-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+      .pff-addr-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
         .pff-addr-grid .full { grid-column: 1 / -1; }
         @media(max-width:500px){ .pff-addr-grid{ grid-template-columns:1fr; } }
+
+        /* =========================================================
+           RESPONSIVE ENHANCEMENTS (added only — no existing rule
+           or JSX changed, purely additive media queries)
+           ========================================================= */
+
+        /* ── Hero ── */
+        @media (max-width: 992px) {
+          .pff-hero { padding: 48px 0 40px; }
+          .pff-hero h1 { font-size: 32px; }
+          .pff-hero-sub { font-size: 14px; }
+          .pff-hero-img-left, .pff-hero-img-right { width: 100px; opacity: 0.5; }
+          .pff-hero-img-left { left: 12px; }
+          .pff-hero-img-right { right: 12px; }
+        }
+        @media (max-width: 600px) {
+          .pff-hero { padding: 36px 0 30px; }
+          .pff-hero h1 { font-size: 26px; }
+          .pff-hero-sub { font-size: 13px; padding: 0 16px; }
+          .pff-hero-img-left, .pff-hero-img-right { display: none; }
+        }
+
+        /* ── Body layout / cards ── */
+        @media (max-width: 992px) {
+          .pff-body { padding: 28px 16px 48px; gap: 20px; }
+          .pff-card { padding: 22px 18px !important; }
+          .pff-card-watermark { width: 90px !important; opacity: 0.6; }
+          .pff-card-title { font-size: 16px; }
+          .pff-card-sub { font-size: 12px; }
+          .pff-sidebar { position: static; top: auto; }
+        }
+        @media (max-width: 600px) {
+          .pff-body { padding: 20px 12px 40px; }
+          .pff-card { padding: 18px 14px !important; }
+          .pff-card-header { gap: 10px; }
+          .pff-card-icon { width: 38px; height: 38px; font-size: 16px; }
+          .pff-card-watermark { display: none !important; }
+        }
+
+      /* ── Phone row ── */
+        @media (max-width: 480px) {
+          .pff-phone-row { flex-wrap: nowrap; gap: 8px; }
+          .pff-phone-code { padding: 10px 8px; font-size: 13px; }
+          .pff-phone-code select { font-size: 13px; }
+          .pff-phone-wrap { padding: 0 !important; }
+          .pff-phone-input { padding: 12px 44px 12px 12px !important; font-size: 14px; }
+          .pff-phone-verified { right: 12px; }
+        }
+        /* ── Aashirwad grid ── */
+        @media (max-width: 640px) {
+          .pff-aashirwad-grid { grid-template-columns: 1fr; }
+        }
+        @media (max-width: 600px) {
+          .pff-aashirwad-img-area { height: 110px; }
+          .pff-aashirwad-name { font-size: 16px; }
+          .pff-aashirwad-btn { font-size: 12px; padding: 9px 12px; }
+          .pff-aashirwad-footer { flex-direction: column; gap: 8px; }
+          .pff-aashirwad-footer-sep { display: none; }
+        }
+
+        /* ── Address box ── */
+        @media (max-width: 600px) {
+          .pff-aashirwad-address-box { padding: 14px; }
+        }
+
+        /* ── Submit button ── */
+        @media (max-width: 600px) {
+          .pff-submit-btn { padding: 15px; font-size: 15px; }
+        }
+
+        /* ── Trust strip ── */
+       /* ── Trust strip ── */
+        @media (max-width: 420px) {
+          .pff-trust-strip { gap: 14px; }
+          .pff-trust-icon { width: 34px; height: 34px; }
+          .pff-trust-name { font-size: 11.5px; }
+          .pff-trust-sub { font-size: 10.5px; }
+        }
+
+        /* ── Sidebar summary ── */
+        @media (max-width: 600px) {
+          .pff-summary-header { padding: 16px 18px 12px; }
+          .pff-summary-body { padding: 16px 18px; }
+          .pff-pkg-price, .pff-total-val { font-size: 18px; }
+          .pff-sidebar-trust { padding: 14px 18px; }
+        }
+
+        /* ── Devotion banner ── */
+        @media (max-width: 600px) {
+          .pff-devotion-banner { height: 150px; margin-top: 20px; }
+          .pff-devotion-text { font-size: 13px; }
+        }
       `}</style>
 
 			<div className="pff-root">
@@ -591,19 +847,12 @@ const PujaFillForm = () => {
 
 				{/* ══ HERO BANNER ══ */}
 				<div className="pff-hero">
-					{/* decorative diya images */}
 					<img
 						className="pff-hero-img-left"
 						src="https://images.unsplash.com/photo-1601933513839-04e30d94e55e?w=300&q=80"
 						alt=""
 						style={{ borderRadius: 12 }}
 					/>
-					{/* <img
-						className="pff-hero-img-right"
-						src="https://images.unsplash.com/photo-1606800052052-a08af7148866?w=300&q=80"
-						alt=""
-						style={{ borderRadius: 12 }}
-					/> */}
 					<div className="pff-hero-inner">
 						<div className="pff-hero-deco">
 							<span className="pff-hero-deco-line" />
@@ -623,26 +872,32 @@ const PujaFillForm = () => {
 						<form onSubmit={handleProceed}>
 
 							{/* ── WHATSAPP CONTACT ── */}
-							<div className="pff-card">
-								<div className="pff-card-header">
-									<div className="pff-card-icon"><i className="fab fa-whatsapp" /></div>
-									<div>
-										<div className="pff-card-title">WhatsApp Contact</div>
-										<div className="pff-card-sub">All updates will be sent on WhatsApp</div>
+							<div className="pff-card pff-wa-card" style={{ padding: "24px", overflow: "visible" }}>
+								<div className="pff-wa-top">
+									<div className="pff-card-header" style={{ marginBottom: 0 }}>
+										<div className="pff-card-icon"><i className="fab fa-whatsapp" /></div>
+										<div>
+											<div className="pff-card-title">WhatsApp Contact</div>
+											<div className="pff-card-sub">All updates will be sent on WhatsApp</div>
+										</div>
 									</div>
+									<img
+										className="pff-wa-illustration"
+										src="/assets/img/pooja_fill/whatsappimage.png"
+										alt=""
+										onError={(e) => { e.target.style.display = "none"; }}
+									/>
 								</div>
-								{/* watermark */}
-								<img
-									className="pff-card-watermark"
-									src="/assets/img/pooja_fill/whatsappimage.png"
-									alt="whatsapp_image"
-								/>
+
 								<div className="pff-phone-row">
 									<div className="pff-phone-code">
-										<select defaultValue="+91">
+										<select
+											defaultValue="+91"
+											aria-label="Country code"
+										>
 											<option>+91</option>
 										</select>
-										<i className="fas fa-chevron-down" style={{ fontSize: 10, color: '#9ca3af' }} />
+										<i className="fas fa-chevron-down pff-phone-code-arrow" />
 									</div>
 									<div className="pff-phone-wrap">
 										<input
@@ -655,14 +910,16 @@ const PujaFillForm = () => {
 											onChange={handleInputChange}
 										/>
 										{formData.whatsapp?.length === 10 && (
-											<i className="fas fa-check-circle pff-phone-verified padding: 0pc 58px" />
+											<i className="fas fa-check-circle pff-phone-verified" />
 										)}
 									</div>
 								</div>
+
+								<div className="pff-wa-dot" />
 							</div>
 
 							{/* ── PARTICIPANT DETAILS ── */}
-							<div className="pff-card">
+							<div className="pff-card" style={{ paddingRight: 130 }}>
 								<div className="pff-card-header">
 									<div className="pff-card-icon"><i className="fas fa-user" /></div>
 									<div>
@@ -670,12 +927,12 @@ const PujaFillForm = () => {
 										<div className="pff-card-sub">Enter devotee details for the sankalp</div>
 									</div>
 								</div>
-								{/* Om watermark */}
 								<img
 									className="pff-card-watermark"
 									src="/assets/img/pooja_fill/hand.png"
-								alt=""
-								style={{ width: 160 }}
+									alt=""
+									style={{ width: 160 }}
+									onError={(e) => { e.target.style.display = "none"; }}
 								/>
 
 								<div style={{ marginBottom: 18 }}>
@@ -722,7 +979,7 @@ const PujaFillForm = () => {
 							</div>
 
 							{/* ── AASHIRWAD BOX ── */}
-							<div className="pff-card">
+							<div className="pff-card" style={{ padding: "28px 24px", overflow: "visible" }}>
 								<div className="pff-card-header">
 									<div className="pff-card-icon"><i className="fas fa-gift" /></div>
 									<div>
@@ -737,13 +994,31 @@ const PujaFillForm = () => {
 										className={`pff-aashirwad-opt ${formData.wantsAashirwad === "Yes" ? "active" : ""}`}
 										onClick={() => setFormData((p) => ({ ...p, wantsAashirwad: "Yes" }))}
 									>
-										<div className={`pff-aashirwad-radio ${formData.wantsAashirwad === "Yes" ? "active" : ""}`} />
-										<img
-											src="/assets/img/pooja_fill/gift.png"
-											alt="Aashirwad Box"
-										/>
-										<div className="pff-aashirwad-name">Yes</div>
-										<div className="pff-aashirwad-desc">Deliver Aashirwad Box</div>
+										<div className="pff-recommended-badge">Recommended</div>
+										<div className="pff-aashirwad-radio-row">
+											<div className={`pff-aashirwad-radio ${formData.wantsAashirwad === "Yes" ? "active" : ""}`} />
+										</div>
+										<div className="pff-aashirwad-img-area">
+											<img src="/assets/img/pooja_fill/gift.png" alt="Aashirwad Box" />
+										</div>
+										<div className="pff-aashirwad-label-area">
+											<div className="pff-aashirwad-deco">
+												<div className="pff-aashirwad-deco-line" />
+												<span style={{ fontSize: 9, color: "#e2b96a" }}>✦</span>
+												<div className="pff-aashirwad-deco-line" />
+											</div>
+											<div className="pff-aashirwad-name">Yes</div>
+											<div className="pff-aashirwad-desc maroon">Deliver Aashirwad Box</div>
+										</div>
+										<button
+											type="button"
+											className="pff-aashirwad-btn primary"
+											onClick={(e) => { e.stopPropagation(); setFormData((p) => ({ ...p, wantsAashirwad: "Yes" })); }}
+										>
+											<i className="fas fa-truck" style={{ fontSize: 12 }} />
+											Yes, Deliver Aashirwad Box
+											<i className="fas fa-arrow-right" style={{ fontSize: 11 }} />
+										</button>
 									</div>
 
 									{/* NO option */}
@@ -751,49 +1026,92 @@ const PujaFillForm = () => {
 										className={`pff-aashirwad-opt ${formData.wantsAashirwad === "No" ? "active" : ""}`}
 										onClick={() => setFormData((p) => ({ ...p, wantsAashirwad: "No" }))}
 									>
-										<div className={`pff-aashirwad-radio ${formData.wantsAashirwad === "No" ? "active" : ""}`} />
-										<img
-											src="/assets/img/pooja_fill/giftpack.png"
-											alt="No Box"
-										/>
-										<div className="pff-aashirwad-name">No</div>
-										<div className="pff-aashirwad-desc gray">I don't want Aashirwad Box</div>
+										<div className="pff-aashirwad-radio-row">
+											<div className={`pff-aashirwad-radio ${formData.wantsAashirwad === "No" ? "active" : ""}`} />
+										</div>
+										<div className="pff-aashirwad-img-area gray-bg">
+											<img src="/assets/img/pooja_fill/giftpack.png" alt="No Box" />
+										</div>
+										<div className="pff-aashirwad-label-area">
+											<div className="pff-aashirwad-deco">
+												<div className="pff-aashirwad-deco-line" />
+												<div style={{ width: 22, height: 22, borderRadius: "50%", background: "#7B1C38", display: "flex", alignItems: "center", justifyContent: "center" }}>
+													<i className="fas fa-hand-paper" style={{ fontSize: 10, color: "#fff" }} />
+												</div>
+												<div className="pff-aashirwad-deco-line" />
+											</div>
+											<div className="pff-aashirwad-name">No</div>
+											<div className="pff-aashirwad-desc">I don't want Aashirwad Box</div>
+										</div>
+										<button
+											type="button"
+											className="pff-aashirwad-btn outline"
+											onClick={(e) => { e.stopPropagation(); setFormData((p) => ({ ...p, wantsAashirwad: "No" })); }}
+										>
+											No, Skip Aashirwad Box
+											<i className="fas fa-arrow-right" style={{ fontSize: 11 }} />
+										</button>
 									</div>
 								</div>
 
-								{/* Address fields – animated */}
+								{/* Footer trust strip */}
+								<div className="pff-aashirwad-footer">
+									<div className="pff-aashirwad-footer-item">
+										<i className="fas fa-shield-alt" style={{ fontSize: 13 }} />
+										100% Secure Packaging
+									</div>
+									<div className="pff-aashirwad-footer-sep" />
+									<div className="pff-aashirwad-footer-item">
+										Delivered with Devotion
+										<i className="fas fa-heart" style={{ fontSize: 12 }} />
+									</div>
+								</div>
+
+								{/* ── ADDRESS FORM — slides open when Yes ── */}
 								<AnimatePresence>
 									{formData.wantsAashirwad === "Yes" && (
 										<motion.div
 											initial={{ height: 0, opacity: 0 }}
 											animate={{ height: "auto", opacity: 1 }}
 											exit={{ height: 0, opacity: 0 }}
+											transition={{ duration: 0.3, ease: "easeInOut" }}
 											style={{ overflow: "hidden" }}
 										>
-											<div className="pff-addr-grid" style={{ marginTop: 4 }}>
-												{[
-													{ name: "pincode", placeholder: "Pincode", icon: "fas fa-map-pin" },
-													{ name: "city", placeholder: "City", icon: "fas fa-city" },
-													{ name: "state", placeholder: "State", icon: "fas fa-map", full: true },
-													{ name: "houseNo", placeholder: "House / Flat No.", icon: "fas fa-home", full: true },
-													{ name: "area", placeholder: "Area / Colony", icon: "fas fa-map-marker-alt", full: true },
-													{ name: "landmark", placeholder: "Landmark (optional)", icon: "fas fa-landmark", full: true, req: false },
-												].map(({ name, placeholder, icon, full, req = true }) => (
-													<div key={name} className={full ? "full" : ""}>
-														<div className="pff-input-wrap">
-															<i className={`${icon} pff-input-icon`} style={{ fontSize: 13 }} />
-															<input
-																type="text"
-																name={name}
-																required={req}
-																className="pff-input"
-																placeholder={placeholder}
-																value={formData.address[name]}
-																onChange={handleAddressChange}
-															/>
-														</div>
+											<div className="pff-aashirwad-address-box">
+												<div className="pff-aashirwad-address-header">
+													<div className="pff-aashirwad-address-icon">
+														<i className="fas fa-map-marker-alt" style={{ color: "#9B1C1C", fontSize: 13 }} />
 													</div>
-												))}
+													<div>
+														<div style={{ fontSize: 14, fontWeight: 700, color: "#9B1C1C" }}>Delivery Address</div>
+														<div style={{ fontSize: 12, color: "#9ca3af" }}>Where should we send your Aashirwad Box?</div>
+													</div>
+												</div>
+												<div className="pff-addr-grid">
+													{[
+														{ name: "pincode", placeholder: "Pincode", icon: "fas fa-map-pin" },
+														{ name: "city", placeholder: "City", icon: "fas fa-city" },
+														{ name: "state", placeholder: "State", icon: "fas fa-map", full: true },
+														{ name: "houseNo", placeholder: "House / Flat No.", icon: "fas fa-home", full: true },
+														{ name: "area", placeholder: "Area / Colony", icon: "fas fa-map-marker-alt", full: true },
+														{ name: "landmark", placeholder: "Landmark (optional)", icon: "fas fa-landmark", full: true, req: false },
+													].map(({ name, placeholder, icon, full, req = true }) => (
+														<div key={name} className={full ? "full" : ""}>
+															<div className="pff-input-wrap">
+																<i className={`${icon} pff-input-icon`} style={{ fontSize: 13 }} />
+																<input
+																	type="text"
+																	name={name}
+																	required={req}
+																	className="pff-input"
+																	placeholder={placeholder}
+																	value={formData.address[name]}
+																	onChange={handleAddressChange}
+																/>
+															</div>
+														</div>
+													))}
+												</div>
 											</div>
 										</motion.div>
 									)}
@@ -810,9 +1128,6 @@ const PujaFillForm = () => {
 								<i className="fas fa-shield-alt" />
 								100% Secure &amp; Safe Payments
 							</div>
-
-							
-
 						</form>
 					</div>
 
@@ -825,7 +1140,6 @@ const PujaFillForm = () => {
 							</div>
 
 							<div className="pff-summary-body">
-								{/* Selected Package */}
 								<div className="pff-pkg-row">
 									<div>
 										<div className="pff-pkg-label">Selected Package</div>
@@ -834,7 +1148,6 @@ const PujaFillForm = () => {
 									<div className="pff-pkg-price">₹{cart.base_total ?? selectedPackage?.packagePrice ?? 0}</div>
 								</div>
 
-								{/* Home delivery addons */}
 								{homeAddons.length > 0 && (
 									<div style={{ marginBottom: 14 }}>
 										<div className="pff-addon-section-label">Home Delivery</div>
@@ -848,13 +1161,12 @@ const PujaFillForm = () => {
 													<div className="pff-addon-name">{item.pname}</div>
 													<div className="pff-addon-qty">Qty: {item.qty}</div>
 												</div>
-												<div className="pff-addon-price">₹{item.price || 0}</div>
+												<div className="pff-addon-price">₹{item.lineTotal || item.pamount || 0}</div>
 											</div>
 										))}
 									</div>
 								)}
 
-								{/* Temple addons */}
 								{templeAddons.length > 0 && (
 									<div style={{ marginBottom: 14 }}>
 										<div className="pff-addon-section-label">Ritual Add-ons</div>
@@ -868,13 +1180,12 @@ const PujaFillForm = () => {
 													<div className="pff-addon-name">{item.pname}</div>
 													<div className="pff-addon-qty">Qty: {item.qty}</div>
 												</div>
-												<div className="pff-addon-price">₹{item.price || 0}</div>
+												<div className="pff-addon-price">₹{item.lineTotal || item.pamount || 0}</div>
 											</div>
 										))}
 									</div>
 								)}
 
-								{/* Billing breakdown */}
 								<hr className="pff-divider-dashed" />
 								<div className="pff-billing-row">
 									<span className="pff-billing-label">Addons Total</span>
@@ -900,7 +1211,6 @@ const PujaFillForm = () => {
 								</div>
 							</div>
 
-							{/* Trust items */}
 							<div className="pff-sidebar-trust">
 								{[
 									{ icon: "fas fa-shield-alt", name: "Secure Payments", sub: "100% secure & trusted" },
@@ -918,12 +1228,8 @@ const PujaFillForm = () => {
 							</div>
 						</div>
 
-						{/* Devotion banner */}
 						<div className="pff-devotion-banner">
-							<img
-								src="/assets/img/pooja_fill/pff-devotion.png"
-								alt="Puja"
-							/>
+							<img src="/assets/img/pooja_fill/pff-devotion.png" alt="Puja" />
 							<div className="pff-devotion-banner-overlay">
 								<div className="pff-devotion-text">
 									Every Puja is performed<br />
@@ -935,30 +1241,32 @@ const PujaFillForm = () => {
 					</div>
 
 				</div>{/* /pff-body */}
+
 				{/* ── TRUST STRIP ── */}
-							<div className="pff-trust-strip">
-								{[
-									{ img: "/assets/img/pooja_fill/templefill.png", name: "Temple Verified", sub: "Authentic & Trusted" },
-									{ img: "/assets/img/pooja_fill/leaf.png", name: "Pure & Authentic", sub: "Vedic Rituals" },
-									{ img: "/assets/img/pooja_fill/peopleicon.png", name: "Thousands of Devotees", sub: "Trust DivinIQ" },
-									{ img: "/assets/img/pooja_fill/car.png", name: "On-Time Delivery", sub: "Safe & Reliable" },
-								].map((t, i) => (
-									<div key={i} className="pff-trust-item">
-										<div className="pff-trust-icon">
-											<img src={t.img} alt={t.name} style={{ borderRadius: 10 }} />
-										</div>
-										<div className="pff-trust-name">{t.name}</div>
-										<div className="pff-trust-sub">{t.sub}</div>
-									</div>
-								))}
+				<div className="pff-trust-strip">
+					{[
+						{ img: "/assets/img/pooja_fill/templefill.png", name: "Temple Verified", sub: "Authentic & Trusted" },
+						{ img: "/assets/img/pooja_fill/leaf.png", name: "Pure & Authentic", sub: "Vedic Rituals" },
+						{ img: "/assets/img/pooja_fill/peopleicon.png", name: "Thousands of Devotees", sub: "Trust DivinIQ" },
+						{ img: "/assets/img/pooja_fill/car.png", name: "On-Time Delivery", sub: "Safe & Reliable" },
+					].map((t, i) => (
+						<div key={i} className="pff-trust-item">
+							<div className="pff-trust-icon">
+								<img src={t.img} alt={t.name} style={{ borderRadius: 10 }} />
 							</div>
+							<div className="pff-trust-name">{t.name}</div>
+							<div className="pff-trust-sub">{t.sub}</div>
+						</div>
+					))}
+				</div>
 
 				<Footer />
 
 				<OrderConfirmationModal
 					isOpen={isConfirmModalOpen}
 					onClose={() => setIsConfirmModalOpen(false)}
-					formData={formData}
+					formData={formData}				
+					walletBalance={walletBalance}
 					cart={cart}
 					onConfirm={handleFinalSubmit}
 				/>

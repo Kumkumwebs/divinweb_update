@@ -115,17 +115,17 @@
 
 /* ── CTA BANNER ─────────────────────────── */
 .at-cta {
-  background: linear-gradient(135deg,#1a0840 0%,#2d1060 50%,#1a0840 100%);
+  /* background: linear-gradient(135deg,#1a0840 0%,#2d1060 50%,#1a0840 100%); */
   padding: 52px 0; text-align: center; position: relative; overflow: hidden;
 }
 .at-cta::before {
   content: '';
   position: absolute; inset: 0;
-  background: url('/assets/img/tool_img/tool_banner.png') center/cover no-repeat;
-  opacity: .12;
+  background: url('/assets/img/tool_img/banner2.png') center/cover no-repeat;
+  /* opacity: .12; */
 }
 .at-cta > .container { position: relative; z-index: 1; }
-.at-cta-text { font-size: 1.6rem; font-weight: 800; color: #fff; margin-bottom: 6px; }
+.at-cta-text {  font-weight: 800; color: #fff; margin-bottom: 6px; margin-left: 230px }
 .at-cta-text u { text-decoration: none; background: linear-gradient(90deg,#f59e0b,#fcd34d); -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text; }
 .at-cta-btn {
   display: inline-flex; align-items: center; gap: 8px;
@@ -157,4 +157,65 @@
   .at-hero-h1 { font-size: 1.45rem; }
   .at-stats-grid { grid-template-columns: repeat(2,1fr); gap: 10px; }
   .at-stat-val  { font-size: 1.3rem; }
+}
+
+/* =========================================================
+   RESPONSIVE ENHANCEMENTS (added — no existing rules changed)
+   ========================================================= */
+
+/* ---- CTA banner: center text/button and give breathing room
+   once they stack on mobile (JSX now uses col-12 col-md-7/4) ---- */
+@media (max-width: 767px) {
+  .at-cta .row {
+    text-align: center;
+  }
+  .at-cta-text {
+    margin-bottom: 4px;
+  }
+  .at-cta .col-12.col-md-4 {
+    margin-top: 14px;
+  }
+}
+
+/* ---- Trust feature pairs: stack to one column on very small
+   screens instead of squeezing icon + text into half-width ---- */
+@media (max-width: 420px) {
+  .at-trust .row.g-3 > [class*="col-6"] {
+    flex: 0 0 100%;
+    max-width: 100%;
+  }
+}
+
+/* ---- Tool cards: tighten padding/type slightly on small phones ---- */
+@media (max-width: 480px) {
+  .at-card { padding: 18px 16px 14px; }
+  .at-card-ico { width: 46px; height: 46px; font-size: 19px; }
+  .at-card-name { font-size: 15px; }
+  .at-card-desc { font-size: 12px; }
+}
+
+/* ---- How-it-works: single column with connector arrows rotated
+   into a vertical flow, instead of just hiding them ---- */
+@media (max-width: 600px) {
+  .at-steps {
+    flex-direction: column;
+    align-items: center;
+    gap: 28px;
+  }
+  .at-step {
+    max-width: 280px;
+    width: 100%;
+  }
+  .at-step:not(:last-child)::after {
+    content: '↓';
+    position: static;
+    display: block;
+    margin-top: 12px;
+  }
+}
+
+/* ---- Section title: tighten spacing on mobile ---- */
+@media (max-width: 480px) {
+  .at-section-title { margin-bottom: 28px; }
+  .at-section-h2 { font-size: 1.5rem; }
 }

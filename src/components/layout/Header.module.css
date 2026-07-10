@@ -3,6 +3,18 @@
     position: relative;
     display: inline-block;
 }
+.goog-te-banner-frame.skiptranslate { display: none !important; }
+body { top: 0px !important; }
+#google_translate_element { display: none !important; }
+.goog-te-banner-frame.skiptranslate,
+iframe.skiptranslate,
+iframe[id^="goog-te-banner-frame"] {
+	display: none !important;
+	visibility: hidden !important;
+	height: 0 !important;
+}
+body { top: 0px !important; }
+#google_translate_element { display: none !important; }
 
 /* Profile Trigger Button */
 .userBtn {

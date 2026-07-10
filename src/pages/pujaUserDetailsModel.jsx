@@ -1,40 +1,26 @@
 import React, { useState, useEffect } from "react";
-import { useStorage } from "../context/StorageContext"; // one level up only
+import { useStorage } from "../context/StorageContext";
 import { useNavigate } from "react-router-dom";
-
-/* ─────────────────────────────────────────────
-   FIX SUMMARY:
-   • Reads existing user from sessionStorage on open
-   • Sets devoteeDetails in StorageContext so pages 4+5 can read it
-   • Navigates to /puja_review_booking with { pujaData, selectedPackage }
-     in location.state — exactly what PujaReviewBookingPage expects
-   • "Edit" inline pattern kept intact
-───────────────────────────────────────────── */
 
 const PujaUserDetailsModal = ({
   isOpen,
   onClose,
-  cart,          // selectedPackage object  (used as cart reference)
-  page,          // "puja" | "chadhava"
-  puja,          // pujaData object
+  cart,
+  page,
+  puja,
   selectedPackage,
 }) => {
   const navigate = useNavigate();
   const { setDevoteeDetails, setActiveCart } = useStorage();
 
   const [formData, setFormData] = useState({ name: "", whatsapp: "" });
-  const [editingField, setEditingField] = useState(null);
-  const [tempData, setTempData] = useState({ name: "", whatsapp: "" });
+  const [previousUsers, setPreviousUsers] = useState([]);
+  const [showUserList, setShowUserList] = useState(false);
 
-  /* ─────────────────────────────────────────────
-     Pre-fill from sessionStorage on every open
-  ───────────────────────────────────────────── */
   useEffect(() => {
     if (!isOpen) return;
-
     let name = "";
     let whatsapp = "";
-
     try {
       const user = JSON.parse(sessionStorage.getItem("user") || "null");
       if (user) {
@@ -44,57 +30,61 @@ const PujaUserDetailsModal = ({
     } catch (e) {
       console.warn("Error reading user from sessionStorage", e);
     }
-
     setFormData({ name, whatsapp });
-    setEditingField(null);
+    setShowUserList(false);
+
+    // Load previous users from localStorage
+    try {
+      const saved = JSON.parse(localStorage.getItem("devoteeUsers") || "[]");
+      setPreviousUsers(saved);
+    } catch (e) {
+      console.warn("Error loading users", e);
+    }
   }, [isOpen]);
 
-  const handleEditClick = (field) => {
-    setTempData({ ...formData });
-    setEditingField(field);
+  const handleEditClick = () => {
+    setShowUserList((prev) => !prev);
   };
 
-  const handleSaveField = (field) => {
-    setFormData((prev) => ({ ...prev, [field]: tempData[field] }));
-    setEditingField(null);
+  const handleSelectUser = (user) => {
+    setFormData({ name: user.name, whatsapp: user.whatsapp });
+    setShowUserList(false);
   };
 
-  const handleCancelEdit = () => {
-    setEditingField(null);
-    setTempData({ ...formData });
-  };
-
-  /* ─────────────────────────────────────────────
-     FIX: On submit
-       1. Save devoteeDetails to StorageContext
-          (pages 4 & 5 read from here)
-       2. Save activeCart so PujaFillForm can use it
-       3. Close modal
-       4. Navigate to the correct review page
-          passing pujaData + selectedPackage in state
-  ───────────────────────────────────────────── */
   const handleSubmit = (e) => {
     e.preventDefault();
 
-    // Persist to context (shared across pages 4 & 5)
+    // Save user to previousUsers list
+    const updatedUsers = previousUsers.filter(
+      (u) => !(u.name === formData.name && u.whatsapp === formData.whatsapp)
+    );
+    updatedUsers.unshift({ name: formData.name, whatsapp: formData.whatsapp });
+
+    // Keep only last 10 users
+    if (updatedUsers.length > 10) {
+      updatedUsers.pop();
+    }
+
+    try {
+      localStorage.setItem("devoteeUsers", JSON.stringify(updatedUsers));
+    } catch (e) {
+      console.warn("Error saving users", e);
+    }
+
     setDevoteeDetails({
       name: formData.name,
       whatsapp: formData.whatsapp,
       sankalp: "",
     });
-
-    // Also persist to sessionStorage so data survives soft refreshes
     try {
       const existing = JSON.parse(sessionStorage.getItem("user") || "{}");
       sessionStorage.setItem(
         "user",
         JSON.stringify({ ...existing, name: formData.name, number: formData.whatsapp })
       );
-    } catch (_) {}
-
+    } catch (_) { }
     setActiveCart(cart);
     onClose();
-
     if (page === "chadhava") {
       if (window.location.pathname.includes("chadhava_review_booking")) {
         window.location.reload();
@@ -102,15 +92,11 @@ const PujaUserDetailsModal = ({
         navigate("/chadhava_review_booking");
       }
     } else {
-      // ── puja flow ──
       if (window.location.pathname.includes("puja_review_booking")) {
         window.location.reload();
       } else {
         navigate("/puja_review_booking", {
-          state: {
-            pujaData: puja,            // full puja object
-            selectedPackage: selectedPackage, // { _id, packageName, packagePrice }
-          },
+          state: { pujaData: puja, selectedPackage },
         });
       }
     }
@@ -123,7 +109,7 @@ const PujaUserDetailsModal = ({
       style={{
         position: "fixed",
         inset: 0,
-        background: "rgba(0,0,0,0.5)",
+        background: "rgba(30,20,50,0.55)",
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
@@ -135,351 +121,628 @@ const PujaUserDetailsModal = ({
       <div
         style={{
           background: "#fff",
-          borderRadius: "24px",
-          maxWidth: "560px",
+          borderRadius: "28px",
+          maxWidth: "420px",
           width: "100%",
-          boxShadow: "0 25px 60px rgba(0,0,0,0.18)",
+          boxShadow: "0 25px 60px rgba(0,0,0,0.22)",
           position: "relative",
           overflow: "hidden",
         }}
         onClick={(e) => e.stopPropagation()}
       >
-        {/* Accent line */}
-        <div
-          style={{
-            height: 4,
-            background: "linear-gradient(to right, #7c3aed, #4f46e5)",
-            borderRadius: "24px 24px 0 0",
-          }}
-        />
-
-        {/* Close button */}
+        {/* ── Close button ── */}
         <button
           onClick={onClose}
           style={{
             position: "absolute",
-            top: 16,
-            right: 16,
+            top: 14,
+            right: 14,
             width: 36,
             height: 36,
             borderRadius: "50%",
-            border: "none",
-            background: "#f3f4f6",
+            border: "1.5px solid #e5e7eb",
+            background: "#fff",
             cursor: "pointer",
-            fontSize: 20,
+            fontSize: 18,
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
-            color: "#6b7280",
+            color: "#555",
+            zIndex: 10,
           }}
         >
-          ×
+          ✕
         </button>
 
-        {/* Content */}
-        <div style={{ padding: "32px", textAlign: "center" }}>
-          {/* Icon */}
+        {/* ── Header with gradient bg + decorative images ── */}
+        <div
+          style={{
+            background: "linear-gradient(160deg, #f8f0ff 0%, #fdf6ee 60%, #fff 100%)",
+            padding: "16px 24px 10px",
+            textAlign: "center",
+            position: "relative",
+          }}
+        >
+          {/* Kalash — top-left decorative image */}
+          <img
+            src="/assets/img/pooja_fill/lotuskalash.png"
+            alt=""
+            aria-hidden="true"
+            onError={(e) => (e.currentTarget.style.display = "none")}
+            style={{
+              position: "absolute",
+              left: 0,
+              top: 0,
+              width: 120,
+              height: 120,
+              objectFit: "contain",
+              pointerEvents: "none",
+            }}
+          />
+
+          {/* Avatar circle with edit badge */}
           <div
             style={{
-              width: 80,
-              height: 80,
-              background: "#ede9fe",
+              width: 62,
+              height: 62,
               borderRadius: "50%",
+              background: "#ede9fe",
+              margin: "0 auto 8px",
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
-              fontSize: 40,
-              margin: "0 auto 20px",
+              position: "relative",
             }}
           >
-            👤
+            {/* Person SVG icon */}
+            <svg
+              width="32"
+              height="32"
+              viewBox="0 0 40 40"
+              fill="none"
+              xmlns="http://www.w3.org/2000/svg"
+              aria-hidden="true"
+            >
+              <circle cx="20" cy="14" r="8" fill="#7c3aed" opacity="0.85" />
+              <ellipse cx="20" cy="34" rx="13" ry="7" fill="#7c3aed" opacity="0.6" />
+            </svg>
+            {/* Orange edit badge */}
+            <div
+              aria-hidden="true"
+              style={{
+                position: "absolute",
+                bottom: 1,
+                right: 1,
+                width: 19,
+                height: 19,
+                background: "#f59e0b",
+                borderRadius: "50%",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                border: "2px solid #fff",
+              }}
+            >
+              <svg
+                width="9"
+                height="9"
+                viewBox="0 0 12 12"
+                fill="none"
+                aria-hidden="true"
+              >
+                <path
+                  d="M8.5 1.5l2 2L3.5 10.5l-2.5.5.5-2.5L8.5 1.5z"
+                  stroke="#fff"
+                  strokeWidth="1.4"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+              </svg>
+            </div>
           </div>
 
-          <h3 style={{ fontSize: 24, fontWeight: 700, color: "#111827", margin: "0 0 6px" }}>
-            Update Details
+          {/* Title */}
+          <h3
+            style={{
+              fontSize: 20,
+              fontWeight: 700,
+              color: "#1a1a2e",
+              margin: "0 0 2px",
+            }}
+          >
+            Update{" "}
+            <span style={{ color: "#7c2d8e" }}>Details</span>
           </h3>
-          <p style={{ color: "#6b7280", marginBottom: 28 }}>
+          <p style={{ fontSize: 12.5, color: "#888", margin: 0 }}>
             Ensure your details are correct for the Sankalp
           </p>
 
-          {/* Form */}
+          {/* Decorative divider with flower */}
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              gap: 10,
+              margin: "10px 0 2px",
+              color: "#c97a2c",
+              fontSize: 18,
+            }}
+          >
+            <span
+              style={{
+                flex: 1,
+                height: 1.5,
+                background:
+                  "linear-gradient(to right, transparent, #e0b97a, transparent)",
+                maxWidth: 90,
+                display: "block",
+              }}
+            />
+            ✿
+            <span
+              style={{
+                flex: 1,
+                height: 1.5,
+                background:
+                  "linear-gradient(to right, transparent, #e0b97a, transparent)",
+                maxWidth: 90,
+                display: "block",
+              }}
+            />
+          </div>
+        </div>
+
+        {/* ── Body ── */}
+        <div style={{ padding: "12px 18px 16px" }}>
           <form onSubmit={handleSubmit} style={{ textAlign: "left" }}>
-            {/* Full Name */}
-            <div style={{ marginBottom: 24 }}>
-              <label
+
+            {/* ── Full Name ── */}
+            <div style={{ marginBottom: 10 }}>
+              <div
                 style={{
-                  display: "block",
-                  fontWeight: 700,
-                  fontSize: 13,
-                  color: "#111827",
-                  marginBottom: 10,
+                  display: "flex",
+                  justifyContent: "space-between",
+                  alignItems: "center",
+                  marginBottom: 8,
                 }}
               >
-                Full Name
-              </label>
-
-              {editingField !== "name" ? (
+                {/* Left Side */}
                 <div
                   style={{
                     display: "flex",
                     alignItems: "center",
-                    justifyContent: "space-between",
-                    background: "#f9fafb",
-                    borderRadius: 10,
-                    padding: "14px 16px",
-                    border: "1px solid #e5e7eb",
+                    gap: 7,
+                    fontSize: 12,
+                    fontWeight: 700,
+                    color: "#1a1a2e",
                   }}
                 >
-                  <span style={{ color: "#1f2937" }}>
-                    {formData.name || "Enter your name"}
-                  </span>
-                  <button
-                    type="button"
-                    onClick={() => handleEditClick("name")}
+                  <div
                     style={{
-                      background: "none",
-                      border: "none",
-                      color: "#7c3aed",
-                      fontWeight: 600,
-                      cursor: "pointer",
+                      width: 26,
+                      height: 26,
+                      borderRadius: "50%",
+                      background: "#ede9fe",
                       display: "flex",
                       alignItems: "center",
-                      gap: 4,
+                      justifyContent: "center",
                     }}
                   >
-                    ✎ Edit
-                  </button>
-                </div>
-              ) : (
-                <div>
-                  <input
-                    type="text"
-                    placeholder="eg. Rahul Sharma"
-                    required
-                    autoFocus
-                    style={{
-                      width: "100%",
-                      padding: "12px 16px",
-                      border: "2px solid #7c3aed",
-                      borderRadius: 10,
-                      fontSize: 15,
-                      outline: "none",
-                      boxSizing: "border-box",
-                      marginBottom: 10,
-                    }}
-                    value={tempData.name}
-                    onChange={(e) =>
-                      setTempData((p) => ({ ...p, name: e.target.value }))
-                    }
-                  />
-                  <div style={{ display: "flex", gap: 10 }}>
-                    <button
-                      type="button"
-                      onClick={() => handleSaveField("name")}
-                      style={{
-                        flex: 1,
-                        padding: "10px",
-                        background: "#7c3aed",
-                        color: "#fff",
-                        border: "none",
-                        borderRadius: 8,
-                        fontWeight: 600,
-                        cursor: "pointer",
-                      }}
+                    <svg
+                      width="13"
+                      height="13"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="#7c3aed"
+                      strokeWidth="2"
                     >
-                      Save
-                    </button>
-                    <button
-                      type="button"
-                      onClick={handleCancelEdit}
-                      style={{
-                        flex: 1,
-                        padding: "10px",
-                        background: "#fff",
-                        color: "#374151",
-                        border: "1px solid #d1d5db",
-                        borderRadius: 8,
-                        fontWeight: 600,
-                        cursor: "pointer",
-                      }}
-                    >
-                      Cancel
-                    </button>
+                      <circle cx="12" cy="8" r="4" />
+                      <path d="M4 20c0-4 3.6-7 8-7s8 3 8 7" />
+                    </svg>
                   </div>
+
+                  Full Name
                 </div>
-              )}
-            </div>
 
-            {/* WhatsApp */}
-            <div style={{ marginBottom: 24 }}>
-              <label
-                style={{
-                  display: "block",
-                  fontWeight: 700,
-                  fontSize: 13,
-                  color: "#111827",
-                  marginBottom: 10,
-                }}
-              >
-                Phone Number (WhatsApp)
-              </label>
+                {/* Right Side Edit Button */}
+                {previousUsers.length > 0 && (
+                  <button
+                    type="button"
+                    onClick={handleEditClick}
+                    style={{
+                      width: 36,
+                      height: 36,
+                      borderRadius: "50%",
+                      border: "1px solid #ddd6fe",
+                      background: showUserList ? "#ede9fe" : "#f5f3ff",
+                      color: "#7c3aed",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      cursor: "pointer",
+                    }}
+                  >
+                    <svg
+                      width="16"
+                      height="16"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                    >
+                      <path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7" />
+                      <path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z" />
+                    </svg>
+                  </button>
+                )}
+              </div>
 
-              {editingField !== "whatsapp" ? (
+              <div style={{ position: "relative" }}>
                 <div
                   style={{
                     display: "flex",
                     alignItems: "center",
-                    justifyContent: "space-between",
-                    background: "#f9fafb",
-                    borderRadius: 10,
-                    padding: "14px 16px",
-                    border: "1px solid #e5e7eb",
+                    background: "#f8f8fb",
+                    border: "1.5px solid #e5e7eb",
+                    borderRadius: 12,
+                    overflow: "hidden",
                   }}
                 >
-                  <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-                    <span
-                      style={{
-                        padding: "6px 10px",
-                        background: "#fff",
-                        border: "1px solid #d1d5db",
-                        borderRadius: 8,
-                        color: "#7c3aed",
-                        fontWeight: 600,
-                        fontSize: 13,
-                      }}
-                    >
-                      📱 +91
-                    </span>
-                    <span style={{ color: "#1f2937" }}>
-                      {formData.whatsapp || "Enter your number"}
-                    </span>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => handleEditClick("whatsapp")}
+                  <input
+                    type="text"
+                    placeholder="Enter your name"
+                    required
+                    value={formData.name}
+                    onChange={(e) =>
+                      setFormData((p) => ({ ...p, name: e.target.value }))
+                    }
                     style={{
-                      background: "none",
+                      flex: 1,
+                      padding: "10px 12px",
+                      fontSize: 14,
+                      color: "#1a1a2e",
                       border: "none",
-                      color: "#7c3aed",
-                      fontWeight: 600,
-                      cursor: "pointer",
+                      background: "transparent",
+                      outline: "none",
+                    }}
+                  />
+                </div>
+
+                {/* Dropdown of previously saved users */}
+                {showUserList && previousUsers.length > 0 && (
+                  <div
+                    style={{
+                      position: "absolute",
+                      top: "calc(100% + 6px)",
+                      left: 0,
+                      right: 0,
+                      background: "#fff",
+                      border: "1.5px solid #e5e7eb",
+                      borderRadius: 12,
+                      boxShadow: "0 12px 30px rgba(0,0,0,0.14)",
+                      zIndex: 20,
+                      maxHeight: 220,
+                      overflowY: "auto",
                     }}
                   >
-                    ✎ Edit
-                  </button>
-                </div>
-              ) : (
-                <div>
-                  <div style={{ display: "flex", gap: 10, marginBottom: 10 }}>
-                    <span
-                      style={{
-                        padding: "12px 14px",
-                        background: "#fff",
-                        border: "1px solid #d1d5db",
-                        borderRadius: 10,
-                        color: "#7c3aed",
-                        fontWeight: 600,
-                        fontSize: 13,
-                        flexShrink: 0,
-                      }}
-                    >
-                      📱 +91
-                    </span>
-                    <input
-                      type="tel"
-                      placeholder="98765 43210"
-                      pattern="[0-9]{10}"
-                      required
-                      autoFocus
-                      style={{
-                        flex: 1,
-                        padding: "12px 16px",
-                        border: "2px solid #7c3aed",
-                        borderRadius: 10,
-                        fontSize: 15,
-                        outline: "none",
-                      }}
-                      value={tempData.whatsapp}
-                      onChange={(e) =>
-                        setTempData((p) => ({ ...p, whatsapp: e.target.value }))
-                      }
-                    />
+                    {previousUsers.map((user, idx) => (
+                      <div
+                        key={idx}
+                        onClick={() => handleSelectUser(user)}
+                        style={{
+                          padding: "10px 12px",
+                          display: "flex",
+                          alignItems: "center",
+                          gap: 10,
+                          cursor: "pointer",
+                          borderBottom:
+                            idx !== previousUsers.length - 1
+                              ? "1px solid #f0f0f0"
+                              : "none",
+                          background:
+                            formData.name === user.name &&
+                            formData.whatsapp === user.whatsapp
+                              ? "#f0ebff"
+                              : "#fff",
+                        }}
+                        onMouseEnter={(e) => {
+                          if (
+                            !(
+                              formData.name === user.name &&
+                              formData.whatsapp === user.whatsapp
+                            )
+                          ) {
+                            e.currentTarget.style.background = "#faf8ff";
+                          }
+                        }}
+                        onMouseLeave={(e) => {
+                          if (
+                            !(
+                              formData.name === user.name &&
+                              formData.whatsapp === user.whatsapp
+                            )
+                          ) {
+                            e.currentTarget.style.background = "#fff";
+                          }
+                        }}
+                      >
+                        <div
+                          style={{
+                            width: 30,
+                            height: 30,
+                            borderRadius: "50%",
+                            background: "#ede9fe",
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "center",
+                            flexShrink: 0,
+                          }}
+                        >
+                          <svg
+                            width="15"
+                            height="15"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="#7c3aed"
+                            strokeWidth="2"
+                          >
+                            <circle cx="12" cy="8" r="4" />
+                            <path d="M4 20c0-4 3.6-7 8-7s8 3 8 7" />
+                          </svg>
+                        </div>
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <div
+                            style={{
+                              fontSize: 13,
+                              fontWeight: 700,
+                              color: "#1a1a2e",
+                              whiteSpace: "nowrap",
+                              overflow: "hidden",
+                              textOverflow: "ellipsis",
+                            }}
+                          >
+                            {user.name}
+                          </div>
+                          <div style={{ fontSize: 11, color: "#888" }}>
+                            +91 {user.whatsapp}
+                          </div>
+                        </div>
+                      </div>
+                    ))}
                   </div>
-                  <div style={{ display: "flex", gap: 10 }}>
-                    <button
-                      type="button"
-                      onClick={() => handleSaveField("whatsapp")}
-                      style={{
-                        flex: 1,
-                        padding: "10px",
-                        background: "#7c3aed",
-                        color: "#fff",
-                        border: "none",
-                        borderRadius: 8,
-                        fontWeight: 600,
-                        cursor: "pointer",
-                      }}
-                    >
-                      Save
-                    </button>
-                    <button
-                      type="button"
-                      onClick={handleCancelEdit}
-                      style={{
-                        flex: 1,
-                        padding: "10px",
-                        background: "#fff",
-                        color: "#374151",
-                        border: "1px solid #d1d5db",
-                        borderRadius: 8,
-                        fontWeight: 600,
-                        cursor: "pointer",
-                      }}
-                    >
-                      Cancel
-                    </button>
-                  </div>
-                </div>
-              )}
+                )}
+              </div>
             </div>
 
-            {/* Info banner */}
+            {/* Dashed divider between fields */}
+            <div
+              style={{
+                borderTop: "1.5px dashed #e9e2fb",
+                margin: "2px 0 10px",
+              }}
+            />
+
+            {/* ── Phone Number ── */}
+            <div style={{ marginBottom: 10 }}>
+              <div
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 7,
+                  fontSize: 12,
+                  fontWeight: 700,
+                  color: "#1a1a2e",
+                  marginBottom: 6,
+                }}
+              >
+                <div
+                  style={{
+                    width: 26,
+                    height: 26,
+                    borderRadius: "50%",
+                    background: "#ede9fe",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                  }}
+                  aria-hidden="true"
+                >
+                  <svg
+                    width="13"
+                    height="13"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="#7c3aed"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  >
+                    <path d="M21 11.5a8.38 8.38 0 01-.9 3.8 8.5 8.5 0 01-7.6 4.7 8.38 8.38 0 01-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 01-.9-3.8 8.5 8.5 0 014.7-7.6 8.38 8.38 0 013.8-.9h.5a8.48 8.48 0 018 8v.5z" />
+                  </svg>
+                </div>
+                Phone Number (WhatsApp)
+              </div>
+
+              <div
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  background: "#f8f8fb",
+                  border: "1.5px solid #e5e7eb",
+                  borderRadius: 12,
+                  overflow: "hidden",
+                }}
+              >
+                {/* +91 prefix pill */}
+                <div
+                  style={{
+                    background: "#fff",
+                    borderRight: "1.5px solid #e5e7eb",
+                    padding: "10px 10px",
+                    fontSize: 13,
+                    fontWeight: 600,
+                    color: "#6d28d9",
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 5,
+                    whiteSpace: "nowrap",
+                  }}
+                >
+                  +91
+                  <svg
+                    width="10"
+                    height="10"
+                    viewBox="0 0 10 6"
+                    fill="none"
+                    aria-hidden="true"
+                  >
+                    <path
+                      d="M1 1l4 4 4-4"
+                      stroke="#888"
+                      strokeWidth="1.5"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    />
+                  </svg>
+                </div>
+                <input
+                  type="tel"
+                  placeholder="Enter your number"
+                  pattern="[0-9]{10}"
+                  required
+                  value={formData.whatsapp}
+                  onChange={(e) =>
+                    setFormData((p) => ({ ...p, whatsapp: e.target.value }))
+                  }
+                  style={{
+                    flex: 1,
+                    padding: "10px 12px",
+                    fontSize: 14,
+                    color: "#1a1a2e",
+                    border: "none",
+                    background: "transparent",
+                    outline: "none",
+                  }}
+                />
+              </div>
+            </div>
+
+            {/* ── Info banner ── */}
             <div
               style={{
                 display: "flex",
                 alignItems: "center",
-                gap: 12,
-                background: "#f5f3ff",
+                gap: 10,
+                background: "#f4f1ff",
                 borderRadius: 10,
-                padding: "14px 16px",
-                border: "1px solid #ddd6fe",
-                marginBottom: 24,
+                border: "1.5px solid #ddd6fe",
+                padding: "9px 12px",
+                marginBottom: 12,
+                marginTop: 2,
               }}
             >
-              <span style={{ fontSize: 22 }}>🔒</span>
-              <p style={{ margin: 0, color: "#374151", fontSize: 13 }}>
+              <div
+                style={{
+                  width: 28,
+                  height: 28,
+                  background: "#6d28d9",
+                  borderRadius: "50%",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  flexShrink: 0,
+                }}
+                aria-hidden="true"
+              >
+                <svg
+                  width="13"
+                  height="13"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="#fff"
+                  strokeWidth="2.2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  <rect x="3" y="11" width="18" height="11" rx="2" />
+                  <path d="M7 11V7a5 5 0 0110 0v4" />
+                </svg>
+              </div>
+              <p style={{ margin: 0, color: "#444", fontSize: 12, lineHeight: 1.4 }}>
                 We will use this number to contact you on WhatsApp
               </p>
             </div>
 
-            {/* Submit */}
-            <button
-              type="submit"
-              style={{
-                width: "100%",
-                padding: "16px",
-                background: "linear-gradient(to right, #7c3aed, #6d28d9)",
-                color: "#fff",
-                border: "none",
-                borderRadius: 12,
-                fontSize: 17,
-                fontWeight: 700,
-                cursor: "pointer",
-                letterSpacing: 0.3,
-              }}
-            >
-              Save & Continue →
-            </button>
+            {/* ── Submit row with diya + button + lotus ── */}
+            <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+              {/* Diya image — left side */}
+              <img
+                src="/assets/img/pooja_fill/diyaform.png"
+                alt=""
+                aria-hidden="true"
+                onError={(e) => (e.currentTarget.style.display = "none")}
+                style={{
+                  width: 42,
+                  height: 42,
+                  objectFit: "contain",
+                  flexShrink: 0,
+                }}
+              />
+
+              {/* Submit button */}
+              <button
+                type="submit"
+                style={{
+                  flex: 1,
+                  padding: "12px",
+                  background: "linear-gradient(90deg, #5b21b6 0%, #7c3aed 100%)",
+                  color: "#fff",
+                  border: "none",
+                  borderRadius: 12,
+                  fontSize: 15,
+                  fontWeight: 700,
+                  cursor: "pointer",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  gap: 8,
+                  letterSpacing: 0.2,
+                }}
+              >
+                <svg
+                  width="16"
+                  height="16"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="#fff"
+                  strokeWidth="2.2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  aria-hidden="true"
+                >
+                  <path d="M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v14a2 2 0 01-2 2z" />
+                  <polyline points="17 21 17 13 7 13 7 21" />
+                  <polyline points="7 3 7 8 15 8" />
+                </svg>
+                Save &amp; Continue →
+              </button>
+
+              {/* Lotus image — right side */}
+              <img
+                src="/assets/img/pooja_fill/diyaform.png"
+                alt=""
+                aria-hidden="true"
+                onError={(e) => (e.currentTarget.style.display = "none")}
+                style={{
+                  width: 79,
+                  height: 52,
+                  objectFit: "contain",
+                  flexShrink: 0,
+                  borderRadius: "50%",
+                }}
+              />
+            </div>
           </form>
         </div>
       </div>

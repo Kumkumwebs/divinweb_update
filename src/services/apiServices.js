@@ -4,6 +4,7 @@ const api = axios.create({
   baseURL: import.meta.env.VITE_API_BASE_URL,
   timeout: 30000, // Increased timeout for large image uploads
 });
+console.log("API base URL:", import.meta.env.VITE_API_BASE_URL);
 
 api.interceptors.response.use(
   response => response.data,

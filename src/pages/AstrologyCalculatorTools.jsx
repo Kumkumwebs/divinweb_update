@@ -188,7 +188,7 @@ const AstrologyCalculatorHub = () => {
       {/* ══ WHY TRUST OUR TOOLS ══ */}
       <section className="at-trust">
         <div className="container">
-          <div className="row g-5 align-items-center">
+          <div className="row g-md-5 align-items-center">
             {/* Left */}
             <div className="col-lg-5">
               <span className="at-trust-eyebrow">✦ Why Trust Our</span>
@@ -215,7 +215,7 @@ const AstrologyCalculatorHub = () => {
               </div>
             </div>
             {/* Right — image with stats overlay */}
-            <div className="col-lg-7">
+            <div className="col-lg-7 col-12">
               <div className="at-stats-img">
                 <img src="/assets/img/tool_img/tool_precision.png" alt="Precision Tools" />
               </div>
@@ -250,13 +250,13 @@ const AstrologyCalculatorHub = () => {
       <section className="at-cta">
         <div className="container">
           <div className="row align-items-center justify-content-between g-3">
-            <div className="col-md-7 text-start">
-              <div className="at-cta-text">
+            <div className="col-12 col-md-7 text-start">
+              <div className="at-cta-text text-md-center text-center">
                 Unlock the secrets of the universe<br />
                 with <u>DivinIQ</u>'s advanced tools.
               </div>
             </div>
-            <div className="col-md-4 text-md-end text-center">
+            <div className="col-12 col-md-4 text-md-end text-center">
               <Link to="/nakshatra_finder" className="at-cta-btn">
                 Explore All Tools <i className="fas fa-arrow-right" />
               </Link>

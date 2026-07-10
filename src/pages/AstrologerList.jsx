@@ -10,6 +10,7 @@ import ScrollTop from '../components/common/ScrollTop';
 import apiService from '../services/apiServices';
 import NewAppDownloadModal from '../components/common/NewAppDownloadModel';
 import './AstrologerList.css';
+import MobileBottomNav from '../components/layout/MobileNavbar';
 
 /* helpers */
 const COLORS = ['#7c3aed','#059669','#dc2626','#d97706','#2563eb','#db2777'];
@@ -385,8 +386,9 @@ const AstrologerList = () => {
           ?`Speak with ${selectedAstro.name} for clarity on ${selectedAstro.category?.[0]?.name||'Life'}.`
           :'Join thousands who found clarity.'}
       />
-      <ScrollTop />
       <Footer />
+      <ScrollTop />
+      <MobileBottomNav/>
     </div>
   );
 };

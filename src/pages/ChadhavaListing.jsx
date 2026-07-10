@@ -9,6 +9,7 @@ import PopupSearch from '../components/layout/PopupSearch';
 import ScrollTop from '../components/common/ScrollTop';
 import ChadhavaService from '../services/chadhavaServices';
 import './ChadhavaListing.css';
+import MobileBottomNav from '../components/layout/MobileNavbar';
 
 /* ── helpers ── */
 const BADGE_MAP = [
@@ -254,10 +255,11 @@ const ChadhavaListing = () => {
 
   return (
     <div className="main-wrapper" style={{paddingTop:0,marginTop:0}}>
-      <ScrollTop />
+     
       <SideMenu   isOpen={showSideMenu}   onClose={()=>setShowSideMenu(false)} />
       <PopupSearch isOpen={showSearch}    onClose={()=>setShowSearch(false)} />
       <MobileMenu isOpen={showMobileMenu} onClose={()=>setShowMobileMenu(false)} />
+        
       <Header
         onMenuToggle={()=>setShowMobileMenu(true)}
         onSideMenuToggle={()=>setShowSideMenu(true)}
@@ -351,15 +353,15 @@ const ChadhavaListing = () => {
                 <div className="row g-3">
                   {loading
                     ? Array.from({length:9}).map((_,i)=>(
-                        <div key={i} className="col-6 col-md-4"><SkeletonCard /></div>
+                        <div key={i} className="col-12 col-md-4"><SkeletonCard /></div>
                       ))
                     : <>
                         {items.map((item,i)=>(
-                          <div key={item._id||i} className="col-6 col-md-4">
+                          <div key={item._id||i} className="col-12 col-md-4">
                             <ChadhavaCard item={item} index={i} onView={handleView} />
                           </div>
                         ))}
-                        <div className="col-6 col-md-4"><RecommendCard /></div>
+                        <div className="col-12 col-md-4"><RecommendCard /></div>
                       </>
                   }
                 </div>
@@ -387,6 +389,8 @@ const ChadhavaListing = () => {
       </div>
 
       <Footer />
+      <ScrollTop />
+      <MobileBottomNav/>
     </div>
   );
 };

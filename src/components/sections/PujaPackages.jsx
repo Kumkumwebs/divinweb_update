@@ -10,22 +10,26 @@ const PACKAGE_TYPE_IMAGES = {
 
 const PujaPackages = ({ puja }) => {
   if (!puja) return null;
- const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isModalOpen, setIsModalOpen] = useState(false);
   // auto-select recommended / popular package
   const recommendedPkg =
     puja.packages.find(p => p.isPopular) || puja.packages[0];
 
-  const [selected, setSelected] = useState(null);
+  const [selectedId, setSelectedId] = useState(null);
+  const [selectedPkg, setSelectedPkg] = useState(null);
 
   useEffect(() => {
     if (recommendedPkg) {
-      setSelected(recommendedPkg);
+      setSelectedId(recommendedPkg._id);
+      setSelectedPkg(recommendedPkg);
     }
   }, [recommendedPkg]);
-const handleSelectPackage = (pkg) => {
-  setSelected(pkg); // Save the whole object: { packageName, packagePrice, ... }
-  setIsModalOpen(true);    // Open the devotee details modal
-};
+
+  const handleSelectPackage = (pkg) => {
+    setSelectedId(pkg._id);
+    setSelectedPkg(pkg);
+    setIsModalOpen(true);
+  };
   return (
     <div className="container">
       <div className="puja-package-wrapper">
@@ -38,9 +42,8 @@ const handleSelectPackage = (pkg) => {
             return (
               <div
                 key={pkg._id}
-                className={`puja-package-card ${
-                  selected === pkg._id ? "active" : ""
-                }`}
+                className={`puja-package-card ${selected === pkg._id ? "active" : ""
+                  }`}
               >
                 {/* ⭐ MOST POPULAR */}
                 {pkg.isPopular && (
@@ -72,24 +75,24 @@ const handleSelectPackage = (pkg) => {
                 </ul>
 
                 {/* CTA */}
-                <button
+               <button
                   className="puja-select-btn"
                   onClick={() => handleSelectPackage(pkg)}
                 >
-                  {selected === pkg._id ? "Selected" : "Select Package"}
+                  {selectedId === pkg._id ? "✔ Selected" : "Select Package"}
                 </button>
               </div>
             );
           })}
         </div>
       </div>
-      <UserDetailsModal
-        isOpen={isModalOpen} 
-        onClose={() => setIsModalOpen(false)} 
-        cart={{}} 
+    <UserDetailsModal
+        isOpen={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
+        cart={selectedPkg}
         page={"puja"}
         puja={puja}
-        selectedPackage={selected}
+        selectedPackage={selectedPkg}
       />
     </div>
   );

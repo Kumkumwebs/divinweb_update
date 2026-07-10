@@ -2,6 +2,7 @@ import { useState, useRef, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import LoginOTPModal from '../accounts/LoginOTPModel';
 import { useStorage } from '../../context/StorageContext';
+import { useLanguage } from '../../context/LanguageContext';
 
 import styles from './Header.module.css';
 
@@ -10,8 +11,12 @@ const Header = ({ onMenuToggle, onSideMenuToggle, onSearchToggle }) => {
 	const [isModalOpen, setIsModalOpen] = useState(false);
 	const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
 	const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+	const [isLangOpen, setIsLangOpen] = useState(false);
+const { activeLang, setLanguage, LANGUAGES } = useLanguage();
 	const { user, isLoggedIn, clearStorage } = useStorage();
 	const dropdownRef = useRef(null);
+	const langRef = useRef(null);
+
 	const handleEmailClick = () => {
 		window.open("mailto:support@diviniq.store", "_blank");
 	};
@@ -22,7 +27,8 @@ const Header = ({ onMenuToggle, onSideMenuToggle, onSearchToggle }) => {
 			"_blank"
 		);
 	};
-	// Close dropdown when clicking outside
+
+	// Close user dropdown when clicking outside
 	useEffect(() => {
 		const handleClickOutside = event => {
 			if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
@@ -32,6 +38,19 @@ const Header = ({ onMenuToggle, onSideMenuToggle, onSearchToggle }) => {
 		document.addEventListener('mousedown', handleClickOutside);
 		return () => {
 			document.removeEventListener('mousedown', handleClickOutside);
+		};
+	}, []);
+
+	// Close language dropdown when clicking outside
+	useEffect(() => {
+		const handleClickOutsideLang = event => {
+			if (langRef.current && !langRef.current.contains(event.target)) {
+				setIsLangOpen(false);
+			}
+		};
+		document.addEventListener('mousedown', handleClickOutsideLang);
+		return () => {
+			document.removeEventListener('mousedown', handleClickOutsideLang);
 		};
 	}, []);
 
@@ -59,52 +78,318 @@ const Header = ({ onMenuToggle, onSideMenuToggle, onSearchToggle }) => {
 		return url.replace(/&#x2F;/g, "/");
 	};
 
+	const handleLangSelect = (lang) => {
+		setLanguage(lang.code);
+		setIsLangOpen(false);
+	};
 
 	return (
 		<>
+			{/* ── scoped styles: font/logo optimization, mobile reorder,
+			     language switcher — unique "dqh-" prefix, no conflicts ── */}
+			<style>{`
+				/* ── Full width + height fix ──
+				   Breaks the header out of any parent wrapper's
+				   padding/margin using the 100vw full-bleed trick,
+				   since width:100% only fills the parent's own
+				   (possibly already-narrowed) box, not the viewport. */
+				.th-header, .sticky-wrapper {
+					width: 100% !important;
+					max-width: 100% !important;
+				}
+				.menu-area {
+					width: 100vw !important;
+					max-width: 100vw !important;
+					margin-left: calc(-50vw + 50%) !important;
+					margin-right: calc(-50vw + 50%) !important;
+					position: relative;
+					left: 0;
+				}
+				.menu-area .container-xxl.th-container {
+					width: 100% !important;
+					max-width: 100% !important;
+					margin: 0 !important;
+					padding-left: 32px !important;
+					padding-right: 32px !important;
+					box-sizing: border-box;
+				}
+				.menu-area .dqh-header-row.row {
+					margin-left: 0 !important;
+					margin-right: 0 !important;
+					width: 100% !important;
+				}
+				.menu-area .dqh-header-row.row > .col-auto {
+					padding-left: 0;
+					padding-right: 0;
+				}
+				.menu-area .dqh-action-col {
+					padding-right: 0 !important;
+					margin-right: 0 !important;
+				}
+				.menu-area {
+					min-height: 92px;
+					display: flex;
+					align-items: center;
+				}
+				html, body {
+					overflow-x: hidden;
+				}
+
+				@media (max-width: 1199px) {
+					.menu-area .container-xxl.th-container {
+						padding-left: 20px !important;
+						padding-right: 20px !important;
+					}
+				}
+				@media (max-width: 480px) {
+					.menu-area .container-xxl.th-container {
+						padding-left: 14px !important;
+						padding-right: 14px !important;
+					}
+				}
+
+				.dqh-logo-col .main-header-divinlogo {
+					max-height: 46px;
+					width: auto !important;
+					object-fit: contain;
+				}
+				.dqh-nav-col {
+					margin-left: 36px;
+				}
+				.dqh-nav-col .main-menu ul {
+					display: flex;
+					align-items: center;
+					gap: 2px;
+					margin: 0;
+					padding: 0;
+					list-style: none;
+				}
+				.dqh-nav-col .main-menu ul li a {
+					font-size: 14.5px;
+					font-weight: 500;
+					padding: 8px 5px;
+					white-space: nowrap;
+				}
+
+				/* Language switcher */
+				.dqh-lang {
+					position: relative;
+					margin-right: 10px;
+				}
+				.dqh-lang-btn {
+					display: flex;
+					align-items: center;
+					gap: 6px;
+					background: transparent;
+					border: 1px solid rgba(0,0,0,0.12);
+					border-radius: 50px;
+					padding: 8px 12px;
+					font-size: 13px;
+					font-weight: 600;
+					cursor: pointer;
+					color: inherit;
+					transition: border-color .2s ease, background .2s ease;
+				}
+				.dqh-lang-btn:hover {
+					border-color: rgba(0,0,0,0.25);
+					background: rgba(0,0,0,0.03);
+				}
+				.dqh-lang-dropdown {
+					position: absolute;
+					top: calc(100% + 8px);
+					right: 0;
+					background: #fff;
+					border: 1px solid #eee;
+					border-radius: 12px;
+					box-shadow: 0 10px 30px rgba(0,0,0,0.12);
+					min-width: 150px;
+					padding: 6px;
+					z-index: 1200;
+				}
+				.dqh-lang-option {
+					display: flex;
+					align-items: center;
+					justify-content: space-between;
+					width: 100%;
+					background: none;
+					border: none;
+					text-align: left;
+					padding: 9px 10px;
+					font-size: 13.5px;
+					border-radius: 8px;
+					cursor: pointer;
+					color: #222;
+				}
+				.dqh-lang-option:hover { background: #f7f2f4; }
+				.dqh-lang-option.active { color: #7B1C38; font-weight: 700; }
+
+				/* Header row layout hooks */
+				.dqh-header-row {
+					display: flex;
+					align-items: center;
+					justify-content: space-between;
+				}
+
+				/* ── Mobile: hamburger left, logo centered ── */
+				@media (max-width: 1199px) {
+					.menu-area {
+						min-height: 72px;
+					}
+					.dqh-header-row {
+						position: relative;
+					}
+					.dqh-nav-col {
+						order: 1;
+						margin-left: 0;
+					}
+					.dqh-logo-col {
+						order: 2;
+						position: absolute;
+						left: 50%;
+						transform: translateX(-50%);
+					}
+					.dqh-action-col {
+						order: 3;
+						margin-left: auto;
+					}
+					.dqh-logo-col .main-header-divinlogo {
+						max-height: 34px;
+					}
+					.dqh-lang-btn span.dqh-lang-text {
+						display: none;
+					}
+					.dqh-lang-btn {
+						padding: 8px;
+						border-radius: 50%;
+						width: 38px;
+						height: 38px;
+						justify-content: center;
+					}
+				}
+				@media (max-width: 480px) {
+					.menu-area {
+						min-height: 64px;
+					}
+					.dqh-logo-col .main-header-divinlogo {
+						max-height: 28px;
+					}
+				}
+
+				/* ── Themed hamburger toggle ── */
+				.dqh-menu-toggle {
+					display: flex;
+					flex-direction: column;
+					align-items: center;
+					justify-content: center;
+					gap: 5px;
+					width: 42px;
+					height: 42px;
+					border-radius: 12px;
+					background: linear-gradient(135deg, #7B1C38, #9B1C3A);
+					border: none;
+					cursor: pointer;
+					box-shadow: 0 4px 14px rgba(123,28,56,0.28);
+					transition: transform .2s ease, box-shadow .2s ease;
+				}
+				.dqh-menu-toggle:hover {
+					transform: translateY(-1px);
+					box-shadow: 0 6px 18px rgba(123,28,56,0.35);
+				}
+				.dqh-menu-toggle span {
+					display: block;
+					width: 20px;
+					height: 2px;
+					border-radius: 2px;
+					background: #fff;
+					transition: all .25s ease;
+				}
+				.dqh-menu-toggle span:nth-child(2) {
+					width: 14px;
+					align-self: flex-start;
+					margin-left: 11px;
+				}
+			`}</style>
+
 			<header className="th-header header-layout1">
 				<div className="sticky-wrapper">
 					{/* Main Menu Area */}
 					<div className="menu-area">
-						<div className="container th-container">
-							<div className="row align-items-center justify-content-between flex-nowrap">
-								<div className="col-auto">
+						<div className="container-xxl th-container">
+							<div className="row align-items-center justify-content-between flex-nowrap dqh-header-row">
+								<div className="col-auto dqh-logo-col">
 									<div className="header-logo">
 										<Link to="/">
-											<img src="/assets/img/logo123.svg" alt="DivinIQ" />
+											<img className='main-header-divinlogo w-md-100 w-75' src="/assets/img/logo123.svg" alt="DivinIQ" />
 										</Link>
 									</div>
 								</div>
-								<div className="col-auto me-xl-auto">
-									<nav className="main-menu d-none d-xl-inline-block">
+								<div className="col-auto dqh-nav-col">
+									<nav className="main-menu d-none d-xl-inline-block px-0">
 										<ul>
-											<li className="">
+											<li>
 												<Link
-													className={location.pathname === '/' ? 'active' : ''}
+													className={location.pathname === '/' ? 'dqh-active' : ''}
 													to="/"
 												>
 													Home
 												</Link>
 											</li>
 											<li>
-												<Link to="/about_us">About Us</Link>
+												<Link
+													className={location.pathname.startsWith('/about_us') ? 'dqh-active' : ''}
+													to="/about_us"
+												>
+													About Us
+												</Link>
 											</li>
 											<li>
-												<Link to="/puja">Puja</Link>
+												<Link
+													className={location.pathname.startsWith('/puja') ? 'dqh-active' : ''}
+													to="/puja"
+												>
+													Puja
+												</Link>
 											</li>
 											<li>
-												<Link to="/chadhava">Chadhava</Link>
+												<Link
+													className={location.pathname.startsWith('/chadhava') ? 'dqh-active' : ''}
+													to="/chadhava"
+												>
+													Chadhava
+												</Link>
 											</li>
 											<li>
-												<Link to="/astrologer">Consult With Astrologer</Link>
+												<Link
+													className={location.pathname.startsWith('/astrologer') ? 'dqh-active' : ''}
+													to="/astrologer"
+												>
+													Consult With Astrologer
+												</Link>
 											</li>
 											<li>
-												<Link to="/panchang">Panchang</Link>
+												<Link
+													className={location.pathname.startsWith('/panchang') ? 'dqh-active' : ''}
+													to="/panchang"
+												>
+													Panchang
+												</Link>
 											</li>
 
 											<li>
-												<Link to="/astrology_calculator_hub">
+												<Link
+													className={location.pathname.startsWith('/astrology_calculator_hub') ? 'dqh-active' : ''}
+													to="/astrology_calculator_hub"
+												>
 													Astrology Tools
+												</Link>
+											</li>
+
+											<li>
+												<Link
+													className={location.pathname.startsWith('/horoscope') ? 'dqh-active' : ''}
+													to="/horoscope"
+												>
+													Horoscope
 												</Link>
 											</li>
 										</ul>
@@ -117,8 +402,38 @@ const Header = ({ onMenuToggle, onSideMenuToggle, onSearchToggle }) => {
 										<i className="far fa-bars"></i>
 									</button>
 								</div>
-								<div className="col-auto">
-									<div className="header-button">
+								<div className="col-auto dqh-action-col">
+									<div className="header-button d-flex align-items-center">
+
+										{/* ── Language Switcher ── */}
+										<div className="dqh-lang" ref={langRef}>
+											<button
+												type="button"
+												className="dqh-lang-btn"
+												onClick={() => setIsLangOpen(!isLangOpen)}
+											>
+												<i className="fas fa-globe"></i>
+												<span className="dqh-lang-text">{activeLang.label}</span>
+											</button>
+
+											{isLangOpen && (
+												<div className="dqh-lang-dropdown">
+													{LANGUAGES.map((lang) => (
+														<button
+															key={lang.code}
+															className={`dqh-lang-option ${activeLang.code === lang.code ? 'active' : ''}`}
+															onClick={() => handleLangSelect(lang)}
+														>
+															{lang.label}
+															{activeLang.code === lang.code && (
+																<i className="fas fa-check" style={{ fontSize: 11 }}></i>
+															)}
+														</button>
+													))}
+												</div>
+											)}
+										</div>
+
 										{isLoggedIn && user ? (
 											<div className={styles.userMenu} ref={dropdownRef}>
 												<button
@@ -163,6 +478,23 @@ const Header = ({ onMenuToggle, onSideMenuToggle, onSearchToggle }) => {
 															</Link>
 
 															<Link
+																to="/wallet"
+																className={styles.menuItem}
+																onClick={() => setIsDropdownOpen(false)}
+															>
+																<div className={styles.menuItemLeft}>
+																	<i
+																		className={`fas fa-wallet ${styles.menuIcon}`}
+																	></i>
+																	My Wallet
+																</div>
+																<i
+																	className={`fas fa-chevron-right ${styles.chevron}`}
+																></i>
+															</Link>
+															
+
+															<Link
 																to="/my_puja_booking"
 																className={styles.menuItem}
 																onClick={() => setIsDropdownOpen(false)}
@@ -188,6 +520,21 @@ const Header = ({ onMenuToggle, onSideMenuToggle, onSearchToggle }) => {
 																		className={`fas fa-hand-holding-heart ${styles.menuIcon}`}
 																	></i>
 																	My Chadhava Bookings
+																</div>
+																<i
+																	className={`fas fa-chevron-right ${styles.chevron}`}
+																></i>
+															</Link>
+															<Link
+																to="/orders"
+																className={styles.menuItem}
+																onClick={() => setIsDropdownOpen(false)}
+															>
+																<div className={styles.menuItemLeft}>
+																	<i
+																		className={`fas fa-wallet ${styles.menuIcon}`}
+																	></i>
+																	My Orders
 																</div>
 																<i
 																	className={`fas fa-chevron-right ${styles.chevron}`}
@@ -240,6 +587,21 @@ const Header = ({ onMenuToggle, onSideMenuToggle, onSearchToggle }) => {
 																		className={`fas fa-chevron-right ${styles.chevron}`}
 																	></i>
 																</div>
+															</Link>
+															<Link
+																to="https://diviniq.store"
+																className={styles.menuItem}
+																onClick={() => setIsDropdownOpen(false)}
+															>
+																<div className={styles.menuItemLeft}>
+																	<i
+																		className={`fas fa-wallet ${styles.menuIcon}`}
+																	></i>
+																	Astro Mall
+																</div>
+																<i
+																	className={`fas fa-chevron-right ${styles.chevron}`}
+																></i>
 															</Link>
 
 															<Link
@@ -295,20 +657,20 @@ const Header = ({ onMenuToggle, onSideMenuToggle, onSearchToggle }) => {
 											</div>
 										) : (
 											<button
-												onClick={() => setIsModalOpen(true)}
-												className="th-btn style3 rounded-circle p-0 d-flex align-items-center justify-content-center"
-												style={{
-													width: '45px',
-													height: '45px',
-													borderRadius: '50%',
-												}}
-											>
-												<img
-													src="/assets/img/icon/user.svg"
-													alt="Login"
-													style={{ width: '20px', height: '20px' }}
-												/>
-											</button>
+  onClick={() => setIsModalOpen(true)}
+  className="th-btn style3 rounded-circle p-0 d-flex align-items-center justify-content-center"
+  style={{
+    width: '45px',
+    height: '45px',
+    borderRadius: '50%',
+  }}
+>
+  <img
+    src={isLoggedIn ? "/assets/img/icon/user-active.svg" : "/assets/img/icon/user.svg"}
+    alt={isLoggedIn ? "My Account" : "Login"}
+    style={{ width: '20px', height: '20px' }}
+  />
+</button>
 										)}
 									</div>
 								</div>

@@ -48,7 +48,7 @@ button{cursor:pointer;font-family:inherit}
     grid-template-columns: 1fr 430px;
     gap:30px;
     padding:20px;
-    min-height:680px;
+    min-height:650px;
     position:relative;
     background:url('/assets/img/chadawa_detail/chadawa_detail_bg.png') center center/cover no-repeat;
     border-radius:20px;
@@ -163,11 +163,24 @@ button{cursor:pointer;font-family:inherit}
 .cd-hero-right{
     background:#fff;
     border-radius:20px;
-    padding:24px;
+    padding:30px;
     margin-top:10px;
     box-shadow:0 10px 30px rgba(0,0,0,.08);
     border:1px solid #f0e0cc;
     display:flex;flex-direction:column;gap:14px;
+    position:relative;
+    overflow:hidden;
+}
+
+.cd-hero-watermark{
+    position:absolute;
+    top:12px;
+    right:12px;
+    width:128px;
+    height:auto;
+    opacity:0.50;
+    pointer-events:none;
+    z-index:0;
 }
 
 .cd-avail-bar{display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap}
@@ -641,13 +654,7 @@ button{cursor:pointer;font-family:inherit}
 .cd-cta::before{
   content:'';
   position:absolute;inset:0;
- background:linear-gradient(
-  90deg,
-  rgba(255,248,238,.92) 0%,
-  rgba(255,248,238,.75) 45%,
-  rgba(255,248,238,.25) 75%,
-  rgba(255,248,238,.05) 100%
-);
+ 
   z-index:0;
 }
 .cd-cta > *{position:relative;z-index:1}
@@ -660,9 +667,9 @@ button{cursor:pointer;font-family:inherit}
 .cd-cta-diya.right{right:340px}
 
 .cd-cta-text .t1{
-  font-size:17px;font-weight:700;color:#fff;line-height:1.4;
+  font-size:17px;font-weight:700;color:#fff;line-height:1.4; margin-left: 135px;
 }
-.cd-cta-text .t2{font-size:13.5px;color:rgba(255,255,255,0.78);margin-top:4px}
+.cd-cta-text .t2{font-size:13.5px;color:rgba(255,255,255,0.78);margin-top:4px; margin-left: 135px}
 
 /* CTA button — styled to match bg_last image energy */
 .cd-cta-btn{
@@ -673,9 +680,10 @@ button{cursor:pointer;font-family:inherit}
   white-space:nowrap;flex-shrink:0;
   box-shadow:0 4px 18px rgba(192,57,43,0.45);
   transition:opacity 0.2s,transform 0.15s;
+  margin-right: 50px;
 }
 .cd-cta-btn:hover{opacity:0.9;transform:translateY(-1px)}
-.cd-cta-btn i{font-size:13px}
+.cd-cta-btn i{font-size:13px;}
 
 /* ═══════════════════════════════════════
    FOOTER
@@ -845,6 +853,12 @@ button{cursor:pointer;font-family:inherit}
   .cd-hero-body{ padding:14px 14px }
 
   .cd-book-price{ font-size:28px }
+
+  .cd-hero-watermark{
+    width:48px;
+    top:8px;
+    right:8px;
+  }
 
   .cd-features{ grid-template-columns:1fr }
   .cd-addons-row{ grid-template-columns:1fr }

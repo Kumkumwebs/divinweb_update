@@ -9,6 +9,7 @@ import PopupSearch from "../components/layout/PopupSearch";
 import ScrollTop from "../components/common/ScrollTop";
 import PujaService from "../services/pujaServices";
 import "./PujaListing.css";
+import MobileBottomNav from "../components/layout/MobileNavbar";
 
 /* ── helpers ── */
 const BADGE_MAP = [
@@ -33,16 +34,15 @@ const RadioOpt = ({ label, count, checked, onChange }) => (
 /* ── Skeleton Card ── */
 const SkeletonCard = () => (
   <div className="pj-card">
-    <div className="pj-sk" style={{ height: 185, borderRadius: "16px 16px 0 0" }} />
-    <div style={{ padding: "14px 16px" }}>
-      <div className="pj-sk mb-2" style={{ height: 14, width: "80%" }} />
-      <div className="pj-sk mb-2" style={{ height: 11, width: "45%" }} />
-      <div className="pj-sk mb-1" style={{ height: 11, width: "90%" }} />
-      <div className="pj-sk mb-3" style={{ height: 11, width: "65%" }} />
-      <div className="pj-sk" style={{ height: 1, marginBottom: 10 }} />
+    <div className="pj-sk" style={{ height: 130, borderRadius: "16px 16px 0 0" }} />
+    <div style={{ padding: "12px 14px" }}>
+      <div className="pj-sk mb-2" style={{ height: 13, width: "80%" }} />
+      <div className="pj-sk mb-2" style={{ height: 10, width: "45%" }} />
+      <div className="pj-sk mb-1" style={{ height: 10, width: "90%" }} />
+      <div className="pj-sk" style={{ height: 1, marginBottom: 8 }} />
       <div className="d-flex justify-content-between">
-        <div className="pj-sk" style={{ height: 18, width: 70 }} />
-        <div className="pj-sk" style={{ height: 18, width: 90 }} />
+        <div className="pj-sk" style={{ height: 16, width: 60 }} />
+        <div className="pj-sk" style={{ height: 16, width: 80 }} />
       </div>
     </div>
   </div>
@@ -57,6 +57,11 @@ const PujaCard = ({ item, index, onView }) => {
   const minPrice = item.packages?.length
     ? Math.min(...item.packages.map((p) => Number(p.packagePrice || 0)))
     : item.price || 0;
+
+  // Combine purpose + temple into a single condensed line to save vertical space
+  const metaLine = [item.purposeOfPooja, item.mandirName]
+    .filter(Boolean)
+    .join(" • ");
 
   return (
     <motion.div
@@ -92,31 +97,19 @@ const PujaCard = ({ item, index, onView }) => {
           />
         ) : (
           <div className="pj-img-placeholder">
-            <i className="fas fa-fire-flame-curved" />
-            <span>Sacred Puja</span>
+            <i className="fas fa-om" />
           </div>
         )}
       </div>
 
       <div className="pj-card-body">
         <div className="pj-card-name">{item.title}</div>
-        {item.purposeOfPooja && (
+        {metaLine && (
           <div className="pj-card-purpose">
             <i className="fas fa-map-marker-alt" />
-            {item.purposeOfPooja}
+            {metaLine}
           </div>
         )}
-        {item.mandirName && (
-          <div className="pj-card-loc">
-            <i className="fas fa-gopuram" />
-            {item.mandirName}
-          </div>
-        )}
-        <div className="pj-card-desc">
-          {item.description ||
-            item.about ||
-            "Experience divine blessings through this sacred puja ritual."}
-        </div>
       </div>
 
       <div className="pj-card-footer">
@@ -135,7 +128,7 @@ const PujaCard = ({ item, index, onView }) => {
             onView(item);
           }}
         >
-          Details View <i className="fas fa-arrow-right" />
+          View <i className="fas fa-arrow-right" />
         </button>
       </div>
     </motion.div>
@@ -360,13 +353,17 @@ const PujaListing = () => {
   const [showSearch, setShowSearch] = useState(false);
 
   /* ── Fetch ── */
+ /* ── Fetch ── */
   const fetchItems = useCallback(async () => {
     setLoading(true);
     setError(false);
     try {
       const res = await PujaService.getPujaList(null);
-      if (res?.status && res?.data?.[0]?.result) {
-        setAllItems(res.data[0].result);
+      if (res?.status && Array.isArray(res?.data) && res.data.length > 0) {
+        // API returns data as date-grouped array: [{_id: "2026-07-30", result: [...]}, ...]
+        // Flatten all result arrays across all date groups into one list
+        const flattened = res.data.flatMap((group) => group.result || []);
+        setAllItems(flattened);
       } else if (res?.results) {
         setAllItems(res.results);
       } else if (Array.isArray(res)) {
@@ -478,13 +475,14 @@ const PujaListing = () => {
 
   return (
     <div className="main-wrapper" style={{ paddingTop: 0, marginTop: 0 }}>
-      <ScrollTop />
+      
       <SideMenu isOpen={showSideMenu} onClose={() => setShowSideMenu(false)} />
       <PopupSearch isOpen={showSearch} onClose={() => setShowSearch(false)} />
       <MobileMenu
         isOpen={showMobileMenu}
         onClose={() => setShowMobileMenu(false)}
       />
+      
       <Header
         onMenuToggle={() => setShowMobileMenu(true)}
         onSideMenuToggle={() => setShowSideMenu(true)}
@@ -631,12 +629,12 @@ const PujaListing = () => {
                 <div className="row g-3">
                   {loading
                     ? Array.from({ length: 9 }).map((_, i) => (
-                        <div key={i} className="col-6 col-md-4">
+                        <div key={i} className="col-12 col-md-4">
                           <SkeletonCard />
                         </div>
                       ))
                     : items.map((item, i) => (
-                        <div key={item._id || i} className="col-6 col-md-4">
+                        <div key={item._id || i} className="col-12 col-md-4">
                           <PujaCard
                             item={item}
                             index={i}
@@ -644,7 +642,7 @@ const PujaListing = () => {
                           />
                         </div>
                       ))}
-                  {!loading && <div className="col-6 col-md-4"><RecommendCard /></div>}
+                  {!loading && <div className="col-12 col-md-4"><RecommendCard /></div>}
                 </div>
               )}
 
@@ -695,6 +693,11 @@ const PujaListing = () => {
       </div>
 
       <Footer />
+      <ScrollTop />
+      <MobileBottomNav/>
+
+      {/* ── Card overrides: shorter cards + hover effects + mobile polish ── */}
+   
     </div>
   );
 };

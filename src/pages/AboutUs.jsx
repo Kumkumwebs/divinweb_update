@@ -7,6 +7,8 @@ import SideMenu from '../components/layout/SideMenu';
 import MobileMenu from '../components/layout/MobileMenu';
 import PopupSearch from '../components/layout/PopupSearch';
 import ScrollTop from '../components/common/ScrollTop';
+import FAQSection from '../components/home_comp/FAQSection';
+
 import './AboutUs.css';
 
 /* ══════════════════════════════════════
@@ -74,12 +76,13 @@ const STEPS = [
   { img: IMG.stepTransform, num: '04', title: 'Transform Your Life', desc: 'Follow the guidance and see positive change' },
 ];
 
-const EXPERTS = [
-  { img: '/assets/img/about/expert1.png', name: 'Acharya Rohit Sharma', specialty: 'Vedic Astrology', exp: '15+ Years Exp.', rating: '4.9', langs: 'Hindi, English' },
-  { img: '/assets/img/about/expert2.png', name: 'Confidentiality',      specialty: 'Your privacy is our', exp: '12+ Years Exp.', rating: '4.8', langs: 'Hindi, English' },
-  { img: '/assets/img/about/expert3.png', name: 'Pandit Ankit Gaur',    specialty: 'Vastu Expert',     exp: '10+ Years Exp.', rating: '4.9', langs: 'Hindi, English' },
-  { img: '/assets/img/about/expert4.png', name: 'Acharya Dev Mishra',   specialty: 'Tarot & Remedies', exp: '20+ Years Exp.', rating: '4.9', langs: 'Hindi, English' },
-];
+// // Fallback data shown while loading or if the API request fails
+// const EXPERTS_FALLBACK = [
+//   { img: '/assets/img/about/expert1.png', name: 'Acharya Rohit Sharma', specialty: 'Vedic Astrology', exp: '15+ Years Exp.', rating: '4.9', langs: 'Hindi, English' },
+//   { img: '/assets/img/about/expert2.png', name: 'Confidentiality',      specialty: 'Your privacy is our', exp: '12+ Years Exp.', rating: '4.8', langs: 'Hindi, English' },
+//   { img: '/assets/img/about/expert3.png', name: 'Pandit Ankit Gaur',    specialty: 'Vastu Expert',     exp: '10+ Years Exp.', rating: '4.9', langs: 'Hindi, English' },
+//   { img: '/assets/img/about/expert4.png', name: 'Acharya Dev Mishra',   specialty: 'Tarot & Remedies', exp: '20+ Years Exp.', rating: '4.9', langs: 'Hindi, English' },
+// ];
 
 /* ── TESTIMONIALS — Unsplash avatars, single declaration ── */
 const TESTIMONIALS = [
@@ -125,15 +128,13 @@ const TESTIMONIALS = [
   },
 ];
 
-const FAQS_LEFT = [
-  'How does DiviniQ verify astrologers and experts?',
-  'Is my personal information and consultation private?',
-  'How are online pujas performed?',
-];
-const FAQS_RIGHT = [
-  'When will I receive the prasad after puja?',
-  'Can I speak to an astrologer before booking?',
-  'What payment methods are accepted?',
+const FAQS = [
+  { q: 'How does DiviniQ verify astrologers and experts?', a: 'Every astrologer and pandit on DiviniQ goes through a strict verification process including credential checks, background screening and a live evaluation before they are onboarded.' },
+  { q: 'Is my personal information and consultation private?', a: 'Yes, all your personal details and consultations are fully encrypted and kept 100% confidential. We never share your information with third parties.' },
+  { q: 'How are online pujas performed?', a: 'Our verified pandits perform the puja at the chosen temple following authentic Vedic rituals, with a live video link sent to you so you can watch in real-time.' },
+  { q: 'When will I receive the prasad after puja?', a: 'Prasad is couriered to your registered address within 5-7 business days after the puja is completed.' },
+  { q: 'Can I speak to an astrologer before booking?', a: 'Yes, you can chat with an astrologer for a quick preliminary consultation before booking a full session.' },
+  { q: 'What payment methods are accepted?', a: 'We accept all major credit/debit cards, UPI, net banking and popular digital wallets.' },
 ];
 
 const TRUST_ITEMS = [
@@ -165,8 +166,9 @@ const CheckIco = () => (
    HERO
 ══════════════════════════════════════ */
 const Hero = () => (
-  <section className="ab-hero">
-    <img src={IMG.hero} alt="DiviniQ – Indian Ancient Wisdom and Modern Solutions" className="ab-hero-img" />
+  <section className="abh-hero" style={{ backgroundImage: `url(${IMG.hero})` }}>
+    <div className="abh-inner">
+    </div>
   </section>
 );
 
@@ -330,44 +332,103 @@ const MissionVision = () => (
   </section>
 );
 
-/* ══════════════════════════════════════
-   EXPERTS
-══════════════════════════════════════ */
-const Experts = () => (
-  <section className="ab-experts">
-    <div className="container">
-      <div className="ab-section-head">
-        <div className="ab-eyebrow ab-center"><span>✦</span>&nbsp;OUR CORE VALUES&nbsp;<span>✦</span></div>
-      </div>
-      <div className="ab-experts-wrap">
-        <button className="ab-carousel-btn left" aria-label="Previous">
-          <i className="fas fa-chevron-left" />
-        </button>
-        <div className="row g-3">
-          {EXPERTS.map((e, i) => (
-            <motion.div key={e.name} className="col-12 col-md-6 col-lg-3"
-              initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: .28, delay: i * .07 }}>
-              <div className="ab-expert-card">
-                <img src={e.img} alt={e.name} className="ab-expert-avatar"
-                  onError={ev => { ev.target.onerror = null; ev.target.style.background = 'linear-gradient(135deg,#d4a88a,#b07850)'; ev.target.removeAttribute('src'); }} />
-                <div className="ab-expert-info">
-                  <h4>{e.name}</h4>
-                  <div className="specialty">{e.specialty}</div>
-                  <div className="meta">{e.exp}&nbsp;&nbsp;{e.rating}&nbsp;<StarIco /></div>
-                  <div className="langs">{e.langs}</div>
-                </div>
-              </div>
-            </motion.div>
-          ))}
-        </div>
-        <button className="ab-carousel-btn right" aria-label="Next">
-          <i className="fas fa-chevron-right" />
-        </button>
-      </div>
-    </div>
-  </section>
-);
+// const ExpertAvatar = ({ img, name }) => {
+//   const [errored, setErrored] = useState(false);
+//   const initials = name
+//     .split(' ')
+//     .map(w => w[0])
+//     .join('')
+//     .slice(0, 2)
+//     .toUpperCase();
+
+//   if (errored || !img) {
+//     return (
+//       <div
+//         className="ab-expert-avatar ab-expert-avatar-fallback"
+//         style={{
+//           background: 'linear-gradient(135deg,#d4a88a,#b07850)',
+//           display: 'flex',
+//           alignItems: 'center',
+//           justifyContent: 'center',
+//           color: '#fff',
+//           fontWeight: 600,
+//         }}
+//       >
+//         {initials}
+//       </div>
+//     );
+//   }
+
+//   return (
+//     <img
+//       src={img}
+//       alt={name}
+//       className="ab-expert-avatar"
+//       onError={() => setErrored(true)}
+//     />
+//   );
+// };
+
+// /* ══════════════════════════════════════
+//    EXPERTS
+// ══════════════════════════════════════ */
+// const Experts = () => {
+//   const [experts, setExperts] = useState(EXPERTS_FALLBACK);
+
+//   useEffect(() => {
+//     let isMounted = true;
+//     fetch('/api/experts')
+//       .then(res => {
+//         if (!res.ok) throw new Error('Failed to fetch experts');
+//         return res.json();
+//       })
+//       .then(data => {
+//         if (isMounted && Array.isArray(data) && data.length) {
+//           setExperts(data);
+//         }
+//       })
+//       .catch(err => {
+//         console.error('Error fetching experts:', err);
+//         // keep EXPERTS_FALLBACK on failure
+//       });
+//     return () => { isMounted = false; };
+//   }, []);
+
+//   return (
+//   <section className="ab-experts">
+//     <div className="container">
+//       <div className="ab-section-head">
+//         <div className="ab-eyebrow ab-center"><span>✦</span>&nbsp;OUR CORE VALUES&nbsp;<span>✦</span></div>
+//       </div>
+//       <div className="ab-experts-wrap">
+//         <button className="ab-carousel-btn left" aria-label="Previous">
+//           <i className="fas fa-chevron-left" />
+//         </button>
+//         <div className="row g-3">
+//           {experts.map((e, i) => (
+//             <motion.div key={e.name} className="col-12 col-md-6 col-lg-3"
+//               initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }}
+//               transition={{ duration: .28, delay: i * .07 }}>
+//               <div className="ab-expert-card">
+//                 <ExpertAvatar img={e.img} name={e.name} />
+//                 <div className="ab-expert-info">
+//                   <h4>{e.name}</h4>
+//                   <div className="specialty">{e.specialty}</div>
+//                   <div className="meta">{e.exp}&nbsp;&nbsp;{e.rating}&nbsp;<StarIco /></div>
+//                   <div className="langs">{e.langs}</div>
+//                 </div>
+//               </div>
+//             </motion.div>
+//           ))}
+//         </div>
+//         <button className="ab-carousel-btn right" aria-label="Next">
+//           <i className="fas fa-chevron-right" />
+//         </button>
+//       </div>
+//     </div>
+//   </section>
+//   );
+// };
 
 /* ══════════════════════════════════════
    TESTIMONIALS  —  working carousel
@@ -399,7 +460,7 @@ const Testimonials = () => {
             <div className="ab-eyebrow"><span>✦</span>&nbsp;TESTIMONIALS&nbsp;<span>✦</span></div>
             <h2>What Our Devotees Say</h2>
           </div>
-          <Link to="/experts" className="ab-view-all">View All Experts</Link>
+          {/* <Link to="/experts" className="ab-view-all">View All Experts</Link> */}
         </div>
 
         <div className="ab-testi-wrap">
@@ -485,11 +546,11 @@ const AppDownload = () => (
             <div className="ab-store-scan">Scan to Download</div>
             <div className="ab-store-sub">Get the DiviniQ App Now</div>
             <div className="ab-store-btns">
-              <a href="#" className="ab-store-btn">
+              <a href="https://play.google.com/store" className="ab-store-btn">
                 <i className="fab fa-google-play" />
                 <span className="btn-txt"><small>GET IT ON</small>Google Play</span>
               </a>
-              <a href="#" className="ab-store-btn">
+              <a href="https://appstoreconnect.apple.com" className="ab-store-btn">
                 <i className="fab fa-apple" />
                 <span className="btn-txt"><small>Download on the</small>App Store</span>
               </a>
@@ -505,7 +566,8 @@ const AppDownload = () => (
    FAQ
 ══════════════════════════════════════ */
 const FAQ = () => {
-  const [open, setOpen] = useState(null);
+  const [openIndex, setOpenIndex] = useState(null);
+
   return (
     <section className="ab-faq">
       <div className="container">
@@ -514,26 +576,20 @@ const FAQ = () => {
             <span>✦</span>&nbsp;FREQUENTLY ASKED QUESTIONS&nbsp;<span>✦</span>
           </div>
         </div>
-        <div className="row g-0">
-          <div className="col-12 col-md-6">
-            {FAQS_LEFT.map((q, i) => (
-              <div key={i} className="ab-faq-item" onClick={() => setOpen(open === i ? null : i)}>
-                <span>{q}</span>
-                <i className={`fas fa-${open === i ? 'minus' : 'plus'}`} />
+
+        <div className="dq-faq-grid">
+          {FAQS.map((item, index) => (
+            <div className={`dq-faq-item-wrap ${openIndex === index ? 'open' : ''}`} key={item.q}>
+              <div
+                className="ab-faq-item"
+                onClick={() => setOpenIndex(openIndex === index ? null : index)}
+              >
+                <span>{item.q}</span>
+                <i className={`fas fa-${openIndex === index ? 'minus' : 'plus'}`} />
               </div>
-            ))}
-          </div>
-          <div className="col-12 col-md-6">
-            {FAQS_RIGHT.map((q, i) => {
-              const idx = i + 3;
-              return (
-                <div key={idx} className="ab-faq-item" onClick={() => setOpen(open === idx ? null : idx)}>
-                  <span>{q}</span>
-                  <i className={`fas fa-${open === idx ? 'minus' : 'plus'}`} />
-                </div>
-              );
-            })}
-          </div>
+              {openIndex === index && <p className="answer">{item.a}</p>}
+            </div>
+          ))}
         </div>
       </div>
     </section>
@@ -584,10 +640,10 @@ const AboutUs = () => {
       <WhyChoose />
       <HowItWorks />
       <MissionVision />
-      <Experts />
+      {/* <Experts /> */}
       <Testimonials />
       <AppDownload />
-      <FAQ />
+      <FAQSection />
       <TrustBar />
 
       <Footer />
