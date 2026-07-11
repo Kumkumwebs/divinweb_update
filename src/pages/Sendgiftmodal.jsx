@@ -1,11 +1,10 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { createPortal } from "react-dom";
 import { useParams, useNavigate, useLocation } from "react-router-dom";
-import axios from "axios";
+import apiService from '../services/apiServices';
 
 // Bound to the DivinIQ backend (reference used admin.diviniq.in)
 const API = "https://admin.diviniq.in";
-const tok = () => localStorage.getItem("token") ?? "";
 
 // Fallback list — used until get_gifts loads, or if it fails / returns empty.
 // API gifts arrive with an `image` URL; static ones use an emoji glyph.
@@ -182,12 +181,9 @@ export function SendGiftModal({
       return;
     }
 
-    axios.get(`${API}/user_api/get_gifts`, {
-      headers: { Authorization: `Bearer ${tok()}` },
-    })
+    apiService.getBearer(`${API}/user_api/get_gifts`)
       .then((res) => {
-        // Backend may return the list under `data` or `results`.
-        const raw = res.data?.data ?? res.data?.results ?? [];
+        const raw = res?.data ?? res?.results ?? [];
         if (Array.isArray(raw) && raw.length > 0) {
           setGifts(raw.map(normGift));
         }
@@ -217,16 +213,23 @@ export function SendGiftModal({
     const gift = gifts[sel];
     setSending(true);
     setError("");
+    console.log("[SendGift] payload:", { to: astroId, giftId: gift._id, amount: gift.price, priceType: typeof gift.price, giftTitle: gift.title, giftIndex: sel, totalGiftsShown: gifts.length });
     try {
-      const res = await axios.post(
+      const res = await apiService.postBearer(
         `${API}/user_api/gift_transaction`,
         {
-          to: astroId, giftId: gift._id, amount: gift.price, type: "normal"
-        },
-        { headers: { Authorization: `Bearer ${tok()}` } }
+          to: String(astroId),
+          giftId: String(gift._id),
+          amount: Number(gift.price),
+          type: "normal",
+        }
       );
-      console.log("[SendGift] response:", res.data);
-      setSentGift(gift); // show success popup
+      console.log("[SendGift] response:", res);
+      if (res?.status === false) {
+        setError(res?.message || "Could not send the gift. Please try again.");
+      } else {
+        setSentGift(gift); // show success popup
+      }
     } catch (err) {
       console.error("[SendGift] error:", err?.response?.data || err.message);
       setError(err?.response?.data?.message || "Could not send the gift. Please try again.");

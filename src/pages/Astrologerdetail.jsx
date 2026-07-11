@@ -198,10 +198,11 @@ const AstrologerDetail = () => {
     if (!astroId) return;
     setSendingGiftId(gift._id);
     setGiftError("");
+    console.log('[QuickSendGift] payload:', { to: astroId, giftId: gift._id, amount: gift.price, isStaticFallbackId: typeof gift._id === 'string' && !/^[a-f0-9]{24}$/i.test(gift._id) });
     try {
       const res = await apiService.postBearer(
         'https://admin.diviniq.in/user_api/gift_transaction',
-        { to: astroId, giftId: gift._id, amount: gift.price, type: 'normal' }
+        { to: String(astroId), giftId: String(gift._id), amount: Number(gift.price), type: 'normal' }
       );
       if (res?.status === false) {
         setGiftError(res?.message || 'Could not send the gift. Please try again.');
@@ -843,6 +844,7 @@ const AstrologerDetail = () => {
         astrologerId={astro.id || astro._id}
         astrologerImage={astro.profile_img}
         gifts={giftList}
+        walletBalance={walletBalance}
       />
 
       <Footer />
