@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useParams, useNavigate, useLocation, Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ref, onValue, push, set, off } from 'firebase/database';
+import { ref, onValue, push, set, update, off } from 'firebase/database';
 import { db } from '../services/liveFirebase';
 import { useChat } from '../context/ChatContext';
 import {
@@ -10,9 +10,7 @@ import {
   uploadChatFile,
   buildKundliString,
 } from '../services/liveService';
-// import { getUserId } from '../services/Liveconfig';
-import { getUserId, getUserName, fbChatPath } from  '../services/Liveconfig'
-;
+import { getUserId, getUserName } from '../services/Liveconfig';
 import './ChatConsultation.css';
 
 /* ── helpers ── */
@@ -29,6 +27,23 @@ const formatTimer = (secs) => {
 };
 const fmtTime = (ts) =>
   new Date(ts).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
+
+// Literal Firebase path — deliberately NOT going through a helper function.
+// A known-working reference implementation of this same chat feature builds
+// this path inline as `Group/${gid}/${userId}/${otherId}` with no wrapper at
+// all, so we match that exactly instead of trusting an unverified
+// fbChatPath() in Liveconfig.js that we haven't been able to confirm works.
+const groupPath = (gid, a, b) => `Group/${gid}/${a}/${b}`;
+
+// Same reasoning for user id/name — fall back to localStorage directly
+// (as the reference does) if Liveconfig's getUserId()/getUserName() ever
+// come back empty, rather than silently breaking every downstream path.
+const resolveUserId = () => getUserId() || (typeof localStorage !== 'undefined' && localStorage.getItem('id')) || '';
+const resolveUserName = () => getUserName() || (typeof localStorage !== 'undefined' && localStorage.getItem('name')) || 'User';
+
+// How long to wait after the last keystroke before clearing the typing flag —
+// mirrors a normal debounce so we're not writing to Firebase on every keypress.
+const TYPING_IDLE_MS = 2000;
 
 const ChatConsultation = () => {
   const { id } = useParams();
@@ -55,7 +70,7 @@ const ChatConsultation = () => {
     place: st.place || st.birthPlace || '',
   };
 
-  const userId = getUserId();
+  const userId = resolveUserId();
 
   const [messages, setMessages] = useState([]);
   const [messageText, setMessageText] = useState('');
@@ -67,8 +82,14 @@ const ChatConsultation = () => {
   const [ratingScore, setRatingScore] = useState(0);
   const [ratingReview, setRatingReview] = useState('');
 
+  // Whether the astrologer is currently typing — mirrors Dart's
+  // `typingStream` (Typing/{groupId}/{astrologerId}).
+  const [astroTyping, setAstroTyping] = useState(false);
+
   const kundliSentRef = useRef(false);
   const endingRef = useRef(false);
+  const typingTimeoutRef = useRef(null);
+  const isTypingRef = useRef(false); // tracks last value we wrote, so we don't spam Firebase
 
   /* ── start session timer (also drives ActiveChatBar) ── */
   useEffect(() => {
@@ -100,10 +121,14 @@ const ChatConsultation = () => {
     return () => clearInterval(t);
   }, []);
 
-  /* ── Firebase listener ── */
+  /* ── Firebase listener (messages) ── */
   useEffect(() => {
-    if (!gid || !userId || !astrologer_id) return;
-    const path = fbChatPath(gid, userId, astrologer_id);
+    if (!gid || !userId || !astrologer_id) {
+      console.warn('[ChatConsultation] message listener NOT attached — missing value(s):', { gid, userId, astrologer_id });
+      return;
+    }
+    const path = groupPath(gid, userId, astrologer_id);
+    console.log('[ChatConsultation] listening for messages at path:', path);
     const dbRef = ref(db, path);
     onValue(dbRef, (snap) => {
       const data = snap.val();
@@ -111,9 +136,76 @@ const ChatConsultation = () => {
       const list = Object.entries(data).map(([key, val]) => ({ key, ...val }));
       list.sort((a, b) => (a.date_time || 0) - (b.date_time || 0));
       setMessages(list);
+    }, (err) => {
+      console.error('[ChatConsultation] message listener error (likely Firebase permission/rules issue):', err);
     });
     return () => off(dbRef);
   }, [gid, userId, astrologer_id]);
+
+  /* ── Firebase listener (astrologer typing status) ──
+     Mirrors Dart's typingStream: reads Typing/{groupId}/{astrologerId}. */
+  useEffect(() => {
+    if (!gid || !astrologer_id) return;
+    const typingRef = ref(db, `Typing/${gid}/${astrologer_id}`);
+    onValue(typingRef, (snap) => {
+      setAstroTyping(snap.val() === true);
+    });
+    return () => off(typingRef);
+  }, [gid, astrologer_id]);
+
+  /* ── write our own typing status ──
+     Mirrors Dart's setTyping: writes Typing/{groupId}/{userId}. Debounced
+     so we don't hit Firebase on every keystroke — clears itself after
+     TYPING_IDLE_MS of no input, and always clears immediately on send. */
+  const writeTyping = useCallback(
+    (isTyping) => {
+      if (!gid || !userId) return;
+      if (isTypingRef.current === isTyping) return; // no-op, avoid redundant writes
+      isTypingRef.current = isTyping;
+      set(ref(db, `Typing/${gid}/${userId}`), isTyping).catch(() => { /* silent */ });
+    },
+    [gid, userId]
+  );
+
+  const handleMessageChange = (e) => {
+    const value = e.target.value;
+    setMessageText(value);
+
+    if (value.trim()) {
+      writeTyping(true);
+      if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
+      typingTimeoutRef.current = setTimeout(() => writeTyping(false), TYPING_IDLE_MS);
+    } else {
+      writeTyping(false);
+      if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
+    }
+  };
+
+  // Clear our typing flag on unmount so it doesn't stay stuck "true" for
+  // the astrologer if we navigate away mid-type.
+  useEffect(() => {
+    return () => {
+      if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
+      if (gid && userId) {
+        set(ref(db, `Typing/${gid}/${userId}`), false).catch(() => { /* silent */ });
+      }
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [gid, userId]);
+
+  /* ── mark incoming (astrologer) messages as seen ──
+     Mirrors Dart's markMessageSeen / markMessagesSeen, called whenever
+     the message list updates and the chat is open. */
+  useEffect(() => {
+    if (!gid || !userId || !astrologer_id || messages.length === 0) return;
+    const path = groupPath(gid, userId, astrologer_id);
+    const unseen = messages.filter(
+      (m) => String(m.from) !== String(userId) && !m.seen
+    );
+    unseen.forEach((m) => {
+      update(ref(db, `${path}/${m.key}`), { seen: true }).catch(() => { /* silent */ });
+    });
+  }, [messages, gid, userId, astrologer_id]);
 
   /* ── auto-scroll ── */
   useEffect(() => {
@@ -123,14 +215,20 @@ const ChatConsultation = () => {
   /* ── send message (writes both sides) ── */
   const sendFirebaseMessage = useCallback(
     async (content, type = 'text') => {
-      if (!gid || !userId || !astrologer_id || !content) return;
+      if (!gid || !userId || !astrologer_id || !content) {
+        console.warn('[ChatConsultation] sendFirebaseMessage aborted — missing value(s):', { gid, userId, astrologer_id, content });
+        return;
+      }
       const timestamp = Date.now();
-      const senderPath = fbChatPath(gid, userId, astrologer_id);
-      const receiverPath = fbChatPath(gid, astrologer_id, userId);
+      const senderPath = groupPath(gid, userId, astrologer_id);
+      const receiverPath = groupPath(gid, astrologer_id, userId);
       const msgId = push(ref(db, senderPath)).key;
-      if (!msgId) return;
+      if (!msgId) {
+        console.error('[ChatConsultation] push() returned no key — check that senderPath is valid:', senderPath);
+        return;
+      }
       const body = {
-        name: getUserName(),
+        name: resolveUserName(),
         to: astrologer_id,
         from: userId,
         message: content,
@@ -142,7 +240,10 @@ const ChatConsultation = () => {
       try {
         await set(ref(db, `${senderPath}/${msgId}`), body);
         await set(ref(db, `${receiverPath}/${msgId}`), body);
-      } catch { /* silent */ }
+        console.log('[ChatConsultation] message sent OK to:', senderPath, receiverPath);
+      } catch (err) {
+        console.error('[ChatConsultation] Firebase write FAILED (check rules/permissions):', err, { senderPath, receiverPath, body });
+      }
     },
     [gid, userId, astrologer_id]
   );
@@ -162,6 +263,9 @@ const ChatConsultation = () => {
     if (!text) return;
     sendFirebaseMessage(text, 'text');
     setMessageText('');
+    // Sending clears typing immediately rather than waiting for the idle timeout.
+    writeTyping(false);
+    if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
   };
 
   const handleKeyDown = (e) => {
@@ -185,6 +289,7 @@ const ChatConsultation = () => {
   const handleEndChat = async () => {
     if (endingRef.current) { setShowRating(true); return; }
     endingRef.current = true;
+    writeTyping(false);
     try { await callStatusUpdate(gid, 'end_user'); } catch { /* silent */ }
     setShowRating(true);
   };
@@ -298,7 +403,11 @@ const ChatConsultation = () => {
               </div>
               <div className="cc-chat-info">
                 <span className="cc-chat-name">{name}</span>
-                <span className="cc-chat-reply-time">₹{rate}/min · {formatTimer(chatCtx.chatTimeLeft || 0)} left</span>
+                <span className="cc-chat-reply-time">
+                  {astroTyping
+                    ? <em style={{ fontStyle: 'normal', color: '#7b1a3a', fontWeight: 600 }}>typing…</em>
+                    : `₹${rate}/min · ${formatTimer(chatCtx.chatTimeLeft || 0)} left`}
+                </span>
               </div>
             </div>
             <button className="cc-end-chat-btn" onClick={handleEndChat}>
@@ -336,7 +445,22 @@ const ChatConsultation = () => {
               })}
             </AnimatePresence>
 
-            {messages.length === 0 && (
+            {astroTyping && (
+              <div className="cc-message incoming" style={{ opacity: 0.7 }}>
+                <div className="cc-msg-avatar">
+                  {profileImg && !imgErr ? <img src={profileImg} alt={name} onError={() => setImgErr(true)} /> : null}
+                </div>
+                <div className="cc-msg-content">
+                  <div className="cc-msg-bubble">
+                    <span className="cc-typing-dots">
+                      <span>.</span><span>.</span><span>.</span>
+                    </span>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {messages.length === 0 && !astroTyping && (
               <div style={{ textAlign: 'center', color: '#9ca3af', fontSize: 13, marginTop: 30 }}>
                 Say Namaste 🙏 to begin your consultation.
               </div>
@@ -351,7 +475,7 @@ const ChatConsultation = () => {
               </button>
               <input ref={inputRef} className="cc-chat-input" type="text"
                 placeholder="Type your message..." value={messageText}
-                onChange={(e) => setMessageText(e.target.value)} onKeyDown={handleKeyDown} />
+                onChange={handleMessageChange} onKeyDown={handleKeyDown} />
               <button className="cc-emoji-btn">😊</button>
               <button className="cc-send-btn" onClick={handleSend}><i className="fas fa-paper-plane" /></button>
             </div>

@@ -12,11 +12,6 @@ import PujaUserDetailsModal from "./pujaUserDetailsModel";
 import LoginOTPModal from "../components/accounts/LoginOTPModel";
 import { useStorage } from "../context/StorageContext";
 
-/* ══════════════════════════════════════
-   IMAGE FALLBACKS
-   Inline SVG data URIs — these never touch the network, so they can
-   never themselves fail to load or trigger a retry loop.
-══════════════════════════════════════ */
 const IMAGE_PLACEHOLDER =
   "data:image/svg+xml;charset=UTF-8," +
   encodeURIComponent(`
@@ -36,8 +31,6 @@ const AVATAR_PLACEHOLDER =
     </svg>
   `);
 
-// Swaps to a placeholder exactly once — the dataset flag rules out any
-// possibility of a retry loop even if this somehow fires more than once.
 const handleImgError = (fallbackSrc) => (e) => {
   const img = e.currentTarget;
   if (img.dataset.fallback === "done") return;
@@ -45,15 +38,43 @@ const handleImgError = (fallbackSrc) => (e) => {
   img.src = fallbackSrc;
 };
 
-/* ══════════════════════════════════════
-   EXPANDABLE TEXT — "Read More / Show Less"
-   Props:
-     text        – the full string from API
-     maxChars    – character limit before truncating (default 300)
-     maxLines    – optional CSS line-clamp count (default 4)
-══════════════════════════════════════ */
-const ExpandableText = ({ text = "", maxChars = 300, className = "" }) => {
+const ExpandableText = ({ text = "", maxChars = 300, className = "", clampLines = null }) => {
   const [expanded, setExpanded] = useState(false);
+
+  // clampLines mode: renders the full text but lets CSS visually truncate
+  // it to N lines (only wired up on mobile via .pd-clamp-text media query
+  // rules) instead of guessing a character count. This adapts correctly
+  // to whatever width the card actually renders at.
+  if (clampLines) {
+    return (
+      <span className={className}>
+        <span className={`pd-clamp-text${expanded ? " pd-clamp-expanded" : ""}`}>
+          {text}
+        </span>
+        <button
+          onClick={() => setExpanded((e) => !e)}
+          className="pd-clamp-toggle-btn"
+          style={{
+            background: "none",
+            border: "none",
+            cursor: "pointer",
+            color: "#d4a057",
+            fontWeight: 600,
+            fontSize: "0.92em",
+            padding: 0,
+            textDecoration: "underline",
+            textUnderlineOffset: 2,
+            whiteSpace: "nowrap",
+            display: "block",
+            marginTop: 2,
+          }}
+        >
+          {expanded ? "Show Less ▲" : "Read More ▼"}
+        </button>
+      </span>
+    );
+  }
+
   const needsTruncation = text.length > maxChars;
   const displayed = expanded || !needsTruncation ? text : text.slice(0, maxChars) + "…";
 
@@ -84,9 +105,6 @@ const ExpandableText = ({ text = "", maxChars = 300, className = "" }) => {
   );
 };
 
-/* ══════════════════════════════════════
-   COUNTDOWN HOOK
-══════════════════════════════════════ */
 const useCountdown = () => {
   const [time, setTime] = useState({ d: 203, h: 0, m: 58, s: 15 });
   useEffect(() => {
@@ -112,9 +130,6 @@ const useCountdown = () => {
 
 const pad = (n, len = 2) => String(n).padStart(len, "0");
 
-/* ══════════════════════════════════════
-   STATIC DATA
-══════════════════════════════════════ */
 const BENEFITS = [
   {
     icon: "fas fa-shield-alt",
@@ -196,9 +211,6 @@ const FAQS = [
   { q: "Is the payment secure?", a: "Yes, 100%. We use secure payment gateways including UPI, Visa, Mastercard, and RuPay." },
 ];
 
-/* ══════════════════════════════════════
-   HELPER COMPONENTS
-══════════════════════════════════════ */
 const FaqItem = ({ num, q, a }) => {
   const [open, setOpen] = useState(false);
   return (
@@ -215,7 +227,6 @@ const FaqItem = ({ num, q, a }) => {
   );
 };
 const ReviewsSection = ({ reviews = [] }) => {
-  // Merge API reviews with static fallback, normalize field names
   const allReviews = reviews.length > 0
     ? reviews.map(r => ({
       name: r.name || "Devotee",
@@ -319,9 +330,6 @@ const ReviewsSection = ({ reviews = [] }) => {
   );
 };
 
-/* ══════════════════════════════════════
-   MAIN PAGE
-══════════════════════════════════════ */
 const PujaDetails = () => {
   const { name, id } = useParams();
   const timer = useCountdown();
@@ -338,9 +346,11 @@ const PujaDetails = () => {
   const [showLoginModal, setShowLoginModal] = useState(false);
   const [pendingPackageType, setPendingPackageType] = useState(null);
 
-  // Tracks whether the packages section is currently on screen, so the
-  // mobile sticky "Select Puja Package" bar can hide itself there instead
-  // of overlapping that section.
+  // Which package card is highlighted/selected in the "Choose Your Puja
+  // Package" grid. On mobile this also controls whether the card shows
+  // its full-width "Select Package" button (tap-to-reveal, like a radio list).
+  const [selectedPkgId, setSelectedPkgId] = useState(null);
+
   const [packagesSectionVisible, setPackagesSectionVisible] = useState(false);
 
   useEffect(() => {
@@ -361,13 +371,13 @@ const PujaDetails = () => {
     }
   };
 
-  // Watch the packages section so the mobile sticky button can hide
-  // itself while that section is already on screen. Uses two different
-  // thresholds for showing vs. hiding (hysteresis) so it doesn't flicker
-  // right at the boundary, and is debounced on scroll only — no 'resize'
-  // listener, since mobile browsers fire resize events as their address
-  // bar auto-hides/shows while scrolling, which would otherwise cause
-  // this to re-fire dozens of times a second and flicker.
+  // Default-select the first package once data arrives
+  useEffect(() => {
+    if (pujaDetails?.packages?.length && !selectedPkgId) {
+      setSelectedPkgId(pujaDetails.packages[0]._id);
+    }
+  }, [pujaDetails]);
+
   useEffect(() => {
     if (!pujaDetails) return undefined;
     const el = document.getElementById("pd-packages-section");
@@ -409,7 +419,6 @@ const PujaDetails = () => {
   const proceedSelectPackage = (type) => {
     const isFamily = type === "family";
 
-    // Find actual package from API packages array
     const chosenPkg = isFamily
       ? pujaDetails?.packages?.find(p =>
         p.packageType?.toLowerCase() === "family"
@@ -452,7 +461,6 @@ const PujaDetails = () => {
     setShowUserModal(false);
   };
 
-  // Builds the share text/url once so both handlers stay in sync
   const getShareData = () => {
     const url = window.location.href;
     const title = pujaDetails?.title || "Sacred Puja";
@@ -472,7 +480,6 @@ const PujaDetails = () => {
       try {
         await navigator.share({ title, text, url });
       } catch (err) {
-        // user cancelled the share sheet — nothing to do
       }
     } else {
       try {
@@ -484,8 +491,6 @@ const PujaDetails = () => {
     }
   };
 
-  // If the user completes login while a package selection was pending,
-  // automatically continue on to the booking form.
   useEffect(() => {
     if (isLoggedIn && pendingPackageType) {
       setShowLoginModal(false);
@@ -603,6 +608,146 @@ const PujaDetails = () => {
             cursor: pointer;
           }
         }
+
+        /* Radio circle: hidden on desktop, shown only on mobile */
+        .pd-pkg-radio {
+          display: none;
+        }
+
+        @media (max-width: 767px) {
+          /* Grid becomes a single vertical stack of horizontal cards */
+          .pd-pkg-scroll-grid {
+            display: flex !important;
+            flex-direction: column !important;
+            overflow: visible !important;
+          }
+
+          /* Card: image left, content right */
+          .pd-pkg-card-inner {
+            flex-direction: row !important;
+            align-items: flex-start !important;
+            padding: 12px !important;
+            text-align: left !important;
+            position: relative;
+            border-radius: 12px !important;
+          }
+
+          .pd-pkg-card-inner.pd-pkg-active {
+            border: 2px solid #7B1F3A !important;
+            background: linear-gradient(100deg, #f7e9ee 0%, #ffffff 55%) !important;
+            box-shadow: 0 4px 14px rgba(123,31,58,0.15);
+          }
+
+          /* Bigger thumbnail — card height stays put because padding
+             and gaps were trimmed to compensate */
+          .pd-pkg-card-image {
+            width: 100px !important;
+            height: 100px !important;
+            aspect-ratio: unset !important;
+            flex-shrink: 0 !important;
+            border-radius: 10px !important;
+            margin-bottom: 0 !important;
+            margin-right: 10px !important;
+          }
+
+          .pd-pkg-card-content {
+            align-items: flex-start !important;
+            text-align: left !important;
+            width: auto !important;
+            flex: 1;
+            min-width: 0;
+          }
+
+          /* Hide the icon circle + description list on mobile — keeps the
+             card compact like the horizontal reference layout */
+          .pd-pkg-icon-circle,
+          .pd-pkg-desc-list-wrap {
+            display: none !important;
+          }
+
+          .pd-pkg-card-content > div {
+            margin-bottom: 4px !important;
+            padding: 0 !important;
+          }
+
+          /* Radio circle, top-right of the card */
+          .pd-pkg-radio {
+            display: flex !important;
+            position: absolute;
+            top: 14px;
+            right: 14px;
+            width: 22px;
+            height: 22px;
+            border-radius: 50%;
+            border: 2px solid #d9d9d9;
+            background: #fff;
+            align-items: center;
+            justify-content: center;
+            z-index: 2;
+          }
+
+          .pd-pkg-active .pd-pkg-radio {
+            border-color: #7B1F3A;
+            background: #7B1F3A;
+          }
+
+          /* Select button hidden until the card is chosen */
+          .pd-pkg-select-btn {
+            display: none !important;
+          }
+
+          .pd-pkg-active .pd-pkg-select-btn {
+            display: flex !important;
+            margin-top: 10px !important;
+          }
+        }
+
+        /* ── Hover effect: every card gets its own accent color ──
+           Works on both desktop and mobile (mouse/trackpad only —
+           touch devices simply won't trigger :hover, which is fine). */
+        .pd-pkg-card-inner {
+          transition: transform 0.25s ease, box-shadow 0.25s ease, border-color 0.25s ease !important;
+        }
+
+        .pd-pkg-card-inner:hover {
+          transform: translateY(-4px);
+        }
+
+        .pd-pkg-scroll-grid .pd-pkg-card-inner:nth-child(4n+1):hover {
+          border-color: #7B1F3A !important;
+          box-shadow: 0 10px 24px rgba(123, 31, 58, 0.25) !important;
+        }
+
+        .pd-pkg-scroll-grid .pd-pkg-card-inner:nth-child(4n+2):hover {
+          border-color: #F5A623 !important;
+          box-shadow: 0 10px 24px rgba(245, 166, 35, 0.25) !important;
+        }
+
+        .pd-pkg-scroll-grid .pd-pkg-card-inner:nth-child(4n+3):hover {
+          border-color: #2E8B87 !important;
+          box-shadow: 0 10px 24px rgba(46, 139, 135, 0.25) !important;
+        }
+
+        .pd-pkg-scroll-grid .pd-pkg-card-inner:nth-child(4n+4):hover {
+          border-color: #5B3FA0 !important;
+          box-shadow: 0 10px 24px rgba(91, 63, 160, 0.25) !important;
+        }
+
+        /* ── Benefit cards: clamp description to 3 lines on mobile only ── */
+        @media (max-width: 767px) {
+          .pd-benefit-text .pd-clamp-text {
+            display: -webkit-box;
+            -webkit-line-clamp: 3;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+          }
+
+          .pd-benefit-text .pd-clamp-expanded {
+            display: block !important;
+            -webkit-line-clamp: unset !important;
+            overflow: visible !important;
+          }
+        }
       `}</style>
 
       {/* ── BREADCRUMB ── */}
@@ -628,7 +773,6 @@ const PujaDetails = () => {
           <div className="pd-featured-lbl">FEATURED PUJA</div>
           <h1 className="pd-hero-title">{pujaDetails?.title}</h1>
 
-          {/* ─── ABOUT PUJA: 3-line clamp, no toggle ─── */}
           <p
             className="pd-hero-desc"
             style={{
@@ -703,7 +847,6 @@ const PujaDetails = () => {
             {[pujaDetails?.purposeOfPooja, pujaDetails?.mandirName, pujaDetails?.packages?.[0]?.packageType].map((item, i) => (
               <div key={i} className="pd-bc-check">
                 <i className="fas fa-check-circle" />
-                {/* ─── purposeOfPooja can be long — truncate at 80 chars ─── */}
                 <span>
                   {i === 0 && item && item.length > 80 ? (
                     <ExpandableText text={item} maxChars={80} />
@@ -763,7 +906,7 @@ const PujaDetails = () => {
           </div>
           <div className="pd-cd-timer">
             {[
-          
+
               { val: timer.d, len: 3, lbl: "Days" },
               { val: timer.h, len: 2, lbl: "Hours" },
               { val: timer.m, len: 2, lbl: "Minutes" },
@@ -780,7 +923,7 @@ const PujaDetails = () => {
           </div>
         </div>
         <div className="pd-cd-right">
-          
+
            <a href="#"
             className="pd-cd-share"
             onClick={(e) => {
@@ -790,7 +933,7 @@ const PujaDetails = () => {
           >
             <i className="fas fa-share-alt" /> Share with your loved ones
           </a>
-          
+
           <a  href="#"
             className="pd-cd-share whatsapp"
             onClick={(e) => {
@@ -824,7 +967,7 @@ const PujaDetails = () => {
               <div className="pd-benefit-title">{b.title}</div>
               <div className="pd-benefit-sub">{b.sub}</div>
               <p className="pd-benefit-text">
-                <ExpandableText text={b.text} maxChars={160} />
+                <ExpandableText text={b.text} clampLines={3} />
               </p>
             </div>
           ))}
@@ -899,8 +1042,13 @@ const PujaDetails = () => {
               { background: "#fff", color: "#7B1F3A", border: "2px solid #7B1F3A" },
               { background: "#7B1F3A", color: "#fff", border: "none" },
             ];
+            const isActive = selectedPkgId === pkg._id;
             return (
-            <div key={pkg._id || i} className="pd-pkg-card-inner" style={{
+            <div
+              key={pkg._id || i}
+              className={`pd-pkg-card-inner${isActive ? " pd-pkg-active" : ""}`}
+              onClick={() => setSelectedPkgId(pkg._id)}
+              style={{
                 background: "#fff",
                 borderRadius: "20px",
                 border: "1.5px solid #f0e6d3",
@@ -911,7 +1059,17 @@ const PujaDetails = () => {
                 padding: "0 0 14px",
                 minWidth: 0,
                 position: "relative",
+                cursor: "pointer",
               }}>
+                {/* RADIO CIRCLE — hidden on desktop, shown on mobile via CSS */}
+                <div className="pd-pkg-radio">
+                  {isActive && (
+                    <svg viewBox="0 0 24 24" width="13" height="13" fill="none">
+                      <path d="M5 13l4 4L19 7" stroke="#fff" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
+                    </svg>
+                  )}
+                </div>
+
                 {/* IMAGE */}
                 <div className="pd-pkg-card-image" style={{
                   width: "100%",
@@ -934,8 +1092,8 @@ const PujaDetails = () => {
                   alignItems: "center",
                   width: "100%",
                 }}>
-                  {/* TOP ICON CIRCLE */}
-                  <div style={{
+                  {/* TOP ICON CIRCLE — hidden on mobile via CSS */}
+                  <div className="pd-pkg-icon-circle" style={{
                     marginTop: "-1px",
                     width: 54,
                     height: 54,
@@ -996,22 +1154,21 @@ const PujaDetails = () => {
                   </div>
 
                   {/* DIVIDER LINE */}
-                {/* DIVIDER LINE */}
                   <div style={{
                     display: "flex",
                     alignItems: "center",
                     gap: 6,
                     marginBottom: 14,
                   }}>
-                    {/* <span style={{ width: 20, height: 1, background: "#f0c070", display: "block" }} />
-                    <span style={{ fontSize: 11, color: "#c8952a" }}>per booking</span>
-                    <span style={{ width: 20, height: 1, background: "#f0c070", display: "block" }} /> */}
                   </div>
 
                   {/* CTA BUTTON */}
                   <button
                     className="pd-pkg-select-btn"
-                    onClick={() => handleSelectPackage(pkg.packageType?.toLowerCase() === "individual" ? "individual" : "family")}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleSelectPackage(pkg.packageType?.toLowerCase() === "individual" ? "individual" : "family");
+                    }}
                     onMouseEnter={(e) => {
                       e.currentTarget.style.transform = "translateY(-2px)";
                       e.currentTarget.style.opacity = "0.88";
@@ -1060,14 +1217,11 @@ const PujaDetails = () => {
                     gap: 6,
                     marginBottom: 14,
                   }}>
-                    {/* <span style={{ width: 20, height: 1, background: "#f0c070", display: "block" }} />
-                    {/* <span style={{ fontSize: 11, color: "#c8952a" }}>per booking</span> 
-                    <span style={{ width: 20, height: 1, background: "#f0c070", display: "block" }} /> */}
                   </div>
 
-                  {/* DESCRIPTION if any */}
+                  {/* DESCRIPTION if any — hidden on mobile via CSS */}
                   {pkg.packageDescription?.length > 0 && (
-                    <ul style={{ textAlign: "left", paddingLeft: 16, marginBottom: 12, fontSize: 11, color: "#888", width: "90%" }}>
+                    <ul className="pd-pkg-desc-list-wrap" style={{ textAlign: "left", paddingLeft: 16, marginBottom: 12, fontSize: 11, color: "#888", width: "90%" }}>
                       {pkg.packageDescription.map((d, di) => (
                         <li key={di} style={{ marginBottom: 3 }}>✔ {d}</li>
                       ))}
@@ -1092,7 +1246,6 @@ const PujaDetails = () => {
         </div>
       </div>
 
-      {/* ══ REVIEWS ══ */}
       {/* ══ REVIEWS ══ */}
       <ReviewsSection reviews={pujaDetails?.reviews || []} />
 
@@ -1158,9 +1311,6 @@ const PujaDetails = () => {
 
       <Footer />
 
-      {/* ══ MOBILE STICKY SELECT PACKAGE BAR ══
-          Hidden while the packages section is already on screen, so it
-          doesn't overlap the "Choose Your Puja Package" cards. */}
       {!packagesSectionVisible && (
         <div className="pd-mobile-proceed-wrap">
           <button
@@ -1181,10 +1331,6 @@ const PujaDetails = () => {
   );
 };
 
-/* ══════════════════════════════════════
-   PACKAGE DESCRIPTION LIST
-   Shows first 3 items, "Show X More" toggles the rest
-══════════════════════════════════════ */
 const PackageDescList = ({ items = [], initialShow = 3 }) => {
   const [showAll, setShowAll] = useState(false);
   const visible = showAll ? items : items.slice(0, initialShow);

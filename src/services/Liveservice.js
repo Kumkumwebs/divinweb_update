@@ -12,8 +12,6 @@
 import apiService from './apiServices';
 import { API_BASE, ENDPOINTS, getToken, getUserId, getUserName } from './Liveconfig';
 
-// import { API_BASE } from './Liveconfig';
-
 // ── low-level helpers ─────────────────────────────────────────────────────────
 const authHeaders = () => ({
   'Content-Type': 'application/json',
@@ -23,10 +21,12 @@ const authHeaders = () => ({
 async function post(path, body) {
   const res = await fetch(`${API_BASE}${path}`, {
     method: 'POST',
-    headers: {
-				Authorization: `Bearer ${sessionStorage.getItem('token')}`,
-			},
-    body:body || {},
+    headers: authHeaders(),
+    // FIX: fetch's `body` must be a string/Blob/FormData — passing a raw
+    // object here (as this used to do with `body: body || {}`) gets
+    // silently coerced to the literal string "[object Object]" instead of
+    // real JSON. This was the entire cause of the [object Object] payload.
+    body: JSON.stringify(body || {}),
   });
   return res.json();
 }
@@ -73,6 +73,13 @@ export function buildKundliString({ name, gender, dob, tob, place }) {
 /**
  * call_initiate — starts the request to the astrologer.
  * payload = { astrologer_id, call_type: 'chat'|'audio'|'video', fb_channel_id, kundli }
+ *
+ * NOTE per the sample response you shared:
+ *   { status, message, results: null, channel_id, fb_channel_id, type }
+ * The real channel id comes back at the TOP LEVEL as `channel_id`, not
+ * inside `results` (which is null) and not in `fb_channel_id` (which came
+ * back empty in your sample). Whatever calls this should read
+ * `res.channel_id` first.
  */
 export function callInitiate(payload) {
   return apiService.postBearer(ENDPOINTS.call_initiate, payload);
@@ -83,7 +90,7 @@ export function callInitiate(payload) {
  * status: accept_astro | reject_astro | end_astro | end_user | disconnect_user
  */
 export function callInitiateStatus(channel_id) {
-  return poapiService.postBearerst(ENDPOINTS.call_initiate_status, { channel_id:channel_id });
+  return apiService.postBearer(ENDPOINTS.call_initiate_status, { channel_id });
 }
 
 /**

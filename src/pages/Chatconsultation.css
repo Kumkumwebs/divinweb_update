@@ -360,3 +360,20 @@
   .cc-qa-btn { padding: 9px 4px; }
   .cc-qa-btn i { font-size: 20px; }
 }
+
+/* ── Typing indicator dots (append to ChatConsultation.css) ── */
+.cc-typing-dots span {
+  display: inline-block;
+  font-size: 22px;
+  line-height: 1;
+  animation: ccTypingBounce 1.2s infinite;
+  animation-delay: calc(var(--i, 0) * 0.15s);
+}
+.cc-typing-dots span:nth-child(1) { --i: 0; }
+.cc-typing-dots span:nth-child(2) { --i: 1; }
+.cc-typing-dots span:nth-child(3) { --i: 2; }
+
+@keyframes ccTypingBounce {
+  0%, 60%, 100% { opacity: 0.3; transform: translateY(0); }
+  30% { opacity: 1; transform: translateY(-3px); }
+}

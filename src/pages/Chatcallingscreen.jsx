@@ -1,5 +1,7 @@
 import React, { useEffect, useRef, useState, useCallback } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
+import { ref, onValue, off } from 'firebase/database';
+import { db } from '../services/liveFirebase';
 import {
   callInitiate,
   callInitiateStatus,
@@ -12,13 +14,40 @@ import {
  * ChatCallingScreen
  *
  * Step 2 of the handshake. Receives astrologer + intake details via router
- * state, fires call_initiate, then polls call_initiate_status every 2s until
- * the astrologer accepts — then routes into the chat or call screen.
+ * state, fires call_initiate, then watches for acceptance through TWO
+ * channels at once:
+ *   1) REST polling of call_initiate_status every 400ms (original path)
+ *   2) A Firebase listener on CallSession/{channelId} (same node
+ *      ChatContext already reads for billing), in case the backend
+ *      flips status there before/instead of the REST endpoint.
+ * Whichever one sees acceptance first wins — both funnel into the same
+ * handleAccepted() so we never double-navigate.
  *
  * Route: /consultation/calling/:id   (state carries everything below)
  */
 
 const RING_TIMEOUT = 60; // seconds to wait before auto-cancel
+
+// Literal Firebase path — see ChatContext.jsx / ChatConsultation.jsx for why
+// this bypasses the Liveconfig helper and matches the known-working reference.
+const sessionPath = (channelId) => `CallSession/${channelId}`;
+
+// Pulls a status string out of whatever shape the API/Firebase happens
+// to use. Broadened on purpose — if the exact field name was the bug,
+// this covers the common variants instead of guessing one and failing
+// silently again.
+const extractStatus = (res) =>
+  res?.results?.status ??
+  res?.status ??
+  res?.data?.status ??
+  res?.result?.status ??
+  null;
+
+// Treat any of these as "the astrologer accepted" — some backends use
+// 'accept_astro', others 'accepted', 'ongoing', etc.
+const ACCEPTED_VALUES = ['accept_astro', 'accepted', 'ongoing', 'active'];
+const REJECTED_VALUES = ['reject_astro', 'rejected'];
+const ENDED_VALUES = ['end_user', 'disconnect_user', 'end_astro'];
 
 const ChatCallingScreen = () => {
   const { id } = useParams();
@@ -35,6 +64,7 @@ const ChatCallingScreen = () => {
   const intake = s.intake || {}; // { name, gender, dob, tob, place }
 
   const [status, setStatus] = useState('connecting'); // connecting | accepted | rejected
+  const [statusMessage, setStatusMessage] = useState(''); // optional backend-provided message (e.g. "Astrologer is busy")
   const [countdown, setCountdown] = useState(RING_TIMEOUT);
 
   // channelIdRef holds the *client-generated* id we send as fb_channel_id.
@@ -44,6 +74,7 @@ const ChatCallingScreen = () => {
   const channelIdRef = useRef(s.channelId || generateChannelId());
   const pollRef = useRef(null);
   const countdownRef = useRef(null);
+  const firebaseUnsubRef = useRef(null);
   const doneRef = useRef(false);
   const navRef = useRef(navigate);
   useEffect(() => { navRef.current = navigate; }, [navigate]);
@@ -51,17 +82,55 @@ const ChatCallingScreen = () => {
   const stopAll = useCallback(() => {
     if (pollRef.current) { clearInterval(pollRef.current); pollRef.current = null; }
     if (countdownRef.current) { clearInterval(countdownRef.current); countdownRef.current = null; }
+    if (firebaseUnsubRef.current) { firebaseUnsubRef.current(); firebaseUnsubRef.current = null; }
   }, []);
 
   const cancel = useCallback(async (silent = false) => {
     if (doneRef.current) return;
     doneRef.current = true;
     stopAll();
-    try { await callStatusUpdate(channelIdRef.current, 'disconnect_user'); } catch { /* silent */ }
+    try { await callStatusUpdate(channelIdRef.current, 'disconnect_user'); } catch (err) {
+      console.error('[ChatCallingScreen] cancel() failed:', err);
+    }
     if (!silent) navRef.current(-1);
   }, [stopAll]);
 
-  // Initiate + poll
+  // Shared "accepted" handler — called from either the REST poll or the
+  // Firebase fallback listener, whichever notices first.
+  const handleAccepted = useCallback((channelId) => {
+    if (doneRef.current) return;
+    doneRef.current = true;
+    stopAll();
+    setStatus('accepted');
+    const sessionState = {
+      gid: channelId, fbchannelID: channelId, channelId,
+      astrologer_id: astrologerId, astroName, astrologerImage, rate, wallet,
+      name: intake.name || '', gender: intake.gender || '',
+      dob: intake.dob || '', tob: intake.tob || '',
+      place: intake.place || intake.birthPlace || '',
+    };
+    const path = callType === 'audio'
+      ? `/consultation/call/${astrologerId}`
+      : `/consultation/chat/${astrologerId}`;
+    setTimeout(() => navRef.current(path, { replace: true, state: sessionState }), 600);
+  }, [stopAll, astrologerId, astroName, astrologerImage, rate, wallet, intake, callType]);
+
+  const handleRejected = useCallback(() => {
+    if (doneRef.current) return;
+    doneRef.current = true;
+    stopAll();
+    setStatus('rejected');
+    setTimeout(() => navRef.current(-1), 1600);
+  }, [stopAll]);
+
+  const handleEnded = useCallback(() => {
+    if (doneRef.current) return;
+    doneRef.current = true;
+    stopAll();
+    navRef.current('/', { replace: true });
+  }, [stopAll]);
+
+  // Initiate + poll + Firebase fallback
   useEffect(() => {
     const fbChannelId = channelIdRef.current; // client-generated, sent as fb_channel_id
 
@@ -95,36 +164,47 @@ const ChatCallingScreen = () => {
       pollRef.current = setInterval(async () => {
         try {
           const res = await callInitiateStatus(channelId);
-          const st = res?.results?.status ?? res?.status;
-          if (st === 'accept_astro') {
-            if (doneRef.current) return;
-            doneRef.current = true;
-            stopAll();
-            setStatus('accepted');
-            const sessionState = {
-              gid: channelId, fbchannelID: channelId, channelId,
-              astrologer_id: astrologerId, astroName, astrologerImage, rate, wallet,
-              name: intake.name || '', gender: intake.gender || '',
-              dob: intake.dob || '', tob: intake.tob || '',
-              place: intake.place || intake.birthPlace || '',
-            };
-            const path = callType === 'audio'
-              ? `/consultation/call/${astrologerId}`
-              : `/consultation/chat/${astrologerId}`;
-            setTimeout(() => navRef.current(path, { replace: true, state: sessionState }), 600);
-          } else if (st === 'reject_astro') {
-            if (doneRef.current) return;
-            doneRef.current = true;
-            stopAll();
-            setStatus('rejected');
-            setTimeout(() => navRef.current(-1), 1600);
-          } else if (st === 'end_user' || st === 'disconnect_user') {
-            doneRef.current = true;
-            stopAll();
-            navRef.current('/', { replace: true });
+          const st = extractStatus(res);
+          if (st == null) {
+            // Nothing recognizable in the response — log it once in a
+            // while so it's visible in devtools instead of vanishing.
+            console.warn('[ChatCallingScreen] poll: no status field in response', res);
+            return;
           }
-        } catch { /* keep retrying */ }
+          if (ACCEPTED_VALUES.includes(st)) {
+            handleAccepted(channelId);
+          } else if (REJECTED_VALUES.includes(st)) {
+            handleRejected();
+          } else if (ENDED_VALUES.includes(st)) {
+            handleEnded();
+          }
+        } catch (err) {
+          // Was previously silent — logging so a real backend/auth error
+          // doesn't look identical to "still waiting".
+          console.error('[ChatCallingScreen] poll error:', err);
+        }
       }, 400);
+    }
+
+    function startFirebaseFallback(channelId) {
+      try {
+        const sessionRef = ref(db, sessionPath(channelId));
+        onValue(sessionRef, (snapshot) => {
+          const data = snapshot.val();
+          if (!data) return;
+          const st = String(data.status ?? '');
+          if (ACCEPTED_VALUES.includes(st)) {
+            handleAccepted(channelId);
+          } else if (REJECTED_VALUES.includes(st)) {
+            handleRejected();
+          } else if (ENDED_VALUES.includes(st)) {
+            handleEnded();
+          }
+        });
+        firebaseUnsubRef.current = () => off(sessionRef, 'value');
+      } catch (err) {
+        console.error('[ChatCallingScreen] Firebase fallback listener failed to attach:', err);
+      }
     }
 
     (async () => {
@@ -136,16 +216,36 @@ const ChatCallingScreen = () => {
           fb_channel_id: fbChannelId,
           kundli: "1",
         });
+
+        // FIX: previously this only read res.channel_id and ignored
+        // res.status entirely — so even when the backend responded with
+        // status: false (e.g. astrologer busy/unavailable), the call would
+        // still start ringing/polling. Now we stop immediately in that case
+        // and never start a call that was never actually created.
+        if (res?.status === false) {
+          console.warn('[ChatCallingScreen] call_initiate rejected — not starting call:', res?.message);
+          if (!cancelled && !doneRef.current) {
+            doneRef.current = true;
+            stopAll();
+            setStatus('rejected');
+            setStatusMessage(res?.message || '');
+            setTimeout(() => navRef.current(-1), 1600);
+          }
+          return; // never reaches startPolling/startFirebaseFallback
+        }
+
         // Server returns its own channel_id — THIS is what callInitiateStatus
         // and callStatusUpdate actually expect, not the fb_channel_id we sent.
         serverChannelId = res?.channel_id || res?.results?.channel_id || fbChannelId;
-      } catch {
+      } catch (err) {
         // Even if initiate errors, we still poll — backend may have created it.
+        console.error('[ChatCallingScreen] callInitiate failed:', err);
       }
 
-      if (cancelled) return;
+      if (cancelled || doneRef.current) return;
       channelIdRef.current = serverChannelId; // keep in sync for cancel()/status updates
       startPolling(serverChannelId);
+      startFirebaseFallback(serverChannelId);
     })();
 
     const onPop = () => { cancel(); };
@@ -157,11 +257,12 @@ const ChatCallingScreen = () => {
       stopAll();
       window.removeEventListener('popstate', onPop);
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const statusLabel =
     status === 'accepted' ? 'Connected!' :
-    status === 'rejected' ? 'Astrologer is not available right now' :
+    status === 'rejected' ? (statusMessage || 'Astrologer is not available right now') :
     'Connecting you with the astrologer…';
 
   const statusColor =

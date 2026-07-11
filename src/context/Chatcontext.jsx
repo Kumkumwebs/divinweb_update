@@ -22,10 +22,15 @@ import React, {
 } from 'react';
 import { ref, onValue, off } from 'firebase/database';
 import { db } from '../services/liveFirebase';
-// import { fbSessionPath } from './Liveconfig';
-import { fbSessionPath } from '../services/Liveconfig';
 
 const ChatContext = createContext(null);
+
+// Literal Firebase path — deliberately not routed through a Liveconfig
+// helper. A known-working reference implementation of this same feature
+// builds this inline as `CallSession/${channelId}` with no wrapper at all,
+// so we match that exactly rather than trusting an unverified
+// fbSessionPath() we haven't been able to confirm is correct.
+const sessionPath = (channelId) => `CallSession/${channelId}`;
 
 export function ChatProvider({ children }) {
   const [chatActive, setChatActive] = useState(false);
@@ -89,7 +94,8 @@ export function ChatProvider({ children }) {
       firebaseSubRef.current = null;
     }
 
-    const sessionRef = ref(db, fbSessionPath(channelId));
+    const sessionRef = ref(db, sessionPath(channelId));
+    console.log('[ChatContext] subscribing to:', sessionPath(channelId));
 
     onValue(sessionRef, (snapshot) => {
       const data = snapshot.val();
@@ -152,6 +158,8 @@ export function ChatProvider({ children }) {
           }
         }
       }
+    }, (err) => {
+      console.error('[ChatContext] Firebase CallSession listener error:', err);
     });
 
     firebaseSubRef.current = () => off(sessionRef, 'value');
