@@ -66,7 +66,7 @@ const ChatCallingScreen = () => {
   const [status, setStatus] = useState('connecting'); // connecting | accepted | rejected
   const [statusMessage, setStatusMessage] = useState(''); // optional backend-provided message (e.g. "Astrologer is busy")
   const [countdown, setCountdown] = useState(RING_TIMEOUT);
-
+  const initiatedRef = useRef(false);
   // channelIdRef holds the *client-generated* id we send as fb_channel_id.
   // Once callInitiate responds, we swap this ref to the *server-returned*
   // channel_id, since that's the id callInitiateStatus/callStatusUpdate
@@ -89,7 +89,15 @@ const ChatCallingScreen = () => {
     if (doneRef.current) return;
     doneRef.current = true;
     stopAll();
-    try { await callStatusUpdate(channelIdRef.current, 'disconnect_user'); } catch (err) {
+    try {
+      const res = await callStatusUpdate(channelIdRef.current, 'disconnect_user'); 
+      console.log('[cancel] status update res:', res);
+      if (res?.status === true) {
+        // Navigate back to astrologer details
+        navRef.current(`/astrologer/${astrologerId}`, { replace: true });
+        return;
+      }
+    } catch (err) {
       console.error('[ChatCallingScreen] cancel() failed:', err);
     }
     if (!silent) navRef.current(-1);
@@ -161,9 +169,11 @@ const ChatCallingScreen = () => {
     }, 1000);
 
     function startPolling(channelId) {
+      console.log('[poll] calling status for channel:', channelId);
       pollRef.current = setInterval(async () => {
         try {
           const res = await callInitiateStatus(channelId);
+          console.log('[poll] response:', res);
           const st = extractStatus(res);
           if (st == null) {
             // Nothing recognizable in the response — log it once in a
@@ -208,6 +218,8 @@ const ChatCallingScreen = () => {
     }
 
     (async () => {
+      if (initiatedRef.current) return; // block second StrictMode call
+      initiatedRef.current = true;
       let serverChannelId = fbChannelId; // fallback in case initiate fails or doesn't return one
       try {
         const res = await callInitiate({
@@ -236,16 +248,18 @@ const ChatCallingScreen = () => {
 
         // Server returns its own channel_id — THIS is what callInitiateStatus
         // and callStatusUpdate actually expect, not the fb_channel_id we sent.
-        serverChannelId = res?.channel_id || res?.results?.channel_id || fbChannelId;
+        serverChannelId = res?.channel_id ;
+        channelIdRef.current = serverChannelId;
       } catch (err) {
         // Even if initiate errors, we still poll — backend may have created it.
         console.error('[ChatCallingScreen] callInitiate failed:', err);
       }
-
-      if (cancelled || doneRef.current) return;
-      channelIdRef.current = serverChannelId; // keep in sync for cancel()/status updates
+      console.log('[ChatCallingScreen] about to startPolling', serverChannelId);
       startPolling(serverChannelId);
       startFirebaseFallback(serverChannelId);
+      // if (cancelled || doneRef.current) return;
+      // channelIdRef.current = serverChannelId; // keep in sync for cancel()/status updates
+      
     })();
 
     const onPop = () => { cancel(); };

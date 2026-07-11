@@ -5,12 +5,13 @@ import AgoraRTC from 'agora-rtc-sdk-ng';
 import { useAudioCall } from '../context/AudioCallContext';
 import {
   fetchAgoraToken,
-  callInitiateStatus,
   callStatusUpdate,
   addRating,
 } from '../services/liveService';
-// import { AGORA_APP_ID } from '../config/liveConfig';
+// ── removed: callInitiateStatus — no REST polling during call (matches Flutter) ──
 import './AudioCall.css';
+
+const AGORA_APP_ID = '8782e154141a4c0bbc8acaa3004d21f2';
 
 const initials = (n) => (n || '').trim().split(' ').slice(0, 2).map((w) => w[0] || '').join('').toUpperCase();
 const COLORS = ['#7c3aed', '#059669', '#dc2626', '#d97706', '#2563eb'];
@@ -56,7 +57,7 @@ const AudioCall = () => {
   const [secs, setSecs] = useState(0);
   const [muted, setMuted] = useState(false);
   const [spk, setSpk] = useState(true);
-  const [callState, setCallState] = useState('connecting'); // connecting | connected | ended
+  const [callState, setCallState] = useState('connecting');
   const [err, setErr] = useState('');
   const [showRating, setShowRating] = useState(false);
   const [ratingScore, setRatingScore] = useState(0);
@@ -66,7 +67,7 @@ const AudioCall = () => {
   const localTrackRef = useRef(null);
   const remoteTrackRef = useRef(null);
   const timerRef = useRef(null);
-  const pollRef = useRef(null);
+  // ── removed: pollRef — zero REST polling during call (matches Flutter) ──
   const endingRef = useRef(false);
   const navRef = useRef(navigate);
   useEffect(() => { navRef.current = navigate; }, [navigate]);
@@ -86,6 +87,7 @@ const AudioCall = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [channelId]);
 
+  /* ── timer helpers ── matches Flutter _startDurationTimer / cancel ── */
   const startTimer = useCallback(() => {
     if (timerRef.current) return;
     timerRef.current = setInterval(() => {
@@ -94,44 +96,11 @@ const AudioCall = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  /* ── join Agora ── */
-  const join = useCallback(async () => {
-    if (!channelId) { setErr('Missing channel id.'); return; }
-    const client = AgoraRTC.createClient({ mode: 'rtc', codec: 'vp8' });
-    clientRef.current = client;
+  const stopTimer = useCallback(() => {
+    if (timerRef.current) { clearInterval(timerRef.current); timerRef.current = null; }
+  }, []);
 
-    client.on('user-published', async (user, mediaType) => {
-      await client.subscribe(user, mediaType);
-      if (mediaType === 'audio' && user.audioTrack) {
-        remoteTrackRef.current = user.audioTrack;
-        user.audioTrack.play();
-        setCallState('connected');
-        ctx.setCallStatus('connected');
-        startTimer();
-      }
-    });
-    client.on('user-unpublished', (user) => { user.audioTrack?.stop(); });
-    client.on('user-left', () => { handleEnd('end_user', true); });
-
-    try {
-      const token = await fetchAgoraToken(channelId);
-      await client.join(AGORA_APP_ID, channelId, token || null, null);
-      const mic = await AgoraRTC.createMicrophoneAudioTrack();
-      localTrackRef.current = mic;
-      await client.publish([mic]);
-      ctx.setCallStatus('ringing');
-      startTimer(); // start counting once we're in the channel
-    } catch (e) {
-      let msg = 'Could not connect to the call server.';
-      const m = e?.message || '';
-      if (m.includes('CAN_NOT_GET_GATEWAY_SERVER')) msg = 'Token rejected — check Agora App ID / Certificate.';
-      else if (m.includes('INVALID_TOKEN')) msg = 'Invalid Agora token from backend.';
-      else if (m.includes('TOKEN_EXPIRED')) msg = 'Agora token expired.';
-      setErr(msg);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [channelId, startTimer]);
-
+  /* ── leave Agora ── matches Flutter leaveChannel + release ── */
   const leave = useCallback(async () => {
     try {
       localTrackRef.current?.stop();
@@ -144,35 +113,118 @@ const AudioCall = () => {
     } catch { /* silent */ }
   }, []);
 
-  /* ── status poll (reject / remote end) ── */
+  /* ── end call ── matches Flutter end() ── */
+  const handleEnd = useCallback(async (status = 'end_user', remote = false) => {
+    if (endingRef.current) return;
+    endingRef.current = true;
+
+    // matches Flutter: _durationTimer?.cancel(); _durationTimer = null;
+    stopTimer();
+
+    setCallState('ended');
+    ctx.setCallStatus('ended');
+
+    // only send status update when user ends (not remote) — matches Flutter
+    try { if (!remote) await callStatusUpdate(channelId, status); } catch { /* silent */ }
+
+    await leave();
+    setShowRating(true);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [channelId, leave, stopTimer]);
+
+  /* ── join Agora ── matches Flutter init() ── */
+  const join = useCallback(async () => {
+    if (!channelId) { setErr('Missing channel id.'); return; }
+
+    const client = AgoraRTC.createClient({ mode: 'rtc', codec: 'vp8' });
+    clientRef.current = client;
+
+    // matches Flutter: onUserJoined
+    client.on('user-published', async (user, mediaType) => {
+      await client.subscribe(user, mediaType);
+      if (mediaType === 'audio' && user.audioTrack) {
+        remoteTrackRef.current = user.audioTrack;
+
+        // matches Flutter: muteAllRemoteAudioStreams(false) called twice
+        user.audioTrack.setVolume(0);
+        user.audioTrack.play();
+        setTimeout(() => { user.audioTrack?.setVolume(100); }, 100);
+
+        setCallState('connected');
+        ctx.setCallStatus('connected');
+
+        // matches Flutter: Future.delayed(300ms) → setEnableSpeakerphone(true)
+        setTimeout(() => {
+          try { remoteTrackRef.current?.setVolume(spk ? 100 : 0); }
+          catch (e) { console.warn('[AudioCall] speaker routing failed:', e); }
+        }, 300);
+
+        // matches Flutter: _startDurationTimer() inside onUserJoined ONLY
+        startTimer();
+      }
+    });
+
+    // matches Flutter: onUserOffline (track unpublished)
+    client.on('user-unpublished', (user) => {
+      user.audioTrack?.stop();
+    });
+
+    // matches Flutter: onUserOffline (user left channel) → end call, remote=true
+    client.on('user-left', () => {
+      handleEnd('end_user', true);
+    });
+
+    // matches Flutter: onLeaveChannel → _joined = false
+    client.on('connection-state-change', (curState) => {
+      if (curState === 'DISCONNECTED') stopTimer();
+    });
+
+    try {
+      const token = await fetchAgoraToken(channelId);
+      await client.join(AGORA_APP_ID, channelId, token || null, null);
+
+      // matches Flutter: enableAudio() then joinChannel with publishMicrophoneTrack: true
+      const mic = await AgoraRTC.createMicrophoneAudioTrack();
+      localTrackRef.current = mic;
+      await client.publish([mic]);
+
+      // local joined — waiting for remote user, no timer yet (matches Flutter)
+      ctx.setCallStatus('ringing');
+
+    } catch (e) {
+      let msg = 'Could not connect to the call server.';
+      const m = e?.message || '';
+      if (m.includes('CAN_NOT_GET_GATEWAY_SERVER')) msg = 'Token rejected — check Agora App ID / Certificate.';
+      else if (m.includes('INVALID_TOKEN')) msg = 'Invalid Agora token from backend.';
+      else if (m.includes('TOKEN_EXPIRED')) msg = 'Agora token expired.';
+      setErr(msg);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [channelId, startTimer, stopTimer, handleEnd]);
+
+  /* ── mount once, cleanup on unmount ── matches Flutter didChangeDependencies + dispose ── */
   useEffect(() => {
     if (!channelId) return;
     join();
-    pollRef.current = setInterval(async () => {
-      try {
-        const res = await callInitiateStatus(channelId);
-        const s = res?.results?.status ?? res?.status;
-        if (s === 'end_astro' || s === 'reject_astro' || s === 'disconnect_user') {
-          handleEnd('end_user', true);
-        }
-      } catch { /* keep polling */ }
-    }, 3000);
-
     return () => {
-      if (timerRef.current) clearInterval(timerRef.current);
-      if (pollRef.current) clearInterval(pollRef.current);
+      // matches Flutter dispose(): cancel timer, release engine
+      stopTimer();
       leave();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [channelId]);
 
   /* ── controls ── */
+
+  // matches Flutter: toggleMute → muteLocalAudioStream(_muted)
   const toggleMute = () => {
     const next = !muted;
     setMuted(next);
     ctx.setIsMuted(next);
     localTrackRef.current?.setEnabled(!next);
   };
+
+  // matches Flutter: toggleSpeaker → setEnableSpeakerphone(_speakerOn)
   const toggleSpeaker = () => {
     const next = !spk;
     setSpk(next);
@@ -180,30 +232,29 @@ const AudioCall = () => {
     remoteTrackRef.current?.setVolume(next ? 100 : 0);
   };
 
-  /* ── minimize on back ── */
+  // matches Flutter: toggleHold → muteLocalAudioStream(_onHold)
+  const toggleHold = () => {
+    const next = !muted;
+    setMuted(next);
+    ctx.setIsMuted(next);
+    localTrackRef.current?.setEnabled(!next);
+  };
+
+  /* ── minimize ── */
   const handleMinimize = () => { ctx.minimize(); navRef.current(-1); };
 
-  /* ── end call → rating ── */
-  const handleEnd = useCallback(async (status = 'end_user', remote = false) => {
-    if (endingRef.current) return;
-    endingRef.current = true;
-    if (timerRef.current) clearInterval(timerRef.current);
-    if (pollRef.current) clearInterval(pollRef.current);
-    setCallState('ended');
-    ctx.setCallStatus('ended');
-    try { if (!remote) await callStatusUpdate(channelId, status); } catch { /* silent */ }
-    await leave();
-    setShowRating(true);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [channelId, leave]);
-
+  /* ── rating ── */
   const submitRating = async () => {
     try { await addRating(channelId, ratingScore || 5, ratingReview); } catch { /* silent */ }
     ctx.endCall();
     setShowRating(false);
     navRef.current('/', { replace: true });
   };
-  const skipRating = () => { ctx.endCall(); setShowRating(false); navRef.current('/', { replace: true }); };
+  const skipRating = () => {
+    ctx.endCall();
+    setShowRating(false);
+    navRef.current('/', { replace: true });
+  };
 
   const cats = ['Vedic Astrology', 'Numerology', 'Vastu', 'Kundli Matching', 'Career Guidance'];
   const lang = 'Hindi, English';

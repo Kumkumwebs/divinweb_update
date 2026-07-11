@@ -38,8 +38,39 @@ const groupPath = (gid, a, b) => `Group/${gid}/${a}/${b}`;
 // Same reasoning for user id/name — fall back to localStorage directly
 // (as the reference does) if Liveconfig's getUserId()/getUserName() ever
 // come back empty, rather than silently breaking every downstream path.
-const resolveUserId = () => getUserId() || (typeof localStorage !== 'undefined' && localStorage.getItem('id')) || '';
-const resolveUserName = () => getUserName() || (typeof localStorage !== 'undefined' && localStorage.getItem('name')) || 'User';
+const resolveUserId = () => {
+  // 1. try Liveconfig
+  const fromConfig = getUserId();
+  if (fromConfig) return String(fromConfig);
+
+  // 2. read from sessionStorage (where StorageContext saves it)
+  try {
+    const raw = sessionStorage.getItem('user');
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      const uid = parsed?._id || parsed?.id || parsed?.user_id || parsed?.uid;
+      if (uid) return String(uid);
+    }
+  } catch { /* silent */ }
+
+  return '';
+};
+
+const resolveUserName = () => {
+  const fromConfig = getUserName();
+  if (fromConfig) return fromConfig;
+
+  try {
+    const raw = sessionStorage.getItem('user');
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      return parsed?.name || parsed?.full_name || parsed?.username || 'User';
+    }
+  } catch { /* silent */ }
+
+  return 'User';
+};
+
 
 // How long to wait after the last keystroke before clearing the typing flag —
 // mirrors a normal debounce so we're not writing to Firebase on every keypress.
@@ -53,6 +84,7 @@ const ChatConsultation = () => {
   const inputRef = useRef(null);
   const fileRef = useRef(null);
   const chatCtx = useChat();
+
 
   /* ── resolve session ── */
   const st = location.state || {};
@@ -69,6 +101,8 @@ const ChatConsultation = () => {
     tob: st.tob || '',
     place: st.place || st.birthPlace || '',
   };
+
+
 
   const userId = resolveUserId();
 
@@ -92,6 +126,22 @@ const ChatConsultation = () => {
   const isTypingRef = useRef(false); // tracks last value we wrote, so we don't spam Firebase
 
   /* ── start session timer (also drives ActiveChatBar) ── */
+
+  // At component level (already exists — don't touch)
+// const gid = st.gid || chatCtx.chatInfo?.gid || '';
+
+// Typing effect — remove the inner const gid, use outer one
+useEffect(() => {
+  if (!gid || !astrologer_id) return;
+  const path = `Typing/${gid}/${astrologer_id}`;
+  console.log('[typing] listening at:', path);
+  const typingRef = ref(db, path);
+  onValue(typingRef, (snap) => {
+    console.log('[typing] snapshot value:', snap.val());
+    setAstroTyping(snap.val() == true); // == not === handles string "true" too
+  });
+  return () => off(typingRef);
+}, [gid, astrologer_id]); // gid here refers to the outer component-level const
   useEffect(() => {
     if (!gid || !astrologer_id) return;
     const initialSeconds = rate > 0 && wallet > 0 ? Math.floor((wallet / rate) * 60) : 300;
@@ -121,6 +171,12 @@ const ChatConsultation = () => {
     return () => clearInterval(t);
   }, []);
 
+  useEffect(() => {
+    if (!gid || !userId || !astrologer_id) return;
+    const path = `Group/${gid}/${userId}/${astrologer_id}`;
+    console.log('[debug] Firebase path:', path);
+    console.log('[debug] DB instance URL:', db.app.options.databaseURL);
+  }, [gid, userId, astrologer_id]);
   /* ── Firebase listener (messages) ── */
   useEffect(() => {
     if (!gid || !userId || !astrologer_id) {
@@ -397,6 +453,22 @@ const ChatConsultation = () => {
                 style={{ position: 'static', marginRight: 6 }}>
                 <i className="fas fa-chevron-left" />
               </button>
+              {/* ── astrologer avatar ── */}
+  <div style={{
+    width: 38, height: 38, borderRadius: '50%', overflow: 'hidden',
+    flexShrink: 0, marginRight: 8,
+    background: `linear-gradient(135deg,${avColor(name)},${avColor(name)}99)`,
+    display: 'flex', alignItems: 'center', justifyContent: 'center',
+    color: '#fff', fontWeight: 700, fontSize: 14,
+  }}>
+    {profileImg && !imgErr
+      ? <img src={profileImg} alt={name}
+          style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+          onError={() => setImgErr(true)} />
+      : initials(name)
+    }
+  </div>
+              
               <div className="cc-chat-online-badge">
                 <span className="cc-chat-online-dot" />
                 <span className="cc-chat-online-text">Online</span>
