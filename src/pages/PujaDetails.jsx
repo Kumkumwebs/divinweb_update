@@ -1031,9 +1031,9 @@ const PujaDetails = () => {
           {(pujaDetails?.packages || []).map((pkg, i) => {
             const pkgImgs = [
               "/assets/img/about/devotee-woman (3).png",
-              "/assets/img/about/family.png",
-              "/assets/img/about/family.png",
-              "/assets/img/about/family.png",
+              "/assets/img/about/partner.png",
+              "/assets/img/about/familychadawa.png",
+              "/assets/img/about/familyflower.png",
             ];
             const iconMap = ["fa-user", "fa-user-friends", "fa-users", "fa-home"];
             const btnStyles = [

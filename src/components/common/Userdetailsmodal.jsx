@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import './UserDetailsModal.css';
 import { useStorage } from '../../context/StorageContext';
-import UserService from '../UserServices';
+import AuthService from '../../services/authServices';
 
 /**
  * UserDetailsModal — collect birth details before connecting
@@ -22,7 +22,7 @@ import UserService from '../UserServices';
 const UserDetailsModal = ({
   isOpen, onClose, astrologer = {}, mode = 'chat', onSubmit, onRequireLogin, initial = {},
 }) => {
-  const { isLoggedIn } = useStorage();
+  const { isLoggedIn, user } = useStorage();
 
   const [form, setForm] = useState({
     name:       initial.name       || '',
@@ -54,15 +54,19 @@ const UserDetailsModal = ({
     const loadProfile = async () => {
       try {
         setLoadingProfile(true);
-        const res = await UserService.getProfile();
-        if (!cancelled && res?.status && res.data) {
-          const p = res.data;
+        const res = await AuthService.getProfile({
+          number: user?.phone,
+          country_code: user?.country_code || '91',
+        });
+        if (!cancelled && res?.success && res.profile) {
+          const p = res.profile;
           setForm((f) => ({
-            name:       p.name       || f.name,
-            gender:     p.gender     || f.gender,
-            dob:        p.dob        || f.dob,
-            tob:        p.tob        || f.tob,
-            birthPlace: p.birthPlace || f.birthPlace,
+            name:       p.name   || f.name,
+            gender:     p.gender || f.gender,
+            dob:        p.dob    || f.dob,
+            tob:        p.tob    || f.tob,
+            // backend field is `pob` (place of birth) — map it to birthPlace
+            birthPlace: p.pob    || f.birthPlace,
           }));
         }
       } catch (err) {
@@ -100,7 +104,16 @@ const UserDetailsModal = ({
       // the "asks again after refresh" problem, since it's re-fetched
       // by the effect above the next time this modal opens, on any
       // device, as long as they're logged in.
-      await UserService.updateProfile(form);
+      await AuthService.updateProfile(
+        { number: user?.phone, country_code: user?.country_code || '91' },
+        {
+          name:   form.name,
+          gender: form.gender,
+          dob:    form.dob,
+          tob:    form.tob,
+          pob:    form.birthPlace, // map birthPlace -> pob for the backend
+        }
+      );
     } catch (err) {
       console.log(err);
       // Saving failed, but don't block them from continuing this
