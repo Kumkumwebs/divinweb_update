@@ -1,17 +1,23 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import AgoraRTC from 'agora-rtc-sdk-ng';
+import { ref, onValue, off } from 'firebase/database';
+import { db } from '../services/liveFirebase';
 import { useAudioCall } from '../context/AudioCallContext';
+import { agoraManager } from '../services/Agoramanager.';
+import apiService from '../services/apiServices';
+import SendGiftModal from './Sendgiftmodal';
 import {
   fetchAgoraToken,
   callStatusUpdate,
+  callInitiateStatus,
   addRating,
+  lastCallList,
 } from '../services/liveService';
-// ── removed: callInitiateStatus — no REST polling during call (matches Flutter) ──
 import './AudioCall.css';
 
-const AGORA_APP_ID = '8782e154141a4c0bbc8acaa3004d21f2';
+const STATUS_POLL_MS = 2000;
+const ACCEPTED_STATUSES = ['accept_astro', 'accepted', 'ongoing', 'active'];
 
 const initials = (n) => (n || '').trim().split(' ').slice(0, 2).map((w) => w[0] || '').join('').toUpperCase();
 const COLORS = ['#7c3aed', '#059669', '#dc2626', '#d97706', '#2563eb'];
@@ -22,15 +28,12 @@ const fmt = (s) => {
   const sec = String(s % 60).padStart(2, '0');
   return `${h}:${m}:${sec}`;
 };
+const fmtShort = (s) => {
+  const m = String(Math.floor(s / 60)).padStart(2, '0');
+  const sec = String(s % 60).padStart(2, '0');
+  return `${m}:${sec}`;
+};
 
-const GIFTS = [
-  { name: 'Rose', price: '₹51', icon: 'fas fa-spa', img: '/assets/img/gift/rose.png' },
-  { name: 'Fruits Basket', price: '₹101', icon: 'fas fa-apple-alt', img: '/assets/img/gift/fruits.png' },
-  { name: 'Diya', price: '₹251', icon: 'fas fa-fire', img: '/assets/img/gift/diya.png' },
-  { name: 'Puja Samagri', price: '₹501', icon: 'fas fa-pray', img: '/assets/img/gift/puja.png' },
-  { name: 'Blessings Shawl', price: '₹751', icon: 'fas fa-tshirt', img: '/assets/img/gift/shawl.png' },
-  { name: 'Premium Gift', price: '₹1100', icon: 'fas fa-gift', img: '/assets/img/gift/gift.png' },
-];
 const BARS = [
   { lbl: '5 Stars', pct: 82, color: '#f5a623' },
   { lbl: '4 Stars', pct: 13, color: '#f5a623' },
@@ -39,6 +42,66 @@ const BARS = [
   { lbl: '1 Star', pct: 1, color: '#ddd' },
 ];
 
+const TRUST_POINTS = [
+  { icon: 'fas fa-shield-alt', title: '100% Private & Secure', sub: 'Your conversation stays fully confidential' },
+  { icon: 'fas fa-user-check', title: 'Verified Astrologers', sub: 'Every expert is background-checked' },
+  { icon: 'fas fa-star', title: 'Trusted by Lakhs', sub: 'Rated 4.8+ across thousands of reviews' },
+  { icon: 'fas fa-headset', title: '24x7 Support', sub: 'We\u2019re here whenever you need us' },
+];
+
+const extractStatus = (res) =>
+  res?.results?.status ??
+  res?.status ??
+  res?.data?.status ??
+  res?.result?.status ??
+  null;
+
+// FIX: `Number(data2.difference || 0)` still has the same falsy-zero risk if
+// `difference` is ever NaN/undefined from a backend date-parsing hiccup —
+// this adds the start_time-based fallback too, matching RestoreOngoingSession.
+function resolveElapsedSeconds(data2) {
+  const diff = Number(data2?.difference);
+  if (Number.isFinite(diff) && diff >= 0) return diff;
+  if (data2?.start_time) {
+    const startMs = new Date(data2.start_time).getTime();
+    if (Number.isFinite(startMs)) {
+      return Math.max(Math.floor((Date.now() - startMs) / 1000), 0);
+    }
+  }
+  return 0;
+}
+
+// Reads CallSession/{channelId} ONCE to compute an accurate remaining-time
+// countdown, using the exact same fields ChatContext already relies on for
+// its own countdown (max_minutes / last_tick_at / started_at).
+function readCallSessionRemaining(channelId, rate, wallet) {
+  return new Promise((resolve) => {
+    try {
+      const sessionRef = ref(db, `CallSession/${channelId}`);
+      onValue(sessionRef, (snap) => {
+        off(sessionRef);
+        const d = snap.val();
+        if (!d) { resolve(0); return; }
+        const maxMinutes = d.max_minutes;
+        const lastTick = d.last_tick_at;
+        const startedAt = d.started_at;
+        if (maxMinutes != null) {
+          let secs = Math.max(Math.floor(Number(maxMinutes) * 60), 0);
+          if (lastTick) secs = Math.max(secs - Math.floor((Date.now() - Number(lastTick)) / 1000), 0);
+          resolve(secs);
+        } else if (startedAt) {
+          const maxSec = Math.floor((parseFloat(wallet) / (parseFloat(rate) || 1)) * 60);
+          resolve(Math.max(maxSec - Math.floor((Date.now() - Number(startedAt)) / 1000), 0));
+        } else {
+          resolve(0);
+        }
+      }, { onlyOnce: true });
+    } catch {
+      resolve(0);
+    }
+  });
+}
+
 const AudioCall = () => {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -46,204 +109,329 @@ const AudioCall = () => {
   const ctx = useAudioCall();
 
   const st = location.state || {};
-  const channelId = st.channelId || st.gid || ctx.callInfo?.channelId || '';
-  const astrologer_id = String(st.astrologer_id || ctx.callInfo?.astrologerId || id || '');
-  const name = st.astroName || ctx.callInfo?.astroName || 'Astrologer';
-  const pImg = st.astrologerImage || ctx.callInfo?.astroImage || '';
-  const price = st.rate || ctx.callInfo?.rate || 15;
-  const wallet = st.wallet || ctx.callInfo?.wallet || '210';
+
+  // ── Session resolution ──
+  // Three sources, tried in order:
+  //   1) AudioCallContext already has an active session for this channel
+  //      (resumed from the minimized bar — no refresh happened).
+  //   2) router state from ChatCallingScreen (normal fresh navigation).
+  //   3) NEITHER exists — this is a page refresh while sitting on this exact
+  //      URL, which wipes router state. Ask the backend what's actually
+  //      still active for this user instead of rendering a broken page.
+  const [session, setSession] = useState(null);
+  const [resolving, setResolving] = useState(true);
+  const [resolveErr, setResolveErr] = useState('');
+
+  useEffect(() => {
+    let cancelled = false;
+    // FIX: Chrome (and other browsers) preserve history.state across a
+    // plain page reload (F5) — it's the same navigation entry being
+    // reloaded, not a fresh one. That meant location.state could still
+    // look "present" right after a refresh, so the router-state branch
+    // below fired and treated it as a brand-new call (seeding
+    // initialElapsed: 0), instead of falling through to the backend
+    // recovery branch that actually restores the true elapsed time.
+    let reloaded = false;
+    try {
+      reloaded = performance.getEntriesByType('navigation')[0]?.type === 'reload';
+    } catch { /* Performance Navigation Timing not supported — assume not a reload */ }
+    console.log('[AudioCall] resolving session — reloaded:', reloaded, 'ctx.callInfo:', ctx.callInfo, 'router state (st):', st);
+    (async () => {
+      if (ctx.callInfo?.channelId) {
+        console.log('[AudioCall] using ctx.callInfo — wallet:', ctx.callInfo.wallet);
+        // Defensive fallback: if the context's wallet is missing/empty/zero
+        // for whatever reason at resume time, don't just display a fake
+        // zero — go fetch the real current balance instead.
+        let resumeWallet = ctx.callInfo.wallet;
+        if (!resumeWallet || parseFloat(resumeWallet) <= 0) {
+          console.warn('[AudioCall] ctx.callInfo.wallet was empty/zero on resume — fetching real balance from get_profile');
+          try {
+            const profile = await apiService.getBearer('https://admin.diviniq.in/user_api/get_profile');
+            resumeWallet = profile?.results?.wallet ?? profile?.results_web?.wallet ?? profile?.wallet ?? resumeWallet;
+            console.log('[AudioCall] fetched wallet for resume:', resumeWallet);
+          } catch (err) {
+            console.error('[AudioCall] failed to fetch wallet on resume:', err);
+          }
+        }
+        if (!cancelled) {
+          setSession({
+            channelId: ctx.callInfo.channelId,
+            astrologerId: ctx.callInfo.astrologerId,
+            astroName: ctx.callInfo.astroName,
+            astrologerImage: ctx.callInfo.astroImage,
+            rate: ctx.callInfo.rate,
+            wallet: resumeWallet,
+            // Same-session resume (minimized bar → reopened, no refresh
+            // happened) — the context already ticked this up correctly
+            // while minimized, so it's the authoritative value.
+            initialElapsed: ctx.elapsedSeconds || 0,
+          });
+          setResolving(false);
+        }
+        return;
+      }
+      if (!reloaded && (st.channelId || st.gid)) {
+        console.log('[AudioCall] using router state — st.wallet:', st.wallet, '(typeof:', typeof st.wallet, ')');
+        if (!cancelled) {
+          setSession({
+            channelId: st.channelId || st.gid,
+            astrologerId: st.astrologer_id || id,
+            astroName: st.astroName || 'Astrologer',
+            astrologerImage: st.astrologerImage || '',
+            rate: st.rate || 15,
+            wallet: st.wallet || '210',
+            // Fresh navigation straight from ChatCallingScreen — this really
+            // is a brand-new call, so 0 is correct here.
+            initialElapsed: 0,
+          });
+          setResolving(false);
+        }
+        return;
+      }
+      // Refresh recovery — no state anywhere. Ask the backend directly.
+      try {
+        const { result, data2 } = await lastCallList();
+        const callType = String(data2?.call_type || '').toLowerCase();
+        const status = String(data2?.status || '').toLowerCase();
+        const matchesThisAstrologer = String(data2?.astro_id || '') === String(id);
+        if (result && data2 && callType === 'audio' && ACCEPTED_STATUSES.includes(status) && matchesThisAstrologer) {
+          // FIX: data2.total_amount is a recorded transaction debit amount
+          // (often "0" mid-call, since no per-minute debit has posted yet —
+          // see the earlier note about billing ticks not being implemented
+          // server-side) — NOT the user's actual wallet balance. Using it
+          // here made the time-remaining fallback compute to 0. Fetch the
+          // real current balance instead, same call Astrologerdetail.jsx
+          // already makes.
+          let realWallet = data2.total_amount || '0';
+          try {
+            const profile = await apiService.getBearer('https://admin.diviniq.in/user_api/get_profile');
+            realWallet = profile?.results?.wallet ?? profile?.results_web?.wallet ?? profile?.wallet ?? realWallet;
+          } catch (err) {
+            console.error('[AudioCall] failed to fetch real wallet balance for countdown fallback:', err);
+          }
+
+          if (!cancelled) {
+            setSession({
+              channelId: data2.channel_id,
+              astrologerId: data2.astro_id,
+              astroName: data2.astro_name || 'Astrologer',
+              astrologerImage: data2.astro_profile_img || '',
+              rate: data2.call_rate || 15,
+              wallet: realWallet,
+              // Refresh recovery — the whole JS runtime just reloaded, so
+              // ctx.elapsedSeconds is gone (reset to 0 on the fresh
+              // AudioCallProvider mount). `difference` is elapsed seconds
+              // computed server-side (see /last_call_list), so it's the
+              // only durable source of "how long has this call actually
+              // been running" left at this point.
+              initialElapsed: resolveElapsedSeconds(data2),
+            });
+          }
+        } else {
+          console.warn('[AudioCall] refresh recovery: no matching active audio call found.', { result, data2 });
+          if (!cancelled) setResolveErr('This call session is no longer active.');
+        }
+      } catch (err) {
+        console.error('[AudioCall] refresh recovery failed:', err);
+        if (!cancelled) setResolveErr('Could not restore this call session.');
+      } finally {
+        if (!cancelled) setResolving(false);
+      }
+    })();
+    return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const channelId = session?.channelId || '';
+  const astrologer_id = String(session?.astrologerId || '');
+  const name = session?.astroName || 'Astrologer';
+  const pImg = session?.astrologerImage || '';
+  const price = session?.rate || 15;
+  const wallet = session?.wallet || '210';
+  const initialElapsed = session?.initialElapsed || 0;
 
   const [imgErr, setImgErr] = useState(false);
   const [secs, setSecs] = useState(0);
   const [muted, setMuted] = useState(false);
   const [spk, setSpk] = useState(true);
-  const [callState, setCallState] = useState('connecting');
+  const [onHold, setOnHold] = useState(false);
   const [err, setErr] = useState('');
   const [showRating, setShowRating] = useState(false);
   const [ratingScore, setRatingScore] = useState(0);
   const [ratingReview, setRatingReview] = useState('');
+  const [showGiftModal, setShowGiftModal] = useState(false);
 
-  const clientRef = useRef(null);
-  const localTrackRef = useRef(null);
-  const remoteTrackRef = useRef(null);
+  // FIX: Remaining Balance / Time Remaining were static or dependent on
+  // Firebase billing-tick fields (max_minutes/last_tick_at) nothing in the
+  // backend writes yet. Both numbers are now derived directly from the
+  // elapsed timer, which IS ticking correctly, so they move together and
+  // stay internally consistent even without server-side billing ticks.
+  const rateNum = parseFloat(price) || 0;
+  const initialWalletNum = parseFloat(wallet) || 0;
+  const consumed = rateNum > 0 ? (secs / 60) * rateNum : 0;
+  const remainingBalance = Math.max(initialWalletNum - consumed, 0);
+  const timeLeftSecs = rateNum > 0 ? Math.max(Math.floor((remainingBalance / rateNum) * 60), 0) : 0;
+
   const timerRef = useRef(null);
-  // ── removed: pollRef — zero REST polling during call (matches Flutter) ──
+  const pollRef = useRef(null);
   const endingRef = useRef(false);
   const navRef = useRef(navigate);
   useEffect(() => { navRef.current = navigate; }, [navigate]);
 
-  /* ── register active call for ActiveCallBar ── */
-  useEffect(() => {
-    if (!channelId) return;
-    ctx.startCall({
-      channelId,
-      astrologerId: astrologer_id,
-      astroName: name,
-      astroImage: pImg,
-      rate: String(price),
-      wallet: String(wallet),
-    });
-    ctx.maximize();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [channelId]);
+  const stopTimer = useCallback(() => {
+    if (timerRef.current) { clearInterval(timerRef.current); timerRef.current = null; }
+  }, []);
+  const stopStatusPoll = useCallback(() => {
+    if (pollRef.current) { clearInterval(pollRef.current); pollRef.current = null; }
+  }, []);
 
-  /* ── timer helpers ── matches Flutter _startDurationTimer / cancel ── */
-  const startTimer = useCallback(() => {
-    if (timerRef.current) return;
+  // FIX: previously always started ticking from 0 regardless of how long
+  // the call had actually been running — `secs` is local component state,
+  // reset to 0 on every mount, and this never looked at any external source
+  // of truth before starting the interval. Now takes an explicit seed value
+  // (`initialElapsed`, resolved above per-case) and applies it before the
+  // interval begins, so both "resume from minimized bar" and "recovered
+  // after a page refresh" show the real elapsed duration immediately.
+  const startElapsedTimer = useCallback((from = 0) => {
+    if (timerRef.current) return; // already running — don't reseed mid-flight
+    setSecs(from);
+    ctx.setElapsedSeconds(from);
     timerRef.current = setInterval(() => {
       setSecs((p) => { const n = p + 1; ctx.setElapsedSeconds(n); return n; });
     }, 1000);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const stopTimer = useCallback(() => {
-    if (timerRef.current) { clearInterval(timerRef.current); timerRef.current = null; }
-  }, []);
-
-  /* ── leave Agora ── matches Flutter leaveChannel + release ── */
-  const leave = useCallback(async () => {
-    try {
-      localTrackRef.current?.stop();
-      localTrackRef.current?.close();
-      localTrackRef.current = null;
-      remoteTrackRef.current?.stop();
-      remoteTrackRef.current = null;
-      await clientRef.current?.leave();
-      clientRef.current = null;
-    } catch { /* silent */ }
-  }, []);
-
-  /* ── end call ── matches Flutter end() ── */
-  const handleEnd = useCallback(async (status = 'end_user', remote = false) => {
+  const handleEnd = useCallback(async (status = null, { remote = false } = {}) => {
     if (endingRef.current) return;
     endingRef.current = true;
 
-    // matches Flutter: _durationTimer?.cancel(); _durationTimer = null;
     stopTimer();
+    stopStatusPoll();
 
-    setCallState('ended');
     ctx.setCallStatus('ended');
 
-    // only send status update when user ends (not remote) — matches Flutter
-    try { if (!remote) await callStatusUpdate(channelId, status); } catch { /* silent */ }
+    const resolvedStatus = status || (ctx.callStatus === 'connected' ? 'end_user' : 'disconnect_user');
+    try { if (!remote) await callStatusUpdate(channelId, resolvedStatus); } catch { /* silent */ }
 
-    await leave();
+    await agoraManager.leave();
     setShowRating(true);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [channelId, leave, stopTimer]);
+  }, [channelId, stopTimer, stopStatusPoll]);
 
-  /* ── join Agora ── matches Flutter init() ── */
-  const join = useCallback(async () => {
-    if (!channelId) { setErr('Missing channel id.'); return; }
+  // FIX: previously used navigate(-1), which relies on browser history —
+  // but ChatCallingScreen navigates here with { replace: true }, which
+  // erases history entries as it goes. By the time this page is open,
+  // there's often nothing meaningful left to go "back" to except Home.
+  // Navigating to a known, deterministic destination (the astrologer's
+  // page) fixes that regardless of how the user got here.
+  const handleMinimize = useCallback(() => {
+    stopStatusPoll();
+    agoraManager.clearListeners();
+    ctx.minimize();
+    navRef.current(`/astrologer/${astrologer_id}`, { replace: true });
+  }, [ctx, stopStatusPoll, astrologer_id]);
 
-    const client = AgoraRTC.createClient({ mode: 'rtc', codec: 'vp8' });
-    clientRef.current = client;
-
-    // matches Flutter: onUserJoined
-    client.on('user-published', async (user, mediaType) => {
-      await client.subscribe(user, mediaType);
-      if (mediaType === 'audio' && user.audioTrack) {
-        remoteTrackRef.current = user.audioTrack;
-
-        // matches Flutter: muteAllRemoteAudioStreams(false) called twice
-        user.audioTrack.setVolume(0);
-        user.audioTrack.play();
-        setTimeout(() => { user.audioTrack?.setVolume(100); }, 100);
-
-        setCallState('connected');
-        ctx.setCallStatus('connected');
-
-        // matches Flutter: Future.delayed(300ms) → setEnableSpeakerphone(true)
-        setTimeout(() => {
-          try { remoteTrackRef.current?.setVolume(spk ? 100 : 0); }
-          catch (e) { console.warn('[AudioCall] speaker routing failed:', e); }
-        }, 300);
-
-        // matches Flutter: _startDurationTimer() inside onUserJoined ONLY
-        startTimer();
+  const startStatusPoll = useCallback(() => {
+    if (pollRef.current) return;
+    pollRef.current = setInterval(async () => {
+      try {
+        const res = await callInitiateStatus(channelId);
+        const s = extractStatus(res);
+        if (s === 'reject_astro' || s === 'disconnect_user') {
+          handleEnd('disconnect_user', { remote: true });
+        } else if (s === 'end_astro' || s === 'end_user') {
+          handleEnd('end_user', { remote: true });
+        }
+      } catch (err) {
+        console.error('[AudioCall] status poll error:', err);
       }
-    });
+    }, STATUS_POLL_MS);
+  }, [channelId, handleEnd]);
 
-    // matches Flutter: onUserOffline (track unpublished)
-    client.on('user-unpublished', (user) => {
-      user.audioTrack?.stop();
-    });
-
-    // matches Flutter: onUserOffline (user left channel) → end call, remote=true
-    client.on('user-left', () => {
-      handleEnd('end_user', true);
-    });
-
-    // matches Flutter: onLeaveChannel → _joined = false
-    client.on('connection-state-change', (curState) => {
-      if (curState === 'DISCONNECTED') stopTimer();
-    });
-
-    try {
-      const token = await fetchAgoraToken(channelId);
-      await client.join(AGORA_APP_ID, channelId, token || null, null);
-
-      // matches Flutter: enableAudio() then joinChannel with publishMicrophoneTrack: true
-      const mic = await AgoraRTC.createMicrophoneAudioTrack();
-      localTrackRef.current = mic;
-      await client.publish([mic]);
-
-      // local joined — waiting for remote user, no timer yet (matches Flutter)
-      ctx.setCallStatus('ringing');
-
-    } catch (e) {
-      let msg = 'Could not connect to the call server.';
-      const m = e?.message || '';
-      if (m.includes('CAN_NOT_GET_GATEWAY_SERVER')) msg = 'Token rejected — check Agora App ID / Certificate.';
-      else if (m.includes('INVALID_TOKEN')) msg = 'Invalid Agora token from backend.';
-      else if (m.includes('TOKEN_EXPIRED')) msg = 'Agora token expired.';
-      setErr(msg);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [channelId, startTimer, stopTimer, handleEnd]);
-
-  /* ── mount once, cleanup on unmount ── matches Flutter didChangeDependencies + dispose ── */
+  /* ── join/attach, once session resolution finishes ── */
   useEffect(() => {
-    if (!channelId) return;
-    join();
+    if (!channelId) return; // still resolving, or resolution failed
+
+    // FIX: this used to call ctx.startCall() unconditionally on every
+    // mount — including when just reattaching to an already-running call
+    // from the minimized bar. startCall() resets callStatus back to
+    // 'connecting' and elapsedSeconds to 0, which is correct for a brand
+    // new call but wrong for a resume — it was fighting with the "already
+    // connected" branch below that tries to restore the real elapsed time.
+    // Only (re)initialize context state if this is genuinely a different
+    // session than what the context already has.
+    if (ctx.callInfo?.channelId !== channelId) {
+      ctx.startCall({
+        channelId,
+        astrologerId: astrologer_id,
+        astroName: name,
+        astroImage: pImg,
+        rate: String(price),
+        wallet: String(wallet),
+      });
+    }
+    ctx.maximize(); // we're on the full page — override any minimize from a
+                    // RestoreOngoingSession race, since this page is now the
+                    // authoritative source of truth for this channel.
+
+    agoraManager.setListeners({
+      onUserJoined: () => { /* no-op */ },
+      onAudioStarted: () => {
+        ctx.setCallStatus('connected');
+        setErr('');
+        // initialElapsed is 0 for a genuinely fresh call, or the backend's
+        // computed elapsed seconds if this connection is a refresh-recovery
+        // rejoin of an already-ongoing call. remainingBalance/timeLeftSecs
+        // above pick this up automatically since they're derived from secs.
+        startElapsedTimer(initialElapsed);
+      },
+      onUserLeft: () => {
+        handleEnd('end_astro', { remote: true });
+      },
+      onError: (msg) => setErr(msg),
+    });
+
+    if (agoraManager.isConnected && agoraManager.channelId === channelId) {
+      // Same-session resume (minimized bar reopened, no refresh happened) —
+      // AudioCallContext already ticked elapsedSeconds up correctly while
+      // minimized, so that's the value to seed from, not initialElapsed.
+      ctx.setCallStatus('connected');
+      startElapsedTimer(ctx.elapsedSeconds || initialElapsed);
+    } else {
+      fetchAgoraToken(channelId).then((token) => {
+        if (!token) { setErr('Could not get an Agora token for this call.'); return; }
+        agoraManager.join(channelId, token);
+      });
+    }
+
+    startStatusPoll();
+
     return () => {
-      // matches Flutter dispose(): cancel timer, release engine
       stopTimer();
-      leave();
+      stopStatusPoll();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [channelId]);
 
-  /* ── controls ── */
-
-  // matches Flutter: toggleMute → muteLocalAudioStream(_muted)
   const toggleMute = () => {
     const next = !muted;
     setMuted(next);
     ctx.setIsMuted(next);
-    localTrackRef.current?.setEnabled(!next);
+    agoraManager.setMuted(next);
   };
-
-  // matches Flutter: toggleSpeaker → setEnableSpeakerphone(_speakerOn)
   const toggleSpeaker = () => {
     const next = !spk;
     setSpk(next);
     ctx.setIsSpeakerOn(next);
-    remoteTrackRef.current?.setVolume(next ? 100 : 0);
+    agoraManager.setSpeaker(next);
   };
-
-  // matches Flutter: toggleHold → muteLocalAudioStream(_onHold)
   const toggleHold = () => {
-    const next = !muted;
-    setMuted(next);
-    ctx.setIsMuted(next);
-    localTrackRef.current?.setEnabled(!next);
+    const next = !onHold;
+    setOnHold(next);
+    agoraManager.setHold(next);
   };
 
-  /* ── minimize ── */
-  const handleMinimize = () => { ctx.minimize(); navRef.current(-1); };
-
-  /* ── rating ── */
   const submitRating = async () => {
     try { await addRating(channelId, ratingScore || 5, ratingReview); } catch { /* silent */ }
     ctx.endCall();
@@ -262,6 +450,38 @@ const AudioCall = () => {
   const reviews = '12,456';
   const exp = '15';
 
+  const callState = ctx.callStatus === 'connected' ? 'connected' : ctx.callStatus === 'ended' ? 'ended' : 'connecting';
+
+  // Still figuring out whether there's anything to show (refresh-recovery in flight)
+  if (resolving) {
+    return (
+      <div className="ac-page" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <div style={{ textAlign: 'center', color: '#fff' }}>
+          <div style={{ fontSize: 14, fontWeight: 600 }}>Reconnecting your call…</div>
+        </div>
+      </div>
+    );
+  }
+
+  // Resolution finished but found nothing to restore (session truly ended,
+  // or this URL doesn't correspond to an active call at all).
+  if (!channelId) {
+    return (
+      <div className="ac-page" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <div style={{ textAlign: 'center', background: '#fff', borderRadius: 16, padding: 28, maxWidth: 360 }}>
+          <div style={{ fontSize: 15, fontWeight: 700, color: '#1f2937', marginBottom: 6 }}>Call not available</div>
+          <div style={{ fontSize: 13, color: '#6b7280', marginBottom: 16 }}>{resolveErr || 'This call session is no longer active.'}</div>
+          <button
+            onClick={() => navRef.current(`/astrologer/${id}`, { replace: true })}
+            style={{ padding: '10px 20px', borderRadius: 30, border: 'none', background: '#7b1a3a', color: '#fff', fontWeight: 700, cursor: 'pointer' }}
+          >
+            Back to Astrologer
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="ac-page">
       <div className="ac-main">
@@ -277,7 +497,7 @@ const AudioCall = () => {
               { lbl: 'Language', val: lang },
               { lbl: 'Call Type', val: 'Audio Call' },
               { lbl: 'Rate', val: `₹${price} / min` },
-              { lbl: 'Remaining Balance', val: `₹${wallet}` },
+              { lbl: 'Remaining Balance', val: `₹${Math.round(remainingBalance)}` },
             ].map((r) => (
               <div key={r.lbl} className="ac-drow">
                 <div className="ac-dlbl">{r.lbl}</div>
@@ -313,13 +533,19 @@ const AudioCall = () => {
 
             <div className="ac-calltop">
               <div className="ac-calllbl">
-                {callState === 'connected' ? 'Audio Call' : callState === 'ended' ? 'Call Ended' : 'Connecting…'}
+                {callState === 'connected' ? (onHold ? 'On Hold' : 'Audio Call') : callState === 'ended' ? 'Call Ended' : 'Connecting…'}
                 <div className="ac-wave">{[1, 2, 3, 4, 5].map((i) => <div key={i} className="ac-wb" />)}</div>
               </div>
               <div className="ac-timer">{fmt(secs)}</div>
             </div>
 
             {err && <div style={{ color: '#dc2626', fontSize: 12, textAlign: 'center', marginBottom: 8 }}>{err}</div>}
+
+            {callState === 'connected' && (
+              <div style={{ textAlign: 'center', fontSize: 12, color: timeLeftSecs < 60 ? '#dc2626' : '#9ca3af', marginBottom: 8 }}>
+                Time remaining: {fmtShort(timeLeftSecs)}
+              </div>
+            )}
 
             <div className="ac-avwrap">
               <div className="ac-av">
@@ -341,15 +567,19 @@ const AudioCall = () => {
             </div>
 
             <div className="ac-ctrls">
-              <button className="ac-cb" onClick={toggleMute}>
-                <div className="ac-cico"><i className="fas fa-microphone-slash" style={{ color: muted ? '#d32f2f' : '#333' }} /></div>
-                <span className="ac-clbl">{muted ? 'Unmute' : 'Mute'}</span>
-              </button>
               <button className="ac-cb" onClick={toggleSpeaker}>
                 <div className="ac-cico"><i className={`fas ${spk ? 'fa-volume-up' : 'fa-volume-mute'}`} style={{ color: spk ? '#333' : '#d32f2f' }} /></div>
                 <span className="ac-clbl">Speaker</span>
               </button>
-              <button className="ac-cb end" onClick={() => handleEnd('end_user')}>
+              <button className="ac-cb" onClick={toggleMute}>
+                <div className="ac-cico"><i className="fas fa-microphone-slash" style={{ color: muted ? '#d32f2f' : '#333' }} /></div>
+                <span className="ac-clbl">{muted ? 'Unmute' : 'Mute'}</span>
+              </button>
+              <button className="ac-cb" onClick={toggleHold}>
+                <div className="ac-cico"><i className="fas fa-pause" style={{ color: onHold ? '#d32f2f' : '#333' }} /></div>
+                <span className="ac-clbl">{onHold ? 'Resume' : 'Hold'}</span>
+              </button>
+              <button className="ac-cb end" onClick={() => handleEnd()}>
                 <div className="ac-cico"><i className="fas fa-phone-slash" /></div>
                 <span className="ac-clbl">End Call</span>
               </button>
@@ -365,9 +595,9 @@ const AudioCall = () => {
               { icon: 'fas fa-share-alt', lbl: 'Share Details', sub: 'Share your birth details or documents' },
               { icon: 'fas fa-sticky-note', lbl: 'Notes', sub: 'Take notes during your consultation' },
               { icon: 'fas fa-record-vinyl', lbl: 'Record Call', sub: 'Record this call for your reference' },
-              { icon: 'fas fa-gift', lbl: 'Send Gift', sub: 'Show your gratitude with a gift' },
+              { icon: 'fas fa-gift', lbl: 'Send Gift', sub: 'Show your gratitude with a gift', onClick: () => setShowGiftModal(true) },
             ].map((a) => (
-              <div key={a.lbl} className="ac-act">
+              <div key={a.lbl} className="ac-act" onClick={a.onClick} style={a.onClick ? { cursor: 'pointer' } : undefined}>
                 <div className="ac-aico"><i className={a.icon} /></div>
                 <span className="ac-albl">{a.lbl}</span>
                 <span className="ac-asub">{a.sub}</span>
@@ -384,27 +614,55 @@ const AudioCall = () => {
               { lbl: 'Call Type', val: 'Audio Call' },
               { lbl: 'Rate', val: `₹${price} / min` },
               { lbl: 'Duration', val: fmt(secs) },
+              { lbl: 'Time Remaining', val: fmtShort(timeLeftSecs) },
             ].map((r) => (
               <div key={r.lbl} className="ac-srow"><div className="ac-slbl">{r.lbl}</div><div className="ac-sval">{r.val}</div></div>
             ))}
-            <div className="ac-srow"><div className="ac-slbl">Remaining Balance</div><div className="ac-sval big">₹{wallet}</div></div>
+            <div className="ac-srow"><div className="ac-slbl">Remaining Balance</div><div className="ac-sval big">₹{Math.round(remainingBalance)}</div></div>
           </motion.div>
 
-          <motion.div className="ac-gifts" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.22, delay: 0.16 }}>
-            <div className="ac-gtitle"><i className="fas fa-gift" /> Send Blessings Gift</div>
-            <div className="ac-ggrid">
-              {GIFTS.map((g) => (
-                <div key={g.name} className="ac-gitem">
-                  <div className="ac-gbox">
-                    <img src={g.img} alt={g.name}
-                      onError={(e) => { e.target.style.display = 'none'; e.target.parentNode.innerHTML = `<i class="${g.icon}"></i>`; }} />
-                  </div>
-                  <span className="ac-gname">{g.name}</span>
-                  <span className="ac-gprice">{g.price}</span>
-                </div>
-              ))}
+          <motion.div
+            initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.22, delay: 0.16 }}
+            style={{ background: '#fff', borderRadius: 12, padding: 14, boxShadow: '0 1px 4px rgba(0,0,0,0.07)' }}
+          >
+            <button
+              onClick={() => setShowGiftModal(true)}
+              style={{
+                width: '100%', padding: '12px 0', borderRadius: 10, border: 'none',
+                background: 'linear-gradient(135deg,#FF6F00,#FF9800)', color: '#fff',
+                fontWeight: 700, fontSize: 14, cursor: 'pointer',
+                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+                boxShadow: '0 4px 14px rgba(255,111,0,0.35)',
+              }}
+            >
+              <i className="fas fa-gift" /> Send a Blessing Gift
+            </button>
+          </motion.div>
+
+          <motion.div
+            initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.22, delay: 0.2 }}
+            style={{ background: '#7b1a3a', borderRadius: 12, padding: '14px 13px', boxShadow: '0 2px 8px rgba(123,26,58,0.3)' }}
+          >
+            <div style={{
+              display: 'flex', alignItems: 'center', gap: 7, fontSize: 13, fontWeight: 700,
+              color: '#fff', paddingBottom: 7, marginBottom: 10, borderBottom: '1px solid rgba(255,255,255,0.15)',
+            }}>
+              <i className="fas fa-om" style={{ fontSize: 12, color: 'rgba(255,255,255,0.7)' }} /> Why DivinIQ
             </div>
-            <button className="ac-gbtn">View More Gifts</button>
+            {TRUST_POINTS.map((t) => (
+              <div key={t.title} style={{ display: 'flex', gap: 10, alignItems: 'flex-start', marginBottom: 12 }}>
+                <div style={{
+                  width: 28, height: 28, borderRadius: '50%', background: 'rgba(255,255,255,0.12)',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
+                }}>
+                  <i className={t.icon} style={{ fontSize: 12, color: '#fff' }} />
+                </div>
+                <div>
+                  <div style={{ fontSize: 12.5, fontWeight: 700, color: '#fff', lineHeight: 1.3 }}>{t.title}</div>
+                  <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.65)', lineHeight: 1.4, marginTop: 1 }}>{t.sub}</div>
+                </div>
+              </div>
+            ))}
           </motion.div>
         </div>
 
@@ -431,6 +689,15 @@ const AudioCall = () => {
           </div>
         </div>
       )}
+
+      <SendGiftModal
+        isOpen={showGiftModal}
+        onClose={() => setShowGiftModal(false)}
+        astrologerName={name}
+        astrologerId={astrologer_id}
+        astrologerImage={pImg}
+        walletBalance={wallet}
+      />
     </div>
   );
 };

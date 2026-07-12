@@ -744,26 +744,41 @@ const AstrologerDetail = () => {
         onClose={() => setDetailsModal(null)}
         astrologer={astro}
         mode={detailsModal || 'chat'}
-        onSubmit={(details) => {
+        onSubmit={async (details) => {
           const mode = detailsModal;               // 'chat' | 'call'
           setDetailsModal(null);
+        
+          // FIX: walletBalance is set by an earlier get_profile fetch on page load
+          // — if the user clicks through quickly, before that fetch resolves,
+          // walletBalance is still its default 0. Re-fetch the real, current
+          // balance right at the moment the call actually starts instead of
+          // trusting a value that may be stale by several seconds.
+          let freshWallet = walletBalance;
+          try {
+            const w = await apiService.getBearer('https://admin.diviniq.in/user_api/get_profile');
+            freshWallet = Number(w?.results?.wallet ?? w?.results_web?.wallet ?? w?.wallet ?? walletBalance);
+          } catch (_) { /* keep last-known walletBalance */ }
+        
           navigate(`/consultation/calling/${astro.id || astro._id}`, {
             state: {
-              callType: mode,                       // ChatCallingScreen maps 'call' -> 'audio'
+              callType: mode,
               astrologer_id: astro.id || astro._id,
               name: astro.name,
               profile_img: astro.profile_img,
-              rate: astro.per_min_chat || 5,
-              wallet: walletBalance,                // plain value, not wrapped in { walletBalance }
+              // FIX: was always astro.per_min_chat, even for audio calls — should
+              // use the voice-call rate for mode === 'call'.
+              rate: mode === 'call' ? (astro.per_min_voice_call || astro.per_min_chat || 5) : (astro.per_min_chat || 5),
+              wallet: freshWallet,
               intake: {
                 name: details.name,
                 gender: details.gender,
                 dob: details.dob,
                 tob: details.tob,
-                place: details.birthPlace,          // field rename: birthPlace -> place
+                place: details.birthPlace,
               },
             },
           });
+        
         }}
       />
       {/* <UserDetailsModal

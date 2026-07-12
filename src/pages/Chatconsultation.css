@@ -125,7 +125,7 @@
   .cc-tag i { font-size: 7px; opacity: 0.5; }
   
   /* Stats */
-  .cc-stats { display: flex; flex-direction: column; gap: 6px; margin-bottom: 12px; padding: 0 2px; }
+  .cc-stats { display: flex; flex-direction: column; gap: 6px; margin-bottom: 12px; padding: 0 2px; width: 100%; }
   .cc-stat-row { display: flex; justify-content: space-between; align-items: center; }
   .cc-stat-label { display: flex; align-items: center; gap: 6px; font-size: 11.5px; color: #777; }
   .cc-stat-label i { font-size: 11px; color: #aaa; width: 14px; text-align: center; }

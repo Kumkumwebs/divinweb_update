@@ -23,6 +23,10 @@ import {
  * Whichever one sees acceptance first wins — both funnel into the same
  * handleAccepted() so we never double-navigate.
  *
+ * Every OTHER exit path — Cancel button, 60s auto-timeout, and a
+ * reject_astro response — now funnels into goToAstrologerDetails(), so
+ * they all land back on /astrologer/:id consistently.
+ *
  * Route: /consultation/calling/:id   (state carries everything below)
  */
 
@@ -77,7 +81,16 @@ const ChatCallingScreen = () => {
   const firebaseUnsubRef = useRef(null);
   const doneRef = useRef(false);
   const navRef = useRef(navigate);
+  const agoraTokenRef = useRef('');
   useEffect(() => { navRef.current = navigate; }, [navigate]);
+
+  // ── Single source of truth for "go back to astrologer details" ──
+  // Cancel, timeout (which calls cancel()), reject_astro, and a
+  // call_initiate-level rejection all route through here now, so there's
+  // exactly one place that decides where "back" means.
+  const goToAstrologerDetails = useCallback(() => {
+    navRef.current(`/astrologer/${astrologerId}`, { replace: true });
+  }, [astrologerId]);
 
   const stopAll = useCallback(() => {
     if (pollRef.current) { clearInterval(pollRef.current); pollRef.current = null; }
@@ -85,23 +98,24 @@ const ChatCallingScreen = () => {
     if (firebaseUnsubRef.current) { firebaseUnsubRef.current(); firebaseUnsubRef.current = null; }
   }, []);
 
+  // FIX: previously this only navigated to astrologer details when the
+  // disconnect_user API call succeeded (res?.status === true) — if it
+  // failed or timed out, it fell back to navigate(-1), which could land
+  // anywhere depending on browser history. Cancel (manual click OR
+  // auto-timeout, since the countdown calls cancel() too) should ALWAYS
+  // return to astrologer details, regardless of the API outcome.
   const cancel = useCallback(async (silent = false) => {
     if (doneRef.current) return;
     doneRef.current = true;
     stopAll();
     try {
-      const res = await callStatusUpdate(channelIdRef.current, 'disconnect_user'); 
+      const res = await callStatusUpdate(channelIdRef.current, 'disconnect_user');
       console.log('[cancel] status update res:', res);
-      if (res?.status === true) {
-        // Navigate back to astrologer details
-        navRef.current(`/astrologer/${astrologerId}`, { replace: true });
-        return;
-      }
     } catch (err) {
       console.error('[ChatCallingScreen] cancel() failed:', err);
     }
-    if (!silent) navRef.current(-1);
-  }, [stopAll]);
+    if (!silent) goToAstrologerDetails();
+  }, [stopAll, goToAstrologerDetails]);
 
   // Shared "accepted" handler — called from either the REST poll or the
   // Firebase fallback listener, whichever notices first.
@@ -113,6 +127,7 @@ const ChatCallingScreen = () => {
     const sessionState = {
       gid: channelId, fbchannelID: channelId, channelId,
       astrologer_id: astrologerId, astroName, astrologerImage, rate, wallet,
+      agoraToken: agoraTokenRef.current, // ← add this
       name: intake.name || '', gender: intake.gender || '',
       dob: intake.dob || '', tob: intake.tob || '',
       place: intake.place || intake.birthPlace || '',
@@ -123,13 +138,15 @@ const ChatCallingScreen = () => {
     setTimeout(() => navRef.current(path, { replace: true, state: sessionState }), 600);
   }, [stopAll, astrologerId, astroName, astrologerImage, rate, wallet, intake, callType]);
 
+  // FIX: previously navigate(-1) — a reject_astro response now lands on
+  // astrologer details too, same as Cancel/timeout.
   const handleRejected = useCallback(() => {
     if (doneRef.current) return;
     doneRef.current = true;
     stopAll();
     setStatus('rejected');
-    setTimeout(() => navRef.current(-1), 1600);
-  }, [stopAll]);
+    setTimeout(() => goToAstrologerDetails(), 1600);
+  }, [stopAll, goToAstrologerDetails]);
 
   const handleEnded = useCallback(() => {
     if (doneRef.current) return;
@@ -229,11 +246,11 @@ const ChatCallingScreen = () => {
           kundli: "1",
         });
 
-        // FIX: previously this only read res.channel_id and ignored
-        // res.status entirely — so even when the backend responded with
-        // status: false (e.g. astrologer busy/unavailable), the call would
-        // still start ringing/polling. Now we stop immediately in that case
-        // and never start a call that was never actually created.
+        // Previously this only read res.channel_id and ignored res.status
+        // entirely — so even when the backend responded with status:
+        // false (e.g. astrologer busy/unavailable), the call would still
+        // start ringing/polling. We stop immediately in that case and
+        // never start a call that was never actually created.
         if (res?.status === false) {
           console.warn('[ChatCallingScreen] call_initiate rejected — not starting call:', res?.message);
           if (!cancelled && !doneRef.current) {
@@ -241,15 +258,17 @@ const ChatCallingScreen = () => {
             stopAll();
             setStatus('rejected');
             setStatusMessage(res?.message || '');
-            setTimeout(() => navRef.current(-1), 1600);
+            // FIX: previously navigate(-1) — now goes to astrologer details.
+            setTimeout(() => goToAstrologerDetails(), 1600);
           }
           return; // never reaches startPolling/startFirebaseFallback
         }
 
         // Server returns its own channel_id — THIS is what callInitiateStatus
         // and callStatusUpdate actually expect, not the fb_channel_id we sent.
-        serverChannelId = res?.channel_id ;
+        serverChannelId = res?.channel_id;
         channelIdRef.current = serverChannelId;
+        agoraTokenRef.current = res?.fb_channel_id || ''; 
       } catch (err) {
         // Even if initiate errors, we still poll — backend may have created it.
         console.error('[ChatCallingScreen] callInitiate failed:', err);
@@ -257,9 +276,6 @@ const ChatCallingScreen = () => {
       console.log('[ChatCallingScreen] about to startPolling', serverChannelId);
       startPolling(serverChannelId);
       startFirebaseFallback(serverChannelId);
-      // if (cancelled || doneRef.current) return;
-      // channelIdRef.current = serverChannelId; // keep in sync for cancel()/status updates
-      
     })();
 
     const onPop = () => { cancel(); };
@@ -330,6 +346,7 @@ const ChatCallingScreen = () => {
     </div>
   );
 };
+
 
 /* ── inline styles (self-contained; matches DivinIq maroon theme) ── */
 const styles = {

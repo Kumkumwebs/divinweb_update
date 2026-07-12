@@ -167,11 +167,21 @@ export function ChatProvider({ children }) {
 
   const startChatTimer = useCallback(
     (info, initialSeconds) => {
-      // Same session already running — just update info + time
+      // FIX: this branch previously did `setChatTimeLeft(initialSeconds)`
+      // even when it's the SAME session already running — but
+      // Chatconsultation.jsx recomputes initialSeconds fresh from the
+      // CURRENT wallet on every mount, and since there's no real
+      // per-minute billing tick happening server-side yet, the wallet
+      // never actually decreases — so that recomputed value is always the
+      // FULL original duration. Every resume/refresh was silently
+      // resetting the countdown back to full, wiping out whatever time had
+      // actually elapsed. The context's own ticking + Firebase correction
+      // already maintains the real chatTimeLeft correctly — a resume
+      // should only update chatInfo (astrologer details etc.), never
+      // reset the timer.
       if (activeGidRef.current === info.gid) {
         chatInfoRef.current = info;
         setChatInfo(info);
-        setChatTimeLeft(initialSeconds);
         return;
       }
       if (timerRef.current) {

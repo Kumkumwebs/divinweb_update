@@ -1,17 +1,21 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useParams, useNavigate, useLocation, Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ref, onValue, push, set, update, off } from 'firebase/database';
+
+
 import { db } from '../services/liveFirebase';
 import { useChat } from '../context/ChatContext';
 import SendGiftModal from './Sendgiftmodal';
+import { ref, onValue, push, set, update, off, remove } from 'firebase/database';
 import {
   callStatusUpdate,
   addRating,
   uploadChatFile,
   buildKundliString,
+  lastCallList,
 } from '../services/liveService';
 import { getUserId, getUserName } from '../services/Liveconfig';
+import apiService from '../services/apiServices';
 import './ChatConsultation.css';
 
 /* ── helpers ── */
@@ -97,7 +101,13 @@ const EMOJI_LIST = [
   '🙏', '👍', '👏', '🤝', '❤️', '🔥', '🎉', '🙌', '😢', '😅', '🤔', '😴',
   '🌸', '✨', '🕉️', '😇', '🥰', '😜',
 ];
-
+const GIFT_EMOJI = {
+  flowers: '🌹', namaste: '🙏', dakshina: '💰', 'pooja thali': '🍱',
+  kalash: '🪔', gemstone: '💎', sweets: '🍬', shivling: '🛕',
+  rose: '🌹', 'fruits basket': '🧺', diya: '🪔', 'puja samagri': '🍱',
+  'blessings shawl': '🧣', 'premium gift': '🎁',
+};
+const emojiFor = (t) => GIFT_EMOJI[(t || '').trim().toLowerCase()] || '🎁';
 function EmojiPicker({ pickerRef, onSelect }) {
   return (
     <div ref={pickerRef} className="cc-emoji-picker">
@@ -325,28 +335,185 @@ const ChatConsultation = () => {
   const fileRef = useRef(null);
   const chatCtx = useChat();
 
-  /* ── resolve session ── */
+  /* ── resolve session ──
+     FIX: previously this was purely synchronous — st.wallet ||
+     chatCtx.chatInfo?.wallet || 0 — with no fallback for when BOTH are
+     empty, which is exactly what happens on a real page refresh (the whole
+     ChatProvider resets, wiping chatCtx.chatInfo; and Chrome can either
+     preserve or drop location.state across a reload depending on how the
+     page got there). Now mirrors AudioCall.jsx's three-tier resolution:
+       1) chatCtx.chatInfo already has this session (resume, no refresh)
+       2) router state present AND this isn't an actual page reload (fresh
+          navigation from Astrologerdetail/wherever)
+       3) otherwise — ask the backend directly via last_call_list, and
+          fetch the real wallet balance rather than trusting any stale
+          transaction-amount field. */
   const st = location.state || {};
-  const gid = st.gid || chatCtx.chatInfo?.gid || '';
-  const astrologer_id = String(st.astrologer_id || chatCtx.chatInfo?.astrologer_id || id || '');
-  const name = st.astroName || chatCtx.chatInfo?.astroName || 'Astrologer';
-  const profileImg = st.astrologerImage || chatCtx.chatInfo?.astrologerImage || '';
-  const rate = parseFloat(st.rate || chatCtx.chatInfo?.rate || 5);
-  const wallet = parseFloat(st.wallet || chatCtx.chatInfo?.wallet || 0);
-  const intake = {
-    name: st.name || '',
-    gender: st.gender || '',
-    dob: st.dob || '',
-    tob: st.tob || '',
-    place: st.place || st.birthPlace || '',
-  };
+  const ACCEPTED_STATUSES = ['accept_astro', 'accepted', 'ongoing', 'active'];
+
+  // Same robust resolver used for audio — prefers the backend's precomputed
+  // `difference` field, but only if it's a genuinely valid non-negative
+  // number (a valid 0 early in a call shouldn't be treated as "no data"),
+  // falling back to computing from start_time otherwise.
+  function resolveElapsedSeconds(data2) {
+    const diff = Number(data2?.difference);
+    if (Number.isFinite(diff) && diff >= 0) return diff;
+    if (data2?.start_time) {
+      const startMs = new Date(data2.start_time).getTime();
+      if (Number.isFinite(startMs)) {
+        return Math.max(Math.floor((Date.now() - startMs) / 1000), 0);
+      }
+    }
+    return 0;
+  }
+
+  const [session, setSession] = useState(null);
+  const [resolving, setResolving] = useState(true);
+  const [resolveErr, setResolveErr] = useState('');
+
+  useEffect(() => {
+    let cancelled = false;
+    let reloaded = false;
+    try {
+      reloaded = performance.getEntriesByType('navigation')[0]?.type === 'reload';
+    } catch { /* Performance Navigation Timing not supported — assume not a reload */ }
+    console.log('[ChatConsultation] resolving session — reloaded:', reloaded, 'chatCtx.chatInfo:', chatCtx.chatInfo, 'router state (st):', st);
+
+    (async () => {
+      // 1) Same-session resume — chatCtx already tracking this chat.
+      if (chatCtx.chatInfo?.gid) {
+        let w = parseFloat(chatCtx.chatInfo.wallet || 0);
+        if (!w || w <= 0) {
+          console.warn('[ChatConsultation] chatCtx.chatInfo.wallet was empty/zero on resume — fetching real balance');
+          try {
+            const profile = await apiService.getBearer('https://admin.diviniq.in/user_api/get_profile');
+            w = parseFloat(profile?.results?.wallet ?? profile?.results_web?.wallet ?? profile?.wallet ?? 0);
+          } catch (err) {
+            console.error('[ChatConsultation] failed to fetch wallet on resume:', err);
+          }
+        }
+        if (!cancelled) {
+          setSession({
+            gid: chatCtx.chatInfo.gid,
+            fbchannelID: chatCtx.chatInfo.fbchannelID || chatCtx.chatInfo.gid,
+            astrologer_id: String(chatCtx.chatInfo.astrologer_id || id || ''),
+            name: chatCtx.chatInfo.astroName || 'Astrologer',
+            profileImg: chatCtx.chatInfo.astrologerImage || '',
+            rate: parseFloat(chatCtx.chatInfo.rate || 5),
+            wallet: w,
+            intake: {
+              name: chatCtx.chatInfo.name || '',
+              gender: chatCtx.chatInfo.gender || '',
+              dob: chatCtx.chatInfo.dob || '',
+              tob: chatCtx.chatInfo.tob || '',
+              place: chatCtx.chatInfo.place || '',
+            },
+            initialElapsed: 0, // unused here — ChatContext skips reseeding on same-gid resume
+          });
+          setResolving(false);
+        }
+        return;
+      }
+
+      // 2) Fresh navigation from ChatCallingScreen/Astrologerdetail — but
+      // NOT if this is actually a page reload (Chrome can preserve
+      // history.state across F5, making stale state look "present").
+      if (!reloaded && st.gid) {
+        if (!cancelled) {
+          setSession({
+            gid: st.gid,
+            fbchannelID: st.gid,
+            astrologer_id: String(st.astrologer_id || id || ''),
+            name: st.astroName || 'Astrologer',
+            profileImg: st.astrologerImage || '',
+            rate: parseFloat(st.rate || 5),
+            wallet: parseFloat(st.wallet || 0),
+            intake: {
+              name: st.name || '',
+              gender: st.gender || '',
+              dob: st.dob || '',
+              tob: st.tob || '',
+              place: st.place || st.birthPlace || '',
+            },
+            initialElapsed: 0, // genuinely a fresh call
+          });
+          setResolving(false);
+        }
+        return;
+      }
+
+      // 3) Refresh recovery — neither context nor usable router state.
+      // Ask the backend what's actually still active for this user.
+      try {
+        const { result, data2 } = await lastCallList();
+        const callType = String(data2?.call_type || '').toLowerCase();
+        const status = String(data2?.status || '').toLowerCase();
+        const matchesThisAstrologer = String(data2?.astro_id || '') === String(id);
+
+        if (result && data2 && callType === 'chat' && ACCEPTED_STATUSES.includes(status) && matchesThisAstrologer) {
+          // data2.total_amount is a transaction debit amount (often "0"
+          // mid-session, since no per-minute debit has posted yet) — NOT
+          // the user's real balance. Fetch that separately.
+          let realWallet = data2.total_amount || '0';
+          try {
+            const profile = await apiService.getBearer('https://admin.diviniq.in/user_api/get_profile');
+            realWallet = profile?.results?.wallet ?? profile?.results_web?.wallet ?? profile?.wallet ?? realWallet;
+          } catch (err) {
+            console.error('[ChatConsultation] failed to fetch real wallet balance:', err);
+          }
+
+          if (!cancelled) {
+            setSession({
+              gid: data2.channel_id,
+              fbchannelID: data2.fb_channel_id || data2.channel_id,
+              astrologer_id: String(data2.astro_id || ''),
+              name: data2.astro_name || 'Astrologer',
+              profileImg: data2.astro_profile_img || '',
+              rate: parseFloat(data2.call_rate || 5),
+              wallet: parseFloat(realWallet || 0),
+              intake: { name: '', gender: '', dob: '', tob: '', place: '' },
+              initialElapsed: resolveElapsedSeconds(data2),
+            });
+          }
+        } else {
+          console.warn('[ChatConsultation] refresh recovery: no matching active chat session found.', { result, data2 });
+          if (!cancelled) setResolveErr('This chat session is no longer active.');
+        }
+      } catch (err) {
+        console.error('[ChatConsultation] refresh recovery failed:', err);
+        if (!cancelled) setResolveErr('Could not restore this chat session.');
+      } finally {
+        if (!cancelled) setResolving(false);
+      }
+    })();
+
+    return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const gid = session?.gid || '';
+  const astrologer_id = String(session?.astrologer_id || '');
+  const name = session?.name || 'Astrologer';
+  const profileImg = session?.profileImg || '';
+  const rate = session?.rate || 5;
+  const wallet = session?.wallet || 0;
+  const intake = session?.intake || { name: '', gender: '', dob: '', tob: '', place: '' };
 
   const userId = resolveUserId();
 
   const [messages, setMessages] = useState([]);
   const [messageText, setMessageText] = useState('');
   const [imgErr, setImgErr] = useState(false);
-  const [elapsedSecs, setElapsedSecs] = useState(0);
+  // FIX: previously elapsedSecs was a separate local counter
+  // (setInterval ticking up from 0 on every mount), completely disconnected
+  // from chatCtx.chatTimeLeft — the value that's ACTUALLY Firebase-synced
+  // via ChatContext's correction logic. That meant "Time Elapsed" always
+  // reset to 0 on resume/refresh (same bug audio had), and its own
+  // "Remaining Balance" calc could disagree with the real synced value.
+  // Now both are derived from chatCtx.chatTimeLeft directly — one
+  // authoritative source, no separate counter to fall out of sync.
+  const maxSeconds = rate > 0 ? Math.floor((wallet / rate) * 60) : 0;
+  const elapsedSecs = Math.max(maxSeconds - (chatCtx.chatTimeLeft || 0), 0);
   const [sending, setSending] = useState(false);
   const [previewImage, setPreviewImage] = useState(null);
   const [showRating, setShowRating] = useState(false);
@@ -405,14 +572,19 @@ const ChatConsultation = () => {
   const [notes, setNotes] = useState([]);
   const [showNoteInput, setShowNoteInput] = useState(false);
   const [noteDraft, setNoteDraft] = useState('');
-
-  const handleSaveNote = () => {
-    const text = noteDraft.trim();
-    if (!text) { setShowNoteInput(false); return; }
-    setNotes((prev) => [...prev, { id: `${Date.now()}-${Math.random()}`, text }]);
-    setNoteDraft('');
-    setShowNoteInput(false);
-  };
+  useEffect(() => {
+    if (!gid || !userId) return;
+    const path = notesPath(gid, userId);
+    const notesRef = ref(db, path);
+    onValue(notesRef, (snap) => {
+      const data = snap.val();
+      if (!data) { setNotes([]); return; }
+      const list = Object.entries(data).map(([key, val]) => ({ id: key, text: val.text }));
+      setNotes(list);
+    });
+    return () => off(notesRef);
+  }, [gid, userId]);
+ 
   const kundliSentRef = useRef(false);
   const endingRef = useRef(false);
   const typingTimeoutRef = useRef(null);
@@ -436,58 +608,93 @@ const ChatConsultation = () => {
   }, [gid, astrologer_id]);
 
 
-   useEffect(() => {
+  useEffect(() => {
     let cancelled = false;
     (async () => {
       try {
         const resp = await apiService.getBearer('https://admin.diviniq.in/user_api/get_gifts');
-        // Backend may return the list under `data`, `results`, or at the root.
+        console.log('[get_gifts] raw response:', resp); // ← check this in devtools
         const arr = resp?.data ?? resp?.results ?? (Array.isArray(resp) ? resp : []);
         if (!cancelled && Array.isArray(arr) && arr.length > 0) {
           setGiftList(arr.map(g => ({
-            _id: g._id,           // keep the REAL server id — this is what gift_transaction needs
+            _id: g._id,
             title: g.title,
             price: g.price,
             image: g.image,
             emoji: emojiFor(g.title),
           })));
+        } else {
+          console.warn('[get_gifts] empty or unrecognized shape, keeping static fallback:', resp);
         }
-      } catch (_) {
-        // keep STATIC_GIFTS
+      } catch (err) {
+        console.error('[get_gifts] request FAILED:', err?.response?.status, err?.response?.data || err.message);
       }
     })();
     return () => { cancelled = true; };
   }, []);
 
-  /* ── start session timer (also drives ActiveChatBar) ── */
+  /* ── start session timer (also drives ActiveChatBar) ──
+     FIX: `wallet` was resolved synchronously at render time
+     (st.wallet || chatCtx.chatInfo?.wallet || 0) with no verification — if
+     that came back 0/empty (e.g. resuming from ActiveChatBar with a stale
+     context value, or a fresh call where the wallet fetch upstream hadn't
+     resolved yet), initialSeconds fell to a hardcoded 300 ("always 5:00"),
+     and — worse for chat specifically — ChatContext's local countdown ends
+     the session entirely once it hits 0, so a bad wallet value here doesn't
+     just look wrong, it can prematurely kill an active chat. Now verifies
+     wallet before seeding, fetching the real balance if it looks empty. */
   useEffect(() => {
     if (!gid || !astrologer_id) return;
-    const initialSeconds = rate > 0 && wallet > 0 ? Math.floor((wallet / rate) * 60) : 300;
-    chatCtx.startChatTimer(
-      {
-        gid,
-        fbchannelID: gid,
-        astrologer_id,
-        astroName: name,
-        astrologerImage: profileImg,
-        rate: String(rate),
-        wallet: String(wallet),
-        name: intake.name,
-        gender: intake.gender,
-        dob: intake.dob,
-        tob: intake.tob,
-        place: intake.place,
-      },
-      initialSeconds
-    );
+    let cancelled = false;
+    (async () => {
+      let realWallet = wallet;
+      if (!realWallet || realWallet <= 0) {
+        console.warn('[ChatConsultation] resolved wallet was empty/zero — fetching real balance from get_profile');
+        try {
+          const profile = await apiService.getBearer('https://admin.diviniq.in/user_api/get_profile');
+          realWallet = parseFloat(profile?.results?.wallet ?? profile?.results_web?.wallet ?? profile?.wallet ?? 0);
+          console.log('[ChatConsultation] fetched wallet:', realWallet);
+        } catch (err) {
+          console.error('[ChatConsultation] failed to fetch wallet:', err);
+        }
+      }
+      if (cancelled) return;
+
+      // FIX: previously always seeded the FULL wallet/rate duration,
+      // ignoring how much time had already elapsed (session?.initialElapsed
+      // — real elapsed seconds on a refresh-recovery rejoin, 0 for a
+      // genuinely fresh call). Combined with the ChatContext fix (which
+      // now skips reseeding entirely for a same-gid resume), this means:
+      // resume in the same tab → timer untouched (already correct);
+      // refresh → timer seeded honestly at (maxSeconds - realElapsed), not
+      // always the full duration.
+      const maxSeconds = rate > 0 && realWallet > 0 ? Math.floor((realWallet / rate) * 60) : 300;
+      const initialSeconds = Math.max(maxSeconds - (session?.initialElapsed || 0), 0);
+      chatCtx.startChatTimer(
+        {
+          gid,
+          fbchannelID: gid,
+          astrologer_id,
+          astroName: name,
+          astrologerImage: profileImg,
+          rate: String(rate),
+          wallet: String(realWallet),
+          name: intake.name,
+          gender: intake.gender,
+          dob: intake.dob,
+          tob: intake.tob,
+          place: intake.place,
+        },
+        initialSeconds
+      );
+    })();
+    return () => { cancelled = true; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [gid, astrologer_id]);
 
-  /* ── local elapsed counter ── */
-  useEffect(() => {
-    const t = setInterval(() => setElapsedSecs((p) => p + 1), 1000);
-    return () => clearInterval(t);
-  }, []);
+  /* Elapsed time is now a derived value (see maxSeconds/elapsedSecs above),
+     recalculated automatically on every render as chatCtx.chatTimeLeft
+     ticks — no separate interval needed here anymore. */
 
   /* ── Firebase listener (messages) ── */
   useEffect(() => {
@@ -599,6 +806,30 @@ const ChatConsultation = () => {
     return () => document.removeEventListener('mousedown', handler);
   }, [showEmojiPicker]);
 
+  // Notes path mirrors your Group/Typing convention: Notes/{gid}/{userId}
+const notesPath = (gid, userId) => `Notes/${gid}/${userId}`;
+
+const saveNoteToFirebase = useCallback(async (text) => {
+  if (!gid || !userId) return;
+  const path = notesPath(gid, userId);
+  const noteId = push(ref(db, path)).key;
+  if (!noteId) {
+    console.error('[ChatConsultation] push() returned no key for note — check path:', path);
+    return;
+  }
+  const body = {
+    text,
+    from: userId,
+    to: astrologer_id,
+    date_time: Date.now(),
+  };
+  try {
+    await set(ref(db, `${path}/${noteId}`), body);
+  } catch (err) {
+    console.error('[ChatConsultation] Failed to save note to Firebase:', err, { path, body });
+  }
+}, [gid, userId, astrologer_id]);
+
   /* ── send message (writes both sides) ── */
   const sendFirebaseMessage = useCallback(
     async (content, type = 'text') => {
@@ -634,6 +865,15 @@ const ChatConsultation = () => {
     [gid, userId, astrologer_id]
   );
 
+  const handleSaveNote = () => {
+    const text = noteDraft.trim();
+    if (!text) { setShowNoteInput(false); return; }
+    const note = { id: `${Date.now()}-${Math.random()}`, text };
+    setNotes((prev) => [...prev, note]);
+    saveNoteToFirebase(text); // persist so the astrologer can see it too
+    setNoteDraft('');
+    setShowNoteInput(false);
+  };
   /* ── kundli auto-message (once) ── */
   useEffect(() => {
     if (kundliSentRef.current) return;
@@ -808,7 +1048,11 @@ const ChatConsultation = () => {
     navigate('/', { replace: true });
   };
 
-  const remainingBalance = Math.max(0, Math.round(wallet - (elapsedSecs / 60) * rate));
+  // FIX: previously computed from the disconnected local elapsedSecs
+  // counter — now derived from chatCtx.chatTimeLeft, the same synced
+  // source elapsedSecs itself is now derived from, so this and "Time
+  // Elapsed" can never disagree with each other or with the real balance.
+  const remainingBalance = rate > 0 ? Math.max(0, Math.round(((chatCtx.chatTimeLeft || 0) / 60) * rate)) : 0;
 
   const renderBubble = (msg) => {
     if (msg.type === 'image') {
@@ -832,6 +1076,33 @@ const ChatConsultation = () => {
       </React.Fragment>
     ));
   };
+
+  if (resolving) {
+    return (
+      <div className="cc-page" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '60vh' }}>
+        <div style={{ textAlign: 'center', color: '#6b7280' }}>
+          <div style={{ fontSize: 14, fontWeight: 600 }}>Reconnecting your chat…</div>
+        </div>
+      </div>
+    );
+  }
+
+  if (!gid) {
+    return (
+      <div className="cc-page" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '60vh' }}>
+        <div style={{ textAlign: 'center', background: '#fff', borderRadius: 16, padding: 28, maxWidth: 360 }}>
+          <div style={{ fontSize: 15, fontWeight: 700, color: '#1f2937', marginBottom: 6 }}>Chat not available</div>
+          <div style={{ fontSize: 13, color: '#6b7280', marginBottom: 16 }}>{resolveErr || 'This chat session is no longer active.'}</div>
+          <button
+            onClick={() => navigate(`/astrologer/${id}`, { replace: true })}
+            style={{ padding: '10px 20px', borderRadius: 30, border: 'none', background: '#7b1a3a', color: '#fff', fontWeight: 700, cursor: 'pointer' }}
+          >
+            Back to Astrologer
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="cc-page">
@@ -904,7 +1175,10 @@ const ChatConsultation = () => {
                 {notes.map((n) => (
                   <div key={n.id} className="cc-note-item">
                     <span>{n.text}</span>
-                    <button type="button" onClick={() => setNotes((prev) => prev.filter((x) => x.id !== n.id))} aria-label="Delete note">
+                    <button type="button" onClick={() => {
+  setNotes((prev) => prev.filter((x) => x.id !== n.id));
+  if (gid && userId) remove(ref(db, `${notesPath(gid, userId)}/${n.id}`)).catch(() => {});
+}} aria-label="Delete note">
                       <i className="fas fa-times" />
                     </button>
                   </div>

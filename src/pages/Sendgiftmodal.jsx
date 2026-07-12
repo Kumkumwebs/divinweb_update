@@ -168,6 +168,10 @@ export function SendGiftModal({
   const [error, setError] = useState("");
   const [imgFailed, setImgFailed] = useState({});
 
+  // Priority order every time the modal opens (or the parent's gift list changes):
+  //   1) giftsProp passed from the parent (already has real API _ids/images)
+  //   2) this component's own get_gifts fetch, if no usable prop was passed
+  //   3) STATIC_GIFTS, only as a last-resort fallback if both of the above fail
   useEffect(() => {
     if (!open) return;
     setSel(null);
@@ -175,17 +179,21 @@ export function SendGiftModal({
     setSentGift(null);
     setError("");
 
-    // If the parent already loaded gifts (with real _ids), use them and skip the fetch.
     if (Array.isArray(giftsProp) && giftsProp.length > 0) {
+      console.log('[SendGiftModal] using giftsProp from parent:', giftsProp);
       setGifts(giftsProp.map(normGift));
       return;
     }
 
+    console.log('[SendGiftModal] no giftsProp — fetching get_gifts directly');
     apiService.getBearer(`${API}/user_api/get_gifts`)
       .then((res) => {
+        console.log('[SendGiftModal] get_gifts response:', res);
         const raw = res?.data ?? res?.results ?? [];
         if (Array.isArray(raw) && raw.length > 0) {
           setGifts(raw.map(normGift));
+        } else {
+          console.warn('[SendGiftModal] get_gifts returned empty/unrecognized shape, using STATIC_GIFTS fallback');
         }
       })
       .catch((err) => console.warn("[GetGifts] failed, static fallback:", err.message));

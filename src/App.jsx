@@ -54,6 +54,7 @@ import { LanguageProvider } from './context/LanguageContext';
 import Orders from './pages/Orders';
 import BlogList from './pages/BlogList';
 import BlogDetail from './pages/BlogDetail';
+import RestoreOngoingSession from './pages/RestoreOngoingSession';
 
 function NotFound() {
 	return (
@@ -156,6 +157,7 @@ function App() {
 			</Routes>
 			    <ActiveCallBar /> 
           <ActiveChatBar />
+		  <RestoreOngoingSession/>
 		</Router>
 		 </ChatProvider>
     </AudioCallProvider>
