@@ -4,6 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { ref, onValue, push, set, update, off } from 'firebase/database';
 import { db } from '../services/liveFirebase';
 import { useChat } from '../context/ChatContext';
+import SendGiftModal from './Sendgiftmodal';
 import {
   callStatusUpdate,
   addRating,
@@ -39,11 +40,8 @@ const groupPath = (gid, a, b) => `Group/${gid}/${a}/${b}`;
 // (as the reference does) if Liveconfig's getUserId()/getUserName() ever
 // come back empty, rather than silently breaking every downstream path.
 const resolveUserId = () => {
-  // 1. try Liveconfig
   const fromConfig = getUserId();
   if (fromConfig) return String(fromConfig);
-
-  // 2. read from sessionStorage (where StorageContext saves it)
   try {
     const raw = sessionStorage.getItem('user');
     if (raw) {
@@ -52,14 +50,12 @@ const resolveUserId = () => {
       if (uid) return String(uid);
     }
   } catch { /* silent */ }
-
   return '';
 };
 
 const resolveUserName = () => {
   const fromConfig = getUserName();
   if (fromConfig) return fromConfig;
-
   try {
     const raw = sessionStorage.getItem('user');
     if (raw) {
@@ -67,15 +63,259 @@ const resolveUserName = () => {
       return parsed?.name || parsed?.full_name || parsed?.username || 'User';
     }
   } catch { /* silent */ }
-
   return 'User';
 };
-
 
 // How long to wait after the last keystroke before clearing the typing flag —
 // mirrors a normal debounce so we're not writing to Firebase on every keypress.
 const TYPING_IDLE_MS = 2000;
 
+// ── Personal-info detection (phone / email / link) ──
+// Regexes are created fresh on every call (not module-level `g` constants)
+// because a shared global-flag RegExp keeps `lastIndex` state between
+// .test() calls, which silently causes alternating true/false/true results
+// on repeated input — a classic gotcha that would let every other message
+// through undetected.
+const containsPersonalInfo = (text) => {
+  const phoneRegex = /(\+?\d[\d\s\-().]{7,}\d)/g;
+  const emailRegex = /[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}/g;
+  const websiteRegex = /(https?:\/\/|www\.)[^\s]+/gi;
+  // Catches bare domains too (e.g. "reach me at rohit.in" or "insta: x.com/y")
+  // even without a protocol or "www." prefix.
+  const bareDomainRegex = /\b[a-zA-Z0-9-]+\.(com|in|net|org|co|io|me|app|xyz|info|biz)(\/[^\s]*)?\b/gi;
+  return (
+    phoneRegex.test(text) ||
+    emailRegex.test(text) ||
+    websiteRegex.test(text) ||
+    bareDomainRegex.test(text)
+  );
+};
+
+// ── Emoji picker data + component ──
+const EMOJI_LIST = [
+  '😀', '😁', '😂', '🤣', '😊', '🙂', '😉', '😍', '😘', '😎', '🤩', '🥳',
+  '🙏', '👍', '👏', '🤝', '❤️', '🔥', '🎉', '🙌', '😢', '😅', '🤔', '😴',
+  '🌸', '✨', '🕉️', '😇', '🥰', '😜',
+];
+
+function EmojiPicker({ pickerRef, onSelect }) {
+  return (
+    <div ref={pickerRef} className="cc-emoji-picker">
+      <div className="cc-emoji-grid">
+        {EMOJI_LIST.map((e) => (
+          <button
+            key={e}
+            type="button"
+            className="cc-emoji-item"
+            onClick={() => onSelect(e)}
+          >
+            {e}
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// ── Toast notifications (top-right) — used to confirm image/audio sends ──
+let toastCounter = 0;
+
+function ToastContainer({ toasts, onRemove }) {
+  if (toasts.length === 0) return null;
+  return (
+    <div className="cc-toast-container">
+      {toasts.map((t) => (
+        <div key={t.id} className={`cc-toast cc-toast--${t.type}`}>
+          <i className={`fas ${t.type === 'error' ? 'fa-circle-exclamation' : 'fa-circle-check'}`} />
+          <span>{t.message}</span>
+          <button
+            type="button"
+            className="cc-toast-close"
+            onClick={() => onRemove(t.id)}
+            aria-label="Dismiss"
+          >
+            <i className="fas fa-times" />
+          </button>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+// ── Custom audio player bubble (play button + progress + time) ──
+//
+// Chrome (and browsers sharing its media stack) has a known quirk with
+// MediaRecorder-produced blobs: audio.duration reads as Infinity right
+// after loadedmetadata fires, because the container has no duration in
+// its header — the browser only knows the real length once it has
+// scanned to the end at least once. That's why duration showed as
+// "--:--" for a freshly recorded clip but worked for one that had
+// already been played/seeked. The fix is the standard workaround: force
+// a seek to a huge timestamp, let the browser resolve the real duration
+// on the resulting timeupdate, then seek back to 0 — all before the
+// user ever notices, since we never set isPlaying during this.
+function AudioPlayer({ src, onReady }) {
+  const audioRef = useRef(null);
+  const fixingDurationRef = useRef(false);
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [progress, setProgress] = useState(0);
+  const [duration, setDuration] = useState(0);
+  const [currentTime, setCurrentTime] = useState(0);
+  const [error, setError] = useState(false);
+
+  useEffect(() => {
+    // Fire once on mount so the parent can re-scroll once this bubble
+    // has real height (before this, the bubble may still be collapsed).
+    onReady && onReady();
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const fmt = (s) =>
+    !isFinite(s) || s <= 0
+      ? '0:00'
+      : `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, '0')}`;
+
+  useEffect(() => {
+    const audio = audioRef.current;
+    if (!audio) return;
+
+    const applyDuration = (d) => {
+      if (isFinite(d) && d > 0) setDuration(d);
+    };
+
+    const fixInfiniteDuration = () => {
+      if (fixingDurationRef.current) return;
+      fixingDurationRef.current = true;
+      audio.currentTime = 1e101;
+      const onTimeUpdate = () => {
+        audio.removeEventListener('timeupdate', onTimeUpdate);
+        applyDuration(audio.duration);
+        audio.currentTime = 0;
+        fixingDurationRef.current = false;
+      };
+      audio.addEventListener('timeupdate', onTimeUpdate);
+    };
+
+    const handleMeta = () => {
+      const d = audio.duration;
+      if (isFinite(d) && d > 0) applyDuration(d);
+      else if (d === Infinity || isNaN(d)) fixInfiniteDuration();
+    };
+
+    audio.addEventListener('loadedmetadata', handleMeta);
+    audio.addEventListener('durationchange', handleMeta);
+    audio.addEventListener('canplay', handleMeta);
+    handleMeta();
+
+    return () => {
+      audio.removeEventListener('loadedmetadata', handleMeta);
+      audio.removeEventListener('durationchange', handleMeta);
+      audio.removeEventListener('canplay', handleMeta);
+    };
+  }, [src]);
+
+  const toggle = async () => {
+    const audio = audioRef.current;
+    if (!audio) return;
+    try {
+      if (isPlaying) {
+        audio.pause();
+        setIsPlaying(false);
+      } else {
+        await audio.play();
+        setIsPlaying(true);
+      }
+    } catch (e) {
+      console.error('[AudioPlayer] play error:', e);
+      setError(true);
+    }
+  };
+
+  if (error) {
+    return (
+      <a href={src} target="_blank" rel="noopener noreferrer" className="cc-audio-fallback">
+        Open audio ↗
+      </a>
+    );
+  }
+
+  return (
+    <div className="cc-audio-player">
+      <audio
+        ref={audioRef}
+        src={src}
+        preload="metadata"
+        crossOrigin="anonymous"
+        onTimeUpdate={() => {
+          // Ignore updates fired by the silent duration-fix seek — only
+          // react to real playback progress.
+          if (fixingDurationRef.current) return;
+          const a = audioRef.current;
+          if (!a) return;
+          setCurrentTime(a.currentTime);
+          if (isFinite(a.duration) && a.duration > 0) {
+            setProgress((a.currentTime / a.duration) * 100);
+          }
+        }}
+        onEnded={() => {
+          setIsPlaying(false);
+          setProgress(0);
+          setCurrentTime(0);
+        }}
+        onError={() => setError(true)}
+      />
+
+      <button type="button" className="cc-audio-toggle" onClick={toggle}>
+        {isPlaying ? (
+          <i className="fas fa-pause" />
+        ) : (
+          <i className="fas fa-play" />
+        )}
+      </button>
+
+      <div className="cc-audio-track">
+        <div
+          className="cc-audio-bar"
+          onClick={(e) => {
+            const audio = audioRef.current;
+            if (!audio || !duration) return;
+            const rect = e.currentTarget.getBoundingClientRect();
+            audio.currentTime = ((e.clientX - rect.left) / rect.width) * duration;
+          }}
+        >
+          <div className="cc-audio-fill" style={{ width: `${progress}%` }} />
+        </div>
+        <div className="cc-audio-time">
+          <span>{fmt(currentTime)}</span>
+          <span>{fmt(duration)}</span>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// Pick the best MediaRecorder mime type the browser actually supports.
+function getSupportedMimeType() {
+  const types = [
+    'audio/webm;codecs=opus',
+    'audio/webm',
+    'audio/ogg;codecs=opus',
+    'audio/ogg',
+    'audio/mp4',
+  ];
+  for (const t of types) {
+    if (window.MediaRecorder && MediaRecorder.isTypeSupported(t)) return t;
+  }
+  return '';
+}
+
+const STATIC_GIFTS = [
+  { _id: 'rose', title: 'Rose', price: 51, image: '/assets/img/gift/rose.png', emoji: '🌹' },
+  { _id: 'fruits', title: 'Fruits Basket', price: 101, image: '/assets/img/gift/fruits.png', emoji: '🧺' },
+  { _id: 'diya', title: 'Diya', price: 251, image: '/assets/img/gift/diya.png', emoji: '🪔' },
+  { _id: 'puja', title: 'Puja Samagri', price: 501, image: '/assets/img/gift/puja.png', emoji: '🍱' },
+  { _id: 'shawl', title: 'Blessings Shawl', price: 751, image: '/assets/img/gift/shawl.png', emoji: '🧣' },
+  { _id: 'premium', title: 'Premium Gift', price: 1100, image: '/assets/img/gift/gift.png', emoji: '🎁' },
+];
 const ChatConsultation = () => {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -84,7 +324,6 @@ const ChatConsultation = () => {
   const inputRef = useRef(null);
   const fileRef = useRef(null);
   const chatCtx = useChat();
-
 
   /* ── resolve session ── */
   const st = location.state || {};
@@ -102,8 +341,6 @@ const ChatConsultation = () => {
     place: st.place || st.birthPlace || '',
   };
 
-
-
   const userId = resolveUserId();
 
   const [messages, setMessages] = useState([]);
@@ -115,33 +352,114 @@ const ChatConsultation = () => {
   const [showRating, setShowRating] = useState(false);
   const [ratingScore, setRatingScore] = useState(0);
   const [ratingReview, setRatingReview] = useState('');
+   const [showGift, setShowGift] = useState(false);
+   const [giftList, setGiftList] = useState(STATIC_GIFTS); 
 
   // Whether the astrologer is currently typing — mirrors Dart's
   // `typingStream` (Typing/{groupId}/{astrologerId}).
   const [astroTyping, setAstroTyping] = useState(false);
 
+  // ── Blocked-message warning banner (phone/email/link) ──
+  const [sendError, setSendError] = useState('');
+  const sendErrorTimeoutRef = useRef(null);
+
+  // ── Mobile info modal (profile + consultation details + safety + quick actions) ──
+  const [showInfoModal, setShowInfoModal] = useState(false);
+
+  // ── Toast notifications (top-right) ──
+  const [toasts, setToasts] = useState([]);
+  const showToast = useCallback((message, type = 'success') => {
+    const id = ++toastCounter;
+    setToasts((prev) => [...prev, { id, message, type }]);
+    setTimeout(() => {
+      setToasts((prev) => prev.filter((t) => t.id !== id));
+    }, 3500);
+  }, []);
+  const removeToast = useCallback((id) => {
+    setToasts((prev) => prev.filter((t) => t.id !== id));
+  }, []);
+
+  // ── Scroll-to-bottom arrow (WhatsApp-style) — shown only once the user
+  // has scrolled up away from the latest message.
+  const [showScrollDown, setShowScrollDown] = useState(false);
+
+  // ── Audio recording state ──
+  const [isRecording, setIsRecording] = useState(false);
+  const [recordingSeconds, setRecordingSeconds] = useState(0);
+  const mediaRecorderRef = useRef(null);
+  const audioChunksRef = useRef([]);
+  const recordingTimerRef = useRef(null);
+  const streamRef = useRef(null);
+
+  // ── Emoji picker state ──
+  const [showEmojiPicker, setShowEmojiPicker] = useState(false);
+  const emojiPickerRef = useRef(null);
+
+  // ── Scroll anchor — more reliable than scrollTop = scrollHeight because
+  // it can be re-fired once late-loading media (images/audio) has resized
+  // the bubble, not just when the message list itself changes.
+  const messagesEndRef = useRef(null);
+
+  // ── Private notes (left sidebar) — kept client-side only; these are
+  // the user's own scratch notes for the session, not sent to Firebase.
+  const [notes, setNotes] = useState([]);
+  const [showNoteInput, setShowNoteInput] = useState(false);
+  const [noteDraft, setNoteDraft] = useState('');
+
+  const handleSaveNote = () => {
+    const text = noteDraft.trim();
+    if (!text) { setShowNoteInput(false); return; }
+    setNotes((prev) => [...prev, { id: `${Date.now()}-${Math.random()}`, text }]);
+    setNoteDraft('');
+    setShowNoteInput(false);
+  };
   const kundliSentRef = useRef(false);
   const endingRef = useRef(false);
   const typingTimeoutRef = useRef(null);
   const isTypingRef = useRef(false); // tracks last value we wrote, so we don't spam Firebase
 
+  const scrollToBottom = useCallback(() => {
+    requestAnimationFrame(() => {
+      messagesEndRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' });
+    });
+  }, []);
+
+  /* ── typing indicator (astrologer) ── */
+  useEffect(() => {
+    if (!gid || !astrologer_id) return;
+    const path = `Typing/${gid}/${astrologer_id}`;
+    const typingRef = ref(db, path);
+    onValue(typingRef, (snap) => {
+      setAstroTyping(snap.val() == true); // == not === handles string "true" too
+    });
+    return () => off(typingRef);
+  }, [gid, astrologer_id]);
+
+
+   useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const resp = await apiService.getBearer('https://admin.diviniq.in/user_api/get_gifts');
+        // Backend may return the list under `data`, `results`, or at the root.
+        const arr = resp?.data ?? resp?.results ?? (Array.isArray(resp) ? resp : []);
+        if (!cancelled && Array.isArray(arr) && arr.length > 0) {
+          setGiftList(arr.map(g => ({
+            _id: g._id,           // keep the REAL server id — this is what gift_transaction needs
+            title: g.title,
+            price: g.price,
+            image: g.image,
+            emoji: emojiFor(g.title),
+          })));
+        }
+      } catch (_) {
+        // keep STATIC_GIFTS
+      }
+    })();
+    return () => { cancelled = true; };
+  }, []);
+
   /* ── start session timer (also drives ActiveChatBar) ── */
-
-  // At component level (already exists — don't touch)
-// const gid = st.gid || chatCtx.chatInfo?.gid || '';
-
-// Typing effect — remove the inner const gid, use outer one
-useEffect(() => {
-  if (!gid || !astrologer_id) return;
-  const path = `Typing/${gid}/${astrologer_id}`;
-  console.log('[typing] listening at:', path);
-  const typingRef = ref(db, path);
-  onValue(typingRef, (snap) => {
-    console.log('[typing] snapshot value:', snap.val());
-    setAstroTyping(snap.val() == true); // == not === handles string "true" too
-  });
-  return () => off(typingRef);
-}, [gid, astrologer_id]); // gid here refers to the outer component-level const
   useEffect(() => {
     if (!gid || !astrologer_id) return;
     const initialSeconds = rate > 0 && wallet > 0 ? Math.floor((wallet / rate) * 60) : 300;
@@ -171,12 +489,6 @@ useEffect(() => {
     return () => clearInterval(t);
   }, []);
 
-  useEffect(() => {
-    if (!gid || !userId || !astrologer_id) return;
-    const path = `Group/${gid}/${userId}/${astrologer_id}`;
-    console.log('[debug] Firebase path:', path);
-    console.log('[debug] DB instance URL:', db.app.options.databaseURL);
-  }, [gid, userId, astrologer_id]);
   /* ── Firebase listener (messages) ── */
   useEffect(() => {
     if (!gid || !userId || !astrologer_id) {
@@ -184,7 +496,6 @@ useEffect(() => {
       return;
     }
     const path = groupPath(gid, userId, astrologer_id);
-    console.log('[ChatConsultation] listening for messages at path:', path);
     const dbRef = ref(db, path);
     onValue(dbRef, (snap) => {
       const data = snap.val();
@@ -198,21 +509,9 @@ useEffect(() => {
     return () => off(dbRef);
   }, [gid, userId, astrologer_id]);
 
-  /* ── Firebase listener (astrologer typing status) ──
-     Mirrors Dart's typingStream: reads Typing/{groupId}/{astrologerId}. */
-  useEffect(() => {
-    if (!gid || !astrologer_id) return;
-    const typingRef = ref(db, `Typing/${gid}/${astrologer_id}`);
-    onValue(typingRef, (snap) => {
-      setAstroTyping(snap.val() === true);
-    });
-    return () => off(typingRef);
-  }, [gid, astrologer_id]);
-
   /* ── write our own typing status ──
-     Mirrors Dart's setTyping: writes Typing/{groupId}/{userId}. Debounced
-     so we don't hit Firebase on every keystroke — clears itself after
-     TYPING_IDLE_MS of no input, and always clears immediately on send. */
+     Debounced so we don't hit Firebase on every keystroke — clears itself
+     after TYPING_IDLE_MS of no input, and always clears immediately on send. */
   const writeTyping = useCallback(
     (isTyping) => {
       if (!gid || !userId) return;
@@ -237,11 +536,14 @@ useEffect(() => {
     }
   };
 
-  // Clear our typing flag on unmount so it doesn't stay stuck "true" for
-  // the astrologer if we navigate away mid-type.
+  // Clear our typing flag + release the mic on unmount so nothing stays
+  // stuck if we navigate away mid-type or mid-recording.
   useEffect(() => {
     return () => {
       if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
+      if (recordingTimerRef.current) clearInterval(recordingTimerRef.current);
+      if (sendErrorTimeoutRef.current) clearTimeout(sendErrorTimeoutRef.current);
+      streamRef.current?.getTracks().forEach((t) => t.stop());
       if (gid && userId) {
         set(ref(db, `Typing/${gid}/${userId}`), false).catch(() => { /* silent */ });
       }
@@ -249,9 +551,7 @@ useEffect(() => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [gid, userId]);
 
-  /* ── mark incoming (astrologer) messages as seen ──
-     Mirrors Dart's markMessageSeen / markMessagesSeen, called whenever
-     the message list updates and the chat is open. */
+  /* ── mark incoming (astrologer) messages as seen ── */
   useEffect(() => {
     if (!gid || !userId || !astrologer_id || messages.length === 0) return;
     const path = groupPath(gid, userId, astrologer_id);
@@ -263,10 +563,41 @@ useEffect(() => {
     });
   }, [messages, gid, userId, astrologer_id]);
 
-  /* ── auto-scroll ── */
+  /* ── auto-scroll on new messages ──
+     This fires as soon as the message list changes, which is correct for
+     text — but images/audio bubbles grow *after* this (once the media
+     loads), so those media components also call scrollToBottom() again
+     via onLoad / onReady once they know their real height. */
   useEffect(() => {
-    if (chatBodyRef.current) chatBodyRef.current.scrollTop = chatBodyRef.current.scrollHeight;
-  }, [messages]);
+    scrollToBottom();
+  }, [messages, scrollToBottom]);
+
+  /* ── track scroll position to show/hide the WhatsApp-style
+     scroll-to-bottom arrow once the user has scrolled away from the
+     latest message ── */
+  useEffect(() => {
+    const el = chatBodyRef.current;
+    if (!el) return;
+    const handleScroll = () => {
+      const distanceFromBottom = el.scrollHeight - el.scrollTop - el.clientHeight;
+      setShowScrollDown(distanceFromBottom > 160);
+    };
+    handleScroll();
+    el.addEventListener('scroll', handleScroll);
+    return () => el.removeEventListener('scroll', handleScroll);
+  }, []);
+
+  /* ── close emoji picker on outside click ── */
+  useEffect(() => {
+    if (!showEmojiPicker) return;
+    const handler = (e) => {
+      if (emojiPickerRef.current && !emojiPickerRef.current.contains(e.target)) {
+        setShowEmojiPicker(false);
+      }
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [showEmojiPicker]);
 
   /* ── send message (writes both sides) ── */
   const sendFirebaseMessage = useCallback(
@@ -296,7 +627,6 @@ useEffect(() => {
       try {
         await set(ref(db, `${senderPath}/${msgId}`), body);
         await set(ref(db, `${receiverPath}/${msgId}`), body);
-        console.log('[ChatConsultation] message sent OK to:', senderPath, receiverPath);
       } catch (err) {
         console.error('[ChatConsultation] Firebase write FAILED (check rules/permissions):', err, { senderPath, receiverPath, body });
       }
@@ -314,11 +644,26 @@ useEffect(() => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [gid, userId, astrologer_id]);
 
+  const flashSendError = (msg) => {
+    setSendError(msg);
+    if (sendErrorTimeoutRef.current) clearTimeout(sendErrorTimeoutRef.current);
+    sendErrorTimeoutRef.current = setTimeout(() => setSendError(''), 4000);
+  };
+
   const handleSend = () => {
     const text = messageText.trim();
     if (!text) return;
+
+    // Block phone numbers, emails, and links before it ever reaches
+    // Firebase — preserve what they typed so they can edit and resend.
+    if (containsPersonalInfo(text)) {
+      flashSendError('⚠️ Sharing phone numbers, emails, or links isn\u2019t allowed here. Please remove that and try again.');
+      return;
+    }
+
     sendFirebaseMessage(text, 'text');
     setMessageText('');
+    setSendError('');
     // Sending clears typing immediately rather than waiting for the idle timeout.
     writeTyping(false);
     if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
@@ -332,14 +677,114 @@ useEffect(() => {
     const file = e.target.files?.[0];
     if (!file) return;
     setSending(true);
-    const url = await uploadChatFile(file, { isAudio: false });
-    setSending(false);
-    if (url) sendFirebaseMessage(url, 'image');
-    e.target.value = '';
+    try {
+      const url = await uploadChatFile(file, { isAudio: false });
+      if (url) {
+        await sendFirebaseMessage(url, 'image');
+        showToast('Image sent!', 'success');
+      } else {
+        showToast('Image upload failed. Please try again.', 'error');
+      }
+    } catch (err) {
+      console.error('[ChatConsultation] image upload failed:', err);
+      showToast('Image upload failed. Check your connection.', 'error');
+    } finally {
+      setSending(false);
+      e.target.value = '';
+    }
+  };
+
+  /* ── emoji select — insert into input, keep typing indicator alive ── */
+  const handleEmojiSelect = (emoji) => {
+    setMessageText((prev) => prev + emoji);
+    writeTyping(true);
+    if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
+    typingTimeoutRef.current = setTimeout(() => writeTyping(false), TYPING_IDLE_MS);
+    inputRef.current?.focus();
+  };
+
+  /* ── audio recording: mic → blob → upload → send ── */
+  const startRecording = async () => {
+    if (isRecording) return;
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      streamRef.current = stream;
+      const mimeType = getSupportedMimeType();
+      const recorder = new MediaRecorder(stream, mimeType ? { mimeType } : undefined);
+      audioChunksRef.current = [];
+
+      recorder.addEventListener('dataavailable', (e) => {
+        if (e.data && e.data.size > 0) audioChunksRef.current.push(e.data);
+      });
+
+      recorder.start(250);
+      mediaRecorderRef.current = recorder;
+      setIsRecording(true);
+      setRecordingSeconds(0);
+      recordingTimerRef.current = setInterval(() => setRecordingSeconds((s) => s + 1), 1000);
+    } catch (err) {
+      console.error('[ChatConsultation] mic access failed:', err);
+    }
+  };
+
+  const stopRecording = async () => {
+    if (!mediaRecorderRef.current || !isRecording) return;
+
+    clearInterval(recordingTimerRef.current);
+    setIsRecording(false);
+    setRecordingSeconds(0);
+
+    const recorder = mediaRecorderRef.current;
+    const mimeType = recorder.mimeType || 'audio/webm';
+
+    await new Promise((resolve) => {
+      recorder.addEventListener('stop', () => resolve(), { once: true });
+      recorder.stop();
+    });
+
+    streamRef.current?.getTracks().forEach((t) => t.stop());
+    streamRef.current = null;
+    mediaRecorderRef.current = null;
+
+    const chunks = audioChunksRef.current;
+    audioChunksRef.current = [];
+    if (chunks.length === 0) return;
+
+    const blob = new Blob(chunks, { type: mimeType });
+    if (blob.size < 1000) {
+      console.warn('[ChatConsultation] recording too short, dropped');
+      return;
+    }
+
+    const file = new File([blob], `voice_${Date.now()}.mp3`, { type: 'audio/mpeg' });
+
+    setSending(true);
+    try {
+      const url = await uploadChatFile(file, { isAudio: true });
+      if (url) {
+        await sendFirebaseMessage(url, 'audio');
+        showToast('Voice message sent!', 'success');
+      } else {
+        showToast('Audio upload failed. Please try again.', 'error');
+      }
+    } catch (err) {
+      console.error('[ChatConsultation] audio upload failed:', err);
+      showToast('Audio upload failed. Check your connection.', 'error');
+    } finally {
+      setSending(false);
+    }
   };
 
   /* ── minimize on back — chat stays active, ActiveChatBar shows ── */
   const handleMinimize = () => navigate(-1);
+
+  /* ── quick action: send a virtual gift as a chat message ── */
+  const GIFT_OPTIONS = ['🎁', '🌸', '🙏', '✨', '🪔'];
+  const handleSendGift = () => {
+    setShowGift(true);
+  };
+ 
+
 
   /* ── end chat → rating ── */
   const handleEndChat = async () => {
@@ -373,12 +818,13 @@ useEffect(() => {
           alt="attachment"
           style={{ maxWidth: 200, borderRadius: 12, cursor: 'pointer' }}
           onClick={() => setPreviewImage(msg.message)}
-          onError={(e) => { e.currentTarget.style.display = 'none'; }}
+          onLoad={scrollToBottom}
+          onError={(e) => { e.currentTarget.style.display = 'none'; scrollToBottom(); }}
         />
       );
     }
     if (msg.type === 'audio') {
-      return <audio src={msg.message} controls style={{ maxWidth: 220 }} />;
+      return <AudioPlayer src={msg.message} onReady={scrollToBottom} />;
     }
     return (msg.message || '').split('\n').map((line, i, arr) => (
       <React.Fragment key={i}>
@@ -389,6 +835,7 @@ useEffect(() => {
 
   return (
     <div className="cc-page">
+      <ToastContainer toasts={toasts} onRemove={removeToast} />
       <div className="cc-main">
 
         {/* ────── LEFT SIDEBAR ────── */}
@@ -442,6 +889,45 @@ useEffect(() => {
             <div className="cc-safety-item"><span className="cc-safety-check">✓</span> End-to-end encrypted</div>
             <div className="cc-safety-warning">Never share your personal or payment details in chat.</div>
           </div>
+
+          <div className="cc-notes-card">
+            <div className="cc-notes-title"><i className="fas fa-clipboard" /> Your Notes</div>
+            {notes.length === 0 ? (
+              <div className="cc-notes-empty">
+                <p>You can add private notes during the consultation.</p>
+                <button type="button" className="cc-add-note-btn" onClick={() => setShowNoteInput(true)}>
+                  <i className="fas fa-plus" /> Add Note
+                </button>
+              </div>
+            ) : (
+              <div className="cc-notes-list">
+                {notes.map((n) => (
+                  <div key={n.id} className="cc-note-item">
+                    <span>{n.text}</span>
+                    <button type="button" onClick={() => setNotes((prev) => prev.filter((x) => x.id !== n.id))} aria-label="Delete note">
+                      <i className="fas fa-times" />
+                    </button>
+                  </div>
+                ))}
+                <button type="button" className="cc-add-note-btn" onClick={() => setShowNoteInput(true)}>
+                  <i className="fas fa-plus" /> Add Note
+                </button>
+              </div>
+            )}
+            {showNoteInput && (
+              <div className="cc-note-input-row">
+                <input
+                  type="text"
+                  autoFocus
+                  value={noteDraft}
+                  onChange={(e) => setNoteDraft(e.target.value)}
+                  onKeyDown={(e) => { if (e.key === 'Enter') handleSaveNote(); if (e.key === 'Escape') { setShowNoteInput(false); setNoteDraft(''); } }}
+                  placeholder="Type a private note..."
+                />
+                <button type="button" onClick={handleSaveNote}><i className="fas fa-check" /></button>
+              </div>
+            )}
+          </div>
         </div>
 
         {/* ────── CHAT CENTER ────── */}
@@ -449,26 +935,31 @@ useEffect(() => {
           initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.25, delay: 0.05 }}>
           <div className="cc-chat-header">
             <div className="cc-chat-header-left">
-              <button className="cc-back" onClick={handleMinimize} title="Minimize — chat stays active"
-                style={{ position: 'static', marginRight: 6 }}>
+              <button
+                type="button"
+                className="cc-minimize-btn"
+                onClick={handleMinimize}
+                title="Minimize — chat stays active"
+                aria-label="Minimize chat"
+              >
                 <i className="fas fa-chevron-left" />
               </button>
               {/* ── astrologer avatar ── */}
-  <div style={{
-    width: 38, height: 38, borderRadius: '50%', overflow: 'hidden',
-    flexShrink: 0, marginRight: 8,
-    background: `linear-gradient(135deg,${avColor(name)},${avColor(name)}99)`,
-    display: 'flex', alignItems: 'center', justifyContent: 'center',
-    color: '#fff', fontWeight: 700, fontSize: 14,
-  }}>
-    {profileImg && !imgErr
-      ? <img src={profileImg} alt={name}
-          style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-          onError={() => setImgErr(true)} />
-      : initials(name)
-    }
-  </div>
-              
+              <div style={{
+                width: 38, height: 38, borderRadius: '50%', overflow: 'hidden',
+                flexShrink: 0, marginRight: 8,
+                background: `linear-gradient(135deg,${avColor(name)},${avColor(name)}99)`,
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                color: '#fff', fontWeight: 700, fontSize: 14,
+              }}>
+                {profileImg && !imgErr
+                  ? <img src={profileImg} alt={name}
+                      style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                      onError={() => setImgErr(true)} />
+                  : initials(name)
+                }
+              </div>
+
               <div className="cc-chat-online-badge">
                 <span className="cc-chat-online-dot" />
                 <span className="cc-chat-online-text">Online</span>
@@ -482,9 +973,21 @@ useEffect(() => {
                 </span>
               </div>
             </div>
-            <button className="cc-end-chat-btn" onClick={handleEndChat}>
-              <i className="fas fa-phone-slash" /> End Chat
-            </button>
+            <div className="cc-chat-header-right">
+              <button
+                type="button"
+                className="cc-info-btn"
+                onClick={() => setShowInfoModal(true)}
+                title="Astrologer info & consultation details"
+                aria-label="Show consultation info"
+              >
+                <i className="fas fa-circle-info" />
+                <span>Info</span>
+              </button>
+              <button className="cc-end-chat-btn" onClick={handleEndChat}>
+                <i className="fas fa-phone-slash" /> End Chat
+              </button>
+            </div>
           </div>
 
           <div className="cc-chat-body" ref={chatBodyRef}>
@@ -537,19 +1040,73 @@ useEffect(() => {
                 Say Namaste 🙏 to begin your consultation.
               </div>
             )}
+
+            {/* Scroll anchor — target for scrollIntoView(). Must stay the
+                very last child so "bottom" always means "newest message". */}
+            <div ref={messagesEndRef} />
           </div>
 
           <div className="cc-chat-input-area">
-            <div className="cc-input-row">
+            {showScrollDown && (
+              <button
+                type="button"
+                className="cc-scroll-down-btn"
+                onClick={scrollToBottom}
+                aria-label="Scroll to latest messages"
+                title="Scroll to latest messages"
+              >
+                <i className="fas fa-arrow-down" />
+              </button>
+            )}
+            {sendError && (
+              <div className="cc-send-error-banner">
+                <i className="fas fa-triangle-exclamation" />
+                <span>{sendError}</span>
+              </div>
+            )}
+            <div className="cc-input-row" style={{ position: 'relative' }}>
               <input ref={fileRef} type="file" accept="image/*" hidden onChange={handleAttach} />
-              <button className="cc-attach-btn" onClick={() => fileRef.current?.click()} disabled={sending}>
+              <button className="cc-attach-btn" onClick={() => fileRef.current?.click()} disabled={sending || isRecording}>
                 <i className={`fas ${sending ? 'fa-spinner fa-spin' : 'fa-paperclip'}`} />
               </button>
-              <input ref={inputRef} className="cc-chat-input" type="text"
-                placeholder="Type your message..." value={messageText}
-                onChange={handleMessageChange} onKeyDown={handleKeyDown} />
-              <button className="cc-emoji-btn">😊</button>
-              <button className="cc-send-btn" onClick={handleSend}><i className="fas fa-paper-plane" /></button>
+
+              {isRecording ? (
+                <div className="cc-recording-indicator">
+                  <span className="cc-rec-dot" />
+                  Recording… {String(Math.floor(recordingSeconds / 60)).padStart(2, '0')}:
+                  {String(recordingSeconds % 60).padStart(2, '0')}
+                </div>
+              ) : (
+                <input ref={inputRef} className="cc-chat-input" type="text"
+                  placeholder="Type your message..." value={messageText}
+                  onChange={handleMessageChange} onKeyDown={handleKeyDown} />
+              )}
+
+              <button
+                type="button"
+                className="cc-emoji-btn"
+                onClick={() => setShowEmojiPicker((v) => !v)}
+                disabled={isRecording}
+              >
+                😊
+              </button>
+              {showEmojiPicker && (
+                <EmojiPicker pickerRef={emojiPickerRef} onSelect={handleEmojiSelect} />
+              )}
+
+              <button
+                type="button"
+                className={`cc-mic-btn${isRecording ? ' recording' : ''}`}
+                onClick={isRecording ? stopRecording : startRecording}
+                disabled={sending}
+                title={isRecording ? 'Tap to stop & send' : 'Tap to record voice'}
+              >
+                <i className={`fas ${isRecording ? 'fa-stop' : 'fa-microphone'}`} />
+              </button>
+
+              <button className="cc-send-btn" onClick={handleSend} disabled={isRecording}>
+                <i className="fas fa-paper-plane" />
+              </button>
             </div>
             <div className="cc-secure-note">
               <i className="fas fa-lock" /> Messages are secure and encrypted
@@ -576,7 +1133,39 @@ useEffect(() => {
             <div className="cc-qa-grid">
               <div className="cc-qa-btn" onClick={() => fileRef.current?.click()}><i className="fas fa-image" /><span>Send Photo</span></div>
               <div className="cc-qa-btn" onClick={() => sendFirebaseMessage(buildKundliString(intake), 'text')}><i className="fas fa-file-alt" /><span>Share Details</span></div>
+              <div className="cc-qa-btn" onClick={handleSendGift}><i className="fas fa-gift" /><span>Send Gift</span></div>
               <div className="cc-qa-btn cc-qa-end" onClick={handleEndChat}><i className="fas fa-phone-slash" /><span>End Consultation</span></div>
+            </div>
+          </motion.div>
+
+          <motion.div className="cc-trust-card" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.25, delay: 0.2 }}>
+            <div className="cc-trust-item">
+              <span className="cc-trust-icon"><i className="fas fa-shield-alt" /></span>
+              <div>
+                <div className="cc-trust-title">100% Privacy</div>
+                <div className="cc-trust-sub">Your data is safe with us</div>
+              </div>
+            </div>
+            <div className="cc-trust-item">
+              <span className="cc-trust-icon"><i className="fas fa-user-check" /></span>
+              <div>
+                <div className="cc-trust-title">Verified Astrologer</div>
+                <div className="cc-trust-sub">Experienced & trusted experts</div>
+              </div>
+            </div>
+            <div className="cc-trust-item">
+              <span className="cc-trust-icon"><i className="fas fa-lock" /></span>
+              <div>
+                <div className="cc-trust-title">Secure Payments</div>
+                <div className="cc-trust-sub">Multiple safe payment options</div>
+              </div>
+            </div>
+            <div className="cc-trust-item">
+              <span className="cc-trust-icon"><i className="fas fa-users" /></span>
+              <div>
+                <div className="cc-trust-title">Trusted by 50 Lakh+ Users</div>
+                <div className="cc-trust-sub">Across India and worldwide</div>
+              </div>
             </div>
           </motion.div>
         </div>
@@ -588,6 +1177,160 @@ useEffect(() => {
         <div onClick={() => setPreviewImage(null)}
           style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.85)', zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}>
           <img src={previewImage} alt="preview" style={{ maxWidth: '92%', maxHeight: '92%', borderRadius: 12 }} />
+        </div>
+      )}
+
+      {/* ── mobile info modal: astrologer profile + consultation details +
+             safety & privacy + quick actions, all in one bottom sheet ── */}
+      {showInfoModal && (
+        <div className="cc-info-modal-overlay" onClick={() => setShowInfoModal(false)}>
+          <div className="cc-info-modal-sheet" onClick={(e) => e.stopPropagation()}>
+            <div className="cc-info-modal-handle" />
+            <button
+              type="button"
+              className="cc-info-modal-close"
+              onClick={() => setShowInfoModal(false)}
+              aria-label="Close"
+            >
+              <i className="fas fa-times" />
+            </button>
+
+            <div className="cc-info-modal-scroll">
+              {/* profile card */}
+              <div className="cc-profile-card cc-profile-card--modal">
+                <div className="cc-avatar-wrap">
+                  <div className="cc-avatar">
+                    {profileImg && !imgErr
+                      ? <img src={profileImg} alt={name} onError={() => setImgErr(true)} />
+                      : <div className="cc-avatar-init" style={{ background: `linear-gradient(135deg,${avColor(name)},${avColor(name)}99)` }}>{initials(name)}</div>}
+                  </div>
+                  <div className="cc-online-dot" />
+                </div>
+
+                <div className="cc-profile-name">
+                  {name} <i className="fas fa-check-circle cc-verified-check" />
+                </div>
+                <div className="cc-verified-label">
+                  <i className="fas fa-check-circle" /> Verified Expert
+                </div>
+
+                <div className="cc-stats">
+                  <div className="cc-stat-row">
+                    <span className="cc-stat-label"><i className="fas fa-clock" /> Rate</span>
+                    <span className="cc-stat-value">₹{rate}/min</span>
+                  </div>
+                  <div className="cc-stat-row">
+                    <span className="cc-stat-label"><i className="fas fa-hourglass-half" /> Time Left</span>
+                    <span className="cc-stat-value">{formatTimer(chatCtx.chatTimeLeft || 0)}</span>
+                  </div>
+                  <div className="cc-stat-row">
+                    <span className="cc-stat-label"><i className="fas fa-wallet" /> Balance</span>
+                    <span className="cc-stat-value">₹{remainingBalance}</span>
+                  </div>
+                </div>
+
+                <button
+                  className="cc-view-profile-btn"
+                  onClick={() => { setShowInfoModal(false); navigate(`/astrologer/${astrologer_id}`); }}
+                >
+                  View Profile
+                </button>
+              </div>
+
+              {/* consultation details */}
+              <div className="cc-consult-card">
+                <div className="cc-consult-title"><i className="fas fa-clipboard-list" /> Consultation Details</div>
+                <div className="cc-consult-row"><span className="cc-consult-label">Consultation Type</span><span className="cc-consult-value">Chat</span></div>
+                <hr className="cc-consult-divider" />
+                <div className="cc-consult-row"><span className="cc-consult-label">Rate</span><span className="cc-consult-value">₹{rate} / min</span></div>
+                <div className="cc-consult-row">
+                  <span className="cc-consult-label">Time Elapsed</span>
+                  <span className="cc-consult-value"><i className="far fa-clock cc-timer-icon" /> {formatTimer(elapsedSecs)}</span>
+                </div>
+                <div className="cc-consult-row"><span className="cc-consult-label">Remaining Balance</span><span className="cc-consult-value">₹{remainingBalance}</span></div>
+              </div>
+
+              {/* safety & privacy */}
+              <div className="cc-safety-card">
+                <div className="cc-safety-title"><i className="fas fa-shield-alt" /> Safety & Privacy</div>
+                <div className="cc-safety-item"><span className="cc-safety-check">✓</span> 100% Secure Chats</div>
+                <div className="cc-safety-item"><span className="cc-safety-check">✓</span> Your privacy is our priority</div>
+                <div className="cc-safety-item"><span className="cc-safety-check">✓</span> End-to-end encrypted</div>
+                <div className="cc-safety-warning">Never share your personal or payment details in chat.</div>
+              </div>
+
+              {/* quick actions */}
+              <div className="cc-qa-card">
+                <div className="cc-qa-title"><i className="fas fa-bolt" /> Quick Actions</div>
+                <div className="cc-qa-grid">
+                  <div
+                    className="cc-qa-btn"
+                    onClick={() => { setShowInfoModal(false); fileRef.current?.click(); }}
+                  >
+                    <i className="fas fa-image" /><span>Send Photo</span>
+                  </div>
+                  <div
+                    className="cc-qa-btn"
+                    onClick={() => { setShowInfoModal(false); sendFirebaseMessage(buildKundliString(intake), 'text'); }}
+                  >
+                    <i className="fas fa-file-alt" /><span>Share Details</span>
+                  </div>
+                  <div
+                    className="cc-qa-btn"
+                    onClick={() => { setShowInfoModal(false); handleSendGift(); }}
+                  >
+                    <i className="fas fa-gift" /><span>Send Gift</span>
+                  </div>
+                  <div
+                    className="cc-qa-btn cc-qa-end"
+                    onClick={() => { setShowInfoModal(false); handleEndChat(); }}
+                  >
+                    <i className="fas fa-phone-slash" /><span>End Consultation</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* private notes */}
+              <div className="cc-notes-card">
+                <div className="cc-notes-title"><i className="fas fa-clipboard" /> Your Notes</div>
+                {notes.length === 0 ? (
+                  <div className="cc-notes-empty">
+                    <p>You can add private notes during the consultation.</p>
+                    <button type="button" className="cc-add-note-btn" onClick={() => setShowNoteInput(true)}>
+                      <i className="fas fa-plus" /> Add Note
+                    </button>
+                  </div>
+                ) : (
+                  <div className="cc-notes-list">
+                    {notes.map((n) => (
+                      <div key={n.id} className="cc-note-item">
+                        <span>{n.text}</span>
+                        <button type="button" onClick={() => setNotes((prev) => prev.filter((x) => x.id !== n.id))} aria-label="Delete note">
+                          <i className="fas fa-times" />
+                        </button>
+                      </div>
+                    ))}
+                    <button type="button" className="cc-add-note-btn" onClick={() => setShowNoteInput(true)}>
+                      <i className="fas fa-plus" /> Add Note
+                    </button>
+                  </div>
+                )}
+                {showNoteInput && (
+                  <div className="cc-note-input-row">
+                    <input
+                      type="text"
+                      autoFocus
+                      value={noteDraft}
+                      onChange={(e) => setNoteDraft(e.target.value)}
+                      onKeyDown={(e) => { if (e.key === 'Enter') handleSaveNote(); if (e.key === 'Escape') { setShowNoteInput(false); setNoteDraft(''); } }}
+                      placeholder="Type a private note..."
+                    />
+                    <button type="button" onClick={handleSaveNote}><i className="fas fa-check" /></button>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
         </div>
       )}
 
@@ -612,6 +1355,16 @@ useEffect(() => {
           </div>
         </div>
       )}
+
+<SendGiftModal
+        isOpen={showGift}
+        onClose={() => setShowGift(false)}
+        astrologerName={name}
+        astrologerId={astrologer_id}
+        astrologerImage={profileImg}
+        gifts={giftList}
+        walletBalance={wallet}
+      />
     </div>
   );
 };
