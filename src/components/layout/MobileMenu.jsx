@@ -100,11 +100,20 @@ const MobileMenu = ({ isOpen, onClose }) => {
 						</li>
 						<li>
 							<Link
-								className={isActive('/contact') ? 'active' : ''}
-								to="/contact"
+								className={isActive('/contact_us') ? 'active' : ''}
+								to="/contact_us"
 								onClick={onClose}
 							>
 								Contact us
+							</Link>
+						</li>
+						<li>
+							<Link
+								className={isActive('/notification') ? 'active' : ''}
+								to="/notification"
+								onClick={onClose}
+							>
+								Notification
 							</Link>
 						</li>
 					</ul>

@@ -97,7 +97,7 @@
 
 /* Video */
 .ad-vid-wrap { position:relative; border-radius:12px; overflow:hidden; background:#111; cursor:pointer; }
-.ad-vid-wrap img { width:100%; height:310%; object-fit:cover; display:block; opacity:.78; }
+.ad-vid-wrap img { width:100%; height:100%; object-fit:cover; display:block; opacity:.78; }
 .ad-vid-play { position:absolute; top:57%; left:50%; transform:translate(-50%,-50%); width:48px; height:48px; border-radius:50%; background:rgba(255,255,255,.92); display:flex; align-items:center; justify-content:center; font-size:16px; color:#7c1d40; border:none; cursor:pointer; box-shadow:0 4px 16px rgba(0,0,0,.22); }
 .ad-vid-lbl { font-size:11px; color:#6b7280; margin-top:6px; text-align:center; }
 
@@ -214,7 +214,9 @@
 .ad-gift-more:hover { opacity:.88; }
 
 /* ── BOTTOM BAR ── */
-.ad-bottom-bar { background:linear-gradient(135deg,#4a1259 0%,#6b1a3a 100%); padding:13px 0; margin:0 calc(-50vw + 50%); border-radius:10px}
+.ad-bottom-bar { background:linear-gradient(135deg,#4a1259 0%,#6b1a3a 100%); padding:13px 0; margin:0 calc(-50vw + 50%); border-radius:10px; overflow-x:hidden; }
+.ad-full-width-sections { margin-top: 20px; }
+.ad-reviews-viewall { margin-left: auto; }
 .ad-bottom-inner { display:flex; justify-content:center; align-items:center; flex-wrap:wrap; max-width:1200px; margin:0 auto; padding:0 20px; }
 .ad-bottom-item { display:flex; align-items:center; gap:8px; padding:5px 26px; color:rgba(255,255,255,.9); font-size:12.5px; font-weight:600; border-right:1px solid rgba(255,255,255,.15); }
 .ad-bottom-item:last-child { border-right:none; }
@@ -224,25 +226,137 @@
 @keyframes adsk { 0%{background-position:100% 50%} 100%{background-position:0% 50%} }
 
 /* ── RESPONSIVE ── */
+
+/* Tablet / iPad range */
 @media (max-width:991px) {
   .ad-stats-bar { grid-template-columns:repeat(2,1fr); }
+  .ad-stat { border-right:none; border-bottom:1px solid #f0f0f0; }
+  .ad-stat:nth-child(2n) { border-right:none; }
   .ad-sticky { position:static !important; max-height:none; overflow-y:visible; }
+  .ad-gift-grid { margin-bottom: 16px; }
+  .ad-process-vert { flex-direction:row; flex-wrap:wrap; gap:16px; }
+  .ad-proc-row { flex:1 1 45%; min-width:200px; }
+  .ad-proc-row::after { display:none; }
+  .ad-reviews-viewall { margin-left: 0; }
+  .col-lg-9.col-md-8 .d-flex.align-items-center.gap-3.mb-3 { flex-wrap: wrap; }
 }
+
+/* Mobile */
 @media (max-width:767px) {
-  .ad-pc-meta { grid-template-columns:1fr; }
+  .ad-body { padding: 12px 0 20px; }
+  .ad-profile-card { padding:18px 16px 16px; }
+  .ad-profile-card .d-flex.align-items-start.gap-3 { flex-direction:column; align-items:center; text-align:center; }
+  .ad-pc-right { width:100%; }
+  .ad-pc-stars-row,
+  .ad-pc-tags,
+  .ad-pc-meta { justify-content:center; }
+  .ad-pc-meta { grid-template-columns:1fr; justify-items:center; width:100%; }
+  .ad-pc-name { display:block; margin-bottom:6px; }
+
   .ad-process { flex-wrap:wrap; gap:12px; }
   .ad-proc-step { min-width:45%; }
   .ad-proc-step::after { display:none; }
+  .ad-process-vert { flex-direction:column; }
+  .ad-proc-row { min-width:100%; }
+  .ad-proc-row::after { display:block; }
+
   .ad-bottom-item { padding:5px 12px; font-size:11px; }
   .ad-bottom-item:nth-child(n+3) { display:none; }
-  .ad-stats-bar { grid-template-columns:repeat(2,1fr); }
+  .ad-stats-bar { grid-template-columns:repeat(2,1fr); padding:12px 14px; }
+  .ad-stat { padding:6px; gap:8px; }
+  .ad-stat-ico { width:32px; height:32px; font-size:14px; }
+  .ad-stat-val { font-size:1rem; }
+
   .ad-sim-av-box { width:72px; height:72px; }
   .ad-gallery-grid { grid-template-columns:repeat(2,1fr); }
   .ad-popup-box { max-width:100%; border-radius:16px 16px 0 0; position:fixed; bottom:0; left:0; right:0; max-height:85vh; }
   .ad-popup-overlay { align-items:flex-end; padding:0; }
+
+  /* Gallery + video side-by-side card stack full width */
+  .row.g-3.mb-3 > .col-lg-6 { margin-bottom: 12px; }
+  .ad-vid-wrap { height: 200px; }
+  .ad-gal-img { width:64px; height:64px; min-width:64px; }
+
+  /* Fee card / CTA buttons */
+  .ad-fee-card { padding:16px 14px 14px; }
+  .ad-fee-amt { font-size:2rem; }
+  .ad-btn-chat, .ad-btn-call { padding:12px 14px 10px; }
+
+  /* Gift grid tighter on small screens */
+  .ad-gift-grid { grid-template-columns:repeat(3,1fr); gap:6px; margin-bottom: 16px; }
+  .ad-gift-img { width:42px; height:42px; }
+  .ad-gift-name { font-size:9.5px; }
+  .ad-gift-price { font-size:10.5px; }
+
+  /* Reviews / FAQ / Similar row stacking cleanly */
+  .ad-card-title { font-size:14px; }
+  .ad-reviews-viewall { margin-left: 0; margin-top: 4px; }
+  .d-flex.align-items-center.gap-3.mb-3 { flex-wrap: wrap; }
+
+  .ad-bottom-bar { padding:10px 0; }
+  .ad-bottom-inner { justify-content:flex-start; }
 }
+
 @media (max-width:480px) {
   .ad-av-wrap,.ad-av-clip { width:82px; height:82px; }
   .ad-pc-name { font-size:1.1rem; }
   .ad-fee-amt { font-size:2rem; }
+  .ad-gift-grid { grid-template-columns:repeat(3,1fr); }
+  .ad-sim-av-box { width:60px; height:60px; }
+  .ad-vid-wrap { height: 160px; }
+}
+
+/* ── MOBILE STICKY CHAT/CALL BAR ── */
+.ad-mobile-cta-bar {
+  display: none;
+}
+@media (max-width: 767px) {
+  .ad-mobile-cta-bar {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    position: fixed;
+    left: 12px;
+    right: 12px;
+    bottom: 14px;
+    z-index: 500;
+  }
+  .ad-mobile-chat-btn,
+  .ad-mobile-call-btn {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    height: 52px;
+    border-radius: 30px;
+    font-size: 14.5px;
+    font-weight: 700;
+    cursor: pointer;
+    border: none;
+    box-shadow: 0 6px 18px rgba(0,0,0,.18);
+  }
+  .ad-mobile-chat-btn {
+    position: relative;
+    background: #fff;
+    color: #FF6F00;
+    border: 1.5px solid #FF6F00;
+    margin-left: 14px;
+  }
+  .ad-mobile-chat-btn::before {
+    content: '';
+    position: absolute;
+    left: -14px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    background: #f59e0b;
+  }
+  .ad-mobile-call-btn {
+    background: linear-gradient(135deg, #521721, #B8493C);
+    color: #fff;
+  }
+  .ad-page { padding-bottom: 80px; }
 }

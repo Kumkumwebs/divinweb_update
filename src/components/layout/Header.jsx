@@ -619,6 +619,22 @@ const { activeLang, setLanguage, LANGUAGES } = useLanguage();
 																	className={`fas fa-chevron-right ${styles.chevron}`}
 																></i>
 															</Link>
+
+																<Link
+																to="/notification"
+																className={styles.menuItem}
+																onClick={() => setIsDropdownOpen(false)}
+															>
+																<div className={styles.menuItemLeft}>
+																	<i
+																		className={`fas fa-star ${styles.menuIcon}`}
+																	></i>
+																	Notification
+																</div>
+																<i
+																	className={`fas fa-chevron-right ${styles.chevron}`}
+																></i>
+															</Link>
 														</div>
 
 														{/* Help Section */}

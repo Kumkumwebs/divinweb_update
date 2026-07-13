@@ -91,7 +91,7 @@ Last Update: 20-07-2024
   --theme-color: #F6B029;
   --primary-color: #F6B029;
   --title-color: #a84c6b;
-  --body-color: #6E7070;
+  /* --body-color: #6E7070; */
   --smoke-color: #E9F6F9;
   --smoke-color2: #F3F4F6;
   --black-color: #000000;
@@ -2401,12 +2401,12 @@ input[type=time]::-webkit-calendar-picker-indicator {
 }
 
 .th-menu-toggle {
-  width: 56px;
-  height: 56px;
+  width: 36px;
+  height: 36px;
   padding: 0;
-  font-size: 20px;
+  font-size: 15px;
   border: none;
-  border-radius: 8px;
+  border-radius: 19px;
   background-color: var(--theme-color);
   color: var(--white-color);
   display: inline-block;

@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import {
   Sun, Moon, Calendar, ChevronLeft, ChevronRight, MapPin, Clock,
-  AlertTriangle, Compass, Sparkles, Flower2, Crown, Star, Wind, Sunrise, ArrowUp, ChevronDown, CheckCircle2
+  AlertTriangle, Compass, Sparkles, Flower2, Crown, Star, Wind, Sunrise, ArrowUp, ChevronDown
 } from "lucide-react";
 
 import Header from "../components/layout/Header";
@@ -13,226 +13,6 @@ import SideMenu from "../components/layout/SideMenu";
 // ==========================================
 // HIGH-FIDELITY VECTOR GRAPHICS (VEDIC DESIGN)
 // ==========================================
-
-const HangingDiya = ({ height = 180, className = "" }) => {
-  return (
-    <svg width="40" height={height} viewBox="0 0 40 180" className={className} style={{ overflow: "visible" }}>
-      {/* Chain */}
-      <line x1="20" y1="0" x2="20" y2="130" stroke="#E2B765" strokeWidth="1.5" strokeDasharray="3 3" />
-      {/* Diya Hanging Loop */}
-      <circle cx="20" cy="130" r="4" fill="none" stroke="#E2B765" strokeWidth="2" />
-      {/* Diya Body */}
-      <path
-        d="M20,134 C10,134 5,145 5,152 C5,162 12,170 20,170 C28,170 35,162 35,152 C35,145 30,134 20,134 Z"
-        fill="url(#diya-gold-grad)"
-        stroke="#B2822A"
-        strokeWidth="1.5"
-      />
-      {/* Inner Oil/Liquid border */}
-      <path d="M5,152 Q20,158 35,152" fill="none" stroke="#B2822A" strokeWidth="1" />
-      {/* Flame */}
-      <path
-        d="M20,134 C18,124 16,115 20,103 C24,115 22,124 20,134 Z"
-        fill="url(#diya-flame-grad)"
-        style={{ filter: "drop-shadow(0 0 6px #FBBF24)" }}
-      />
-      <defs>
-        <linearGradient id="diya-gold-grad" x1="0%" y1="0%" x2="100%" y2="100%">
-          <stop offset="0%" stopColor="#FFF9E6" />
-          <stop offset="35%" stopColor="#E2B765" />
-          <stop offset="70%" stopColor="#B2822A" />
-          <stop offset="100%" stopColor="#7F5605" />
-        </linearGradient>
-        <linearGradient id="diya-flame-grad" x1="0%" y1="0%" x2="0%" y2="100%">
-          <stop offset="0%" stopColor="#FFFDF5" />
-          <stop offset="30%" stopColor="#F59E0B" />
-          <stop offset="100%" stopColor="#EF4444" />
-        </linearGradient>
-      </defs>
-    </svg>
-  );
-};
-
-const LotusFlower = ({ size = 65, className = "" }) => {
-  return (
-    <svg width={size} height={size * 0.8} viewBox="0 0 100 80" className={className} style={{ overflow: "visible" }}>
-      <defs>
-        <linearGradient id="lotus-pink-grad" x1="0%" y1="0%" x2="0%" y2="100%">
-          <stop offset="0%" stopColor="#FDBA74" /> {/* peach tip */}
-          <stop offset="30%" stopColor="#F472B6" />
-          <stop offset="75%" stopColor="#EC4899" />
-          <stop offset="100%" stopColor="#9D174D" />
-        </linearGradient>
-      </defs>
-      {/* Outer back petals */}
-      <path d="M50,75 C15,70 5,45 15,30 C25,25 35,40 50,75 Z" fill="url(#lotus-pink-grad)" opacity="0.7" />
-      <path d="M50,75 C85,70 95,45 85,30 C75,25 65,40 50,75 Z" fill="url(#lotus-pink-grad)" opacity="0.7" />
-
-      {/* Side petals */}
-      <path d="M50,75 C20,60 10,35 25,20 C40,15 45,40 50,75 Z" fill="url(#lotus-pink-grad)" opacity="0.9" />
-      <path d="M50,75 C80,60 90,35 75,20 C60,15 55,40 50,75 Z" fill="url(#lotus-pink-grad)" opacity="0.9" />
-
-      {/* Inner petals */}
-      <path d="M50,75 C30,55 32,25 45,10 C50,15 52,40 50,75 Z" fill="url(#lotus-pink-grad)" />
-      <path d="M50,75 C70,55 68,25 55,10 C50,15 48,40 50,75 Z" fill="url(#lotus-pink-grad)" />
-
-      {/* Center Main Petal */}
-      <path d="M50,75 C38,55 40,15 50,0 C60,15 62,55 50,75 Z" fill="url(#lotus-pink-grad)" />
-
-      {/* Green base leaf/sepals */}
-      <path d="M25,75 C35,78 65,78 75,75 C60,82 40,82 25,75 Z" fill="#15803D" />
-    </svg>
-  );
-};
-
-const SunWheel = () => {
-  const zodiacs = [
-    { name: "Aries", symbol: "♈" },
-    { name: "Taurus", symbol: "♉" },
-    { name: "Gemini", symbol: "♊" },
-    { name: "Cancer", symbol: "♋" },
-    { name: "Leo", symbol: "♌" },
-    { name: "Virgo", symbol: "♍" },
-    { name: "Libra", symbol: "♎" },
-    { name: "Scorpio", symbol: "♏" },
-    { name: "Sagittarius", symbol: "♐" },
-    { name: "Capricorn", symbol: "♑" },
-    { name: "Aquarius", symbol: "♒" },
-    { name: "Pisces", symbol: "♓" },
-  ];
-
-  const size = 300;
-  const cx = size / 2;
-  const cy = size / 2;
-  const R = 132;
-
-  return (
-    <svg viewBox={`0 0 ${size} ${size}`} width="100%" height="100%" className="select-none" style={{ overflow: "visible" }}>
-      <defs>
-        <radialGradient id="sun-inner-glow" cx="50%" cy="50%" r="50%">
-          <stop offset="0%" stopColor="#FFFAE6" />
-          <stop offset="55%" stopColor="#FCD34D" />
-          <stop offset="90%" stopColor="#D97706" />
-          <stop offset="100%" stopColor="#92400E" />
-        </radialGradient>
-        <linearGradient id="gold-metallic" x1="0%" y1="0%" x2="100%" y2="100%">
-          <stop offset="0%" stopColor="#FFF3C4" />
-          <stop offset="45%" stopColor="#D5A93C" />
-          <stop offset="70%" stopColor="#B08320" />
-          <stop offset="100%" stopColor="#875B08" />
-        </linearGradient>
-      </defs>
-
-      {/* Main Wheel Plate */}
-      <circle cx={cx} cy={cy} r={R} fill="#271911" stroke="url(#gold-metallic)" strokeWidth="3" style={{ filter: "drop-shadow(0 6px 15px rgba(0,0,0,0.4))" }} />
-
-      {/* Inner Concentric Rings */}
-      <circle cx={cx} cy={cy} r={R - 22} fill="none" stroke="url(#gold-metallic)" strokeWidth="0.8" opacity="0.6" />
-      <circle cx={cx} cy={cy} r={R - 45} fill="none" stroke="url(#gold-metallic)" strokeWidth="1" strokeDasharray="3 3" opacity="0.5" />
-      <circle cx={cx} cy={cy} r={R - 50} fill="none" stroke="url(#gold-metallic)" strokeWidth="1.5" opacity="0.7" />
-
-      {/* 12 Sectors with Text & Glyphs */}
-      {zodiacs.map((z, i) => {
-        const angleDeg = i * 30;
-        const angleRad = (angleDeg * Math.PI) / 180;
-
-        // Division lines
-        const x1 = cx + (R - 50) * Math.cos(angleRad);
-        const y1 = cy + (R - 50) * Math.sin(angleRad);
-        const x2 = cx + R * Math.cos(angleRad);
-        const y2 = cy + R * Math.sin(angleRad);
-
-        // Label position
-        const labelAngle = angleDeg + 15;
-        const labelRad = (labelAngle * Math.PI) / 180;
-        const tx = cx + (R - 10) * Math.cos(labelRad);
-        const ty = cy + (R - 10) * Math.sin(labelRad);
-
-        // Symbol position
-        const sx = cx + (R - 33) * Math.cos(labelRad);
-        const sy = cy + (R - 33) * Math.sin(labelRad);
-
-        return (
-          <g key={i}>
-            <line x1={x1} y1={y1} x2={x2} y2={y2} stroke="url(#gold-metallic)" strokeWidth="1.2" opacity="0.4" />
-
-            {/* English Zodiac Label */}
-            <text
-              x={tx}
-              y={ty}
-              fill="url(#gold-metallic)"
-              fontSize="8.5"
-              fontWeight="bold"
-              textAnchor="middle"
-              alignmentBaseline="middle"
-              transform={`rotate(${labelAngle + 90}, ${tx}, ${ty})`}
-            >
-              {z.name}
-            </text>
-
-            {/* Zodiac Symbol Glyph */}
-            <text
-              x={sx}
-              y={sy}
-              fill="#FFFAF0"
-              fontSize="12.5"
-              textAnchor="middle"
-              alignmentBaseline="middle"
-              transform={`rotate(${labelAngle + 90}, ${sx}, ${sy})`}
-              opacity="0.85"
-            >
-              {z.symbol}
-            </text>
-          </g>
-        );
-      })}
-
-      {/* Central Glowing Sun Deity */}
-      <g>
-        {/* Sun Rays */}
-        {Array.from({ length: 16 }).map((_, i) => {
-          const angle = (i * 360) / 16;
-          const isWavy = i % 2 === 0;
-          return (
-            <path
-              key={i}
-              d={isWavy
-                ? `M ${cx} ${cy - 40} Q ${cx - 7} ${cy - 52} ${cx} ${cy - 66} Q ${cx + 7} ${cy - 52} ${cx} ${cy - 40}`
-                : `M ${cx} ${cy - 40} L ${cx - 4} ${cy - 62} L ${cx + 4} ${cy - 62} Z`
-              }
-              fill="url(#gold-metallic)"
-              transform={`rotate(${angle}, ${cx}, ${cy})`}
-            />
-          );
-        })}
-
-        {/* Face circle */}
-        <circle cx={cx} cy={cy} r={40} fill="url(#sun-inner-glow)" stroke="url(#gold-metallic)" strokeWidth="2" />
-        <circle cx={cx} cy={cy} r={37} fill="none" stroke="#78350F" strokeWidth="0.5" opacity="0.3" />
-
-        {/* Tilak (Traditional Forehead Mark) */}
-        <path d={`M ${cx - 2} ${cy - 22} Q ${cx} ${cy - 8} ${cx + 2} ${cy - 22} Z`} fill="#DC2626" />
-        <circle cx={cx} cy={cy - 24} r="2" fill="#FBBF24" />
-
-        {/* Eyes & Brows */}
-        <path d={`M ${cx - 11} ${cy - 6} Q ${cx - 7} ${cy - 9} ${cx - 3} ${cy - 6}`} fill="none" stroke="#451A03" strokeWidth="1.8" strokeLinecap="round" />
-        <path d={`M ${cx + 3} ${cy - 6} Q ${cx + 7} ${cy - 9} ${cx + 11} ${cy - 6}`} fill="none" stroke="#451A03" strokeWidth="1.8" strokeLinecap="round" />
-        <circle cx={cx - 7} cy={cy - 4} r="1.5" fill="#451A03" />
-        <circle cx={cx + 7} cy={cy - 4} r="1.5" fill="#451A03" />
-        <path d={`M ${cx - 13} ${cy - 10} Q ${cx - 8} ${cy - 12} ${cx - 3} ${cy - 9}`} fill="none" stroke="#451A03" strokeWidth="0.8" />
-        <path d={`M ${cx + 3} ${cy - 9} Q ${cx + 8} ${cy - 12} ${cx + 13} ${cy - 10}`} fill="none" stroke="#451A03" strokeWidth="0.8" />
-
-        {/* Nose */}
-        <path d={`M ${cx} ${cy - 6} L ${cx - 1.5} ${cy + 4} L ${cx} ${cy + 5}`} fill="none" stroke="#451A03" strokeWidth="1.2" strokeLinecap="round" />
-
-        {/* Smile */}
-        <path d={`M ${cx - 9} ${cy + 8} Q ${cx} ${cy + 16} ${cx + 9} ${cy + 8}`} fill="none" stroke="#451A03" strokeWidth="1.8" strokeLinecap="round" />
-        <path d={`M ${cx - 11} ${cy + 7} L ${cx - 8} ${cy + 8}`} fill="none" stroke="#451A03" strokeWidth="1" />
-        <path d={`M ${cx + 8} ${cy + 8} L ${cx + 11} ${cy + 7}`} fill="none" stroke="#451A03" strokeWidth="1" />
-      </g>
-    </svg>
-  );
-};
 
 const Kalash = ({ size = 125, className = "" }) => {
   return (
@@ -296,7 +76,7 @@ const getPanchangData = (offset) => {
   const karanas = [
     { name: "Kaulav", sub: "Till 12:33 PM" },
     { name: "Taitila", sub: "Till 11:45 AM" },
-    { name: "Garaja", fill: "Till 01:12 PM" },
+    { name: "Garaja", sub: "Till 01:12 PM" },
     { name: "Vanija", sub: "Till 02:40 PM" },
   ];
 
@@ -352,13 +132,6 @@ const STYLES = `
     background: #FDFBF7;
     color: var(--ink);
   }
-  .gold-plate-card {
-    border: 2px solid #E5C38D;
-background-image: url('/assets/img/bg/panchang_hero_bg.png');
-    background-size: cover;
-    background-position: center right;
-    box-shadow: 0 12px 36px rgba(229, 195, 141, 0.16);
-  }
   .serif-heading {
     font-family: 'Playfair Display', 'Georgia', 'Times New Roman', serif;
   }
@@ -400,19 +173,11 @@ background-image: url('/assets/img/bg/panchang_hero_bg.png');
   }
 
   /* =========================================================
-     RESPONSIVE ENHANCEMENTS (added — no existing rules changed)
+     RESPONSIVE ENHANCEMENTS
      ========================================================= */
 
-  /* Prevent horizontal scroll from the decorative absolutely
-     positioned diyas/lotus flowers on narrow viewports */
   .dq-root {
     overflow-x: hidden;
-  }
-
-  @media (max-width: 640px) {
-    .gold-plate-card {
-      background-position: center;
-    }
   }
 
   @media (max-width: 480px) {
@@ -421,75 +186,6 @@ background-image: url('/assets/img/bg/panchang_hero_bg.png');
     }
     .ornament-line {
       height: 12px;
-    }
-  }
-
-  @media (max-width: 380px) {
-    .gold-plate-card {
-      padding-left: 16px !important;
-      padding-right: 16px !important;
-    }
-  }
-
-  /* ---- Hero banner: extra mobile refinements ---- */
-  @media (max-width: 640px) {
-    .gold-plate-card {
-      padding-top: 24px !important;
-      padding-bottom: 24px !important;
-      gap: 24px !important;
-    }
-    .gold-plate-card h1 {
-      font-size: 2.1rem !important;
-      line-height: 1.15 !important;
-    }
-    .gold-plate-card > div:nth-child(2) {
-      width: 220px !important;
-      height: 190px !important;
-    }
-  }
-
-  @media (max-width: 420px) {
-    .gold-plate-card h1 {
-      font-size: 1.8rem !important;
-    }
-    .gold-plate-card > div:nth-child(2) {
-      width: 190px !important;
-      height: 170px !important;
-    }
-  }
-
-  @media (max-width: 640px) {
-    .gold-plate-card > div:first-child {
-      margin-bottom: 4px;
-    }
-    .gold-plate-card > div:nth-child(2) {
-      margin-top: 6px;
-    }
-  }
-
-  /* ---- Reduce overall banner height (tablet/desktop) ---- */
-  .gold-plate-card {
-    padding-top: 20px !important;
-    padding-bottom: 20px !important;
-  }
-  @media (min-width: 641px) {
-    .gold-plate-card {
-      gap: 24px !important;
-    }
-    .gold-plate-card h1 {
-      font-size: 2.75rem !important;
-      line-height: 1.1 !important;
-    }
-    .gold-plate-card > div:nth-child(2) {
-      height: 200px !important;
-    }
-  }
-  @media (min-width: 1024px) {
-    .gold-plate-card h1 {
-      font-size: 3.1rem !important;
-    }
-    .gold-plate-card > div:nth-child(2) {
-      height: 210px !important;
     }
   }
 
@@ -523,13 +219,12 @@ background-image: url('/assets/img/bg/panchang_hero_bg.png');
       padding-left: 0 !important;
       padding-right: 0 !important;
     }
-    .dq-hero-section .gold-plate-card,
     .dq-hero-section .puja-hero-card {
       border-radius: 0 !important;
     }
   }
 
-  /* ---- New "Explore Sacred Panchang" hero banner ---- */
+  /* ---- "Explore Sacred Panchang" hero banner ---- */
   .puja-hero-card {
     background-image: url('/assets/img/bg/panchang_hero_bg.png');
     background-size: cover;
@@ -581,6 +276,516 @@ background-image: url('/assets/img/bg/panchang_hero_bg.png');
       font-size: 10px !important;
     }
   }
+
+  /* =========================================================
+     CONTENT CARDS — each card family has its own class,
+     height is always driven by content (no forced h-full,
+     no min-height stretching), spacing lives here instead of
+     being repeated inline so nothing conflicts between cards.
+     ========================================================= */
+
+  .dq-panel {
+    background: #fff;
+    border: 1px solid var(--line);
+    border-radius: 16px;
+    box-shadow: 0 1px 2px rgba(43, 35, 64, 0.04);
+    padding: 18px;
+    height: fit-content;
+  }
+  .dq-panel-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding-bottom: 10px;
+    margin-bottom: 14px;
+    border-bottom: 1px solid var(--line);
+  }
+  .dq-panel-header h3 {
+    font-size: 15px;
+    font-weight: 700;
+    color: #1f2937;
+  }
+
+  /* Row wrappers — single source of truth for the 2/3-column grids.
+     Mobile-first: everything is a single stacked column by default;
+     breakpoints below turn specific rows into 2 columns. */
+  .dq-row {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 20px;
+    align-items: start;
+    margin-bottom: 20px;
+  }
+  .dq-row > * {
+    align-self: start;
+  }
+
+  /* Panchang Elements */
+  .dq-panchang-grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    column-gap: 28px;
+  }
+  .dq-panchang-row {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 8px 6px;
+    border-bottom: 1px solid #f9fafb;
+    border-radius: 10px;
+    transition: background 0.15s ease;
+  }
+  .dq-panchang-row:hover {
+    background: rgba(0, 0, 0, 0.02);
+  }
+  .dq-panchang-row:last-child {
+    border-bottom: none;
+  }
+  .dq-panchang-icon {
+    width: 34px;
+    height: 34px;
+    border-radius: 999px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    color: #fff;
+  }
+  .dq-panchang-label {
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.05em;
+    color: #9ca3af;
+    text-transform: uppercase;
+  }
+  .dq-panchang-value {
+    font-size: 14px;
+    font-weight: 700;
+    color: #1f2937;
+    line-height: 1.2;
+    margin-top: 1px;
+  }
+  .dq-panchang-sub {
+    font-size: 12px;
+    color: #6b7280;
+    font-weight: 500;
+  }
+
+  /* Today's Festivals */
+  .dq-festival-today-card {
+    background: linear-gradient(to bottom right, #fff0f5, #fff5ee);
+  }
+  .dq-festival-today-list {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+  .dq-festival-today-item {
+    background: #fff;
+    border-radius: 12px;
+    padding: 14px;
+    border: 1px solid rgba(251, 207, 232, 0.3);
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.02);
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  .dq-festival-today-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 999px;
+    background: #9333ea;
+    flex-shrink: 0;
+    animation: dq-pulse 2s ease-in-out infinite;
+  }
+  @keyframes dq-pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.4; }
+  }
+  .dq-festival-today-note {
+    margin-top: 14px;
+    padding-top: 10px;
+    border-top: 1px solid rgba(251, 207, 232, 0.7);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 11px;
+    color: #6b7280;
+    font-weight: 500;
+  }
+
+  /* Sun / Moon Timings — height comes purely from their own content */
+  .dq-skyrow {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 20px;
+  }
+  .dq-sky-card {
+    border-radius: 16px;
+    padding: 18px;
+    position: relative;
+    overflow: hidden;
+    border: 1px solid var(--line);
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+  }
+  .dq-sky-card--sun {
+    background: linear-gradient(to bottom right, #fff8ec, #ffe9cc);
+  }
+  .dq-sky-card--moon {
+    background: linear-gradient(to bottom right, #eef2ff, #dce4ff);
+  }
+  .dq-sky-card-head {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .dq-sky-card-icon {
+    width: 30px;
+    height: 30px;
+    border-radius: 999px;
+    background: #fff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.06);
+    flex-shrink: 0;
+  }
+  .dq-sky-card-title {
+    font-size: 14px;
+    font-weight: 700;
+    color: #1f2937;
+  }
+  .dq-sky-card-times {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    position: relative;
+    z-index: 10;
+  }
+  .dq-sky-card-time-label {
+    font-size: 12px;
+    color: #6b7280;
+    font-weight: 500;
+  }
+  .dq-sky-card-time-value {
+    font-size: 19px;
+    font-weight: 900;
+    margin-top: 1px;
+  }
+  .dq-sky-card--sun .dq-sky-card-time-value { color: #ea580c; }
+  .dq-sky-card--moon .dq-sky-card-time-value { color: #4f46e5; }
+  .dq-sky-card-sign {
+    font-size: 13px;
+    font-weight: 600;
+    color: #374151;
+    position: relative;
+    z-index: 10;
+  }
+  .dq-sky-card-wave {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    height: auto;
+    opacity: 0.1;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  /* Upcoming Festivals */
+  .dq-upcoming-list {
+    display: flex;
+    flex-direction: column;
+  }
+  .dq-upcoming-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 9px 0;
+    border-bottom: 1px solid #f9fafb;
+  }
+  .dq-upcoming-item:last-child {
+    border-bottom: none;
+  }
+  .dq-upcoming-name {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 13px;
+    font-weight: 600;
+    color: #374151;
+  }
+  .dq-upcoming-date {
+    font-size: 11px;
+    font-weight: 700;
+    color: #f97316;
+    background: #fff7ed;
+    padding: 2px 10px;
+    border-radius: 999px;
+    border: 1px solid rgba(251, 146, 60, 0.2);
+  }
+  .dq-upcoming-btn {
+    width: 100%;
+    margin-top: 14px;
+    padding: 9px 0;
+    border-radius: 999px;
+    font-size: 13px;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    background: #fff9f2;
+    color: #ea580c;
+    border: 1px solid #fed7aa;
+    transition: background 0.15s ease;
+  }
+  .dq-upcoming-btn:hover {
+    background: #fff7ed;
+  }
+
+  /* Auspicious & Inauspicious Timings */
+  .dq-auspicious-list {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+  .dq-muhurat-box {
+    border-radius: 12px;
+    padding: 12px 16px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: rgba(236, 253, 245, 0.7);
+    border: 1px solid rgba(167, 243, 208, 0.5);
+    position: relative;
+    overflow: hidden;
+  }
+  .dq-muhurat-title {
+    font-size: 12px;
+    font-weight: 700;
+    color: #047857;
+    letter-spacing: 0.03em;
+  }
+  .dq-muhurat-sub {
+    font-size: 11px;
+    color: #6b7280;
+    font-weight: 600;
+    margin-top: 2px;
+    display: block;
+  }
+  .dq-muhurat-value {
+    font-size: 14px;
+    font-weight: 800;
+    color: #047857;
+    position: relative;
+    z-index: 10;
+  }
+  .dq-muhurat-motif {
+    position: absolute;
+    right: 0;
+    top: 0;
+    bottom: 0;
+    opacity: 0.1;
+    width: 90px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .dq-inauspicious-box {
+    border-radius: 12px;
+    padding: 12px 16px;
+    background: rgba(254, 242, 242, 0.6);
+    border: 1px solid rgba(254, 202, 202, 0.5);
+  }
+  .dq-inauspicious-head {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 9px;
+    padding-bottom: 7px;
+    border-bottom: 1px solid rgba(254, 202, 202, 0.5);
+  }
+  .dq-inauspicious-head span {
+    font-size: 12px;
+    font-weight: 700;
+    color: #dc2626;
+    letter-spacing: 0.03em;
+  }
+  .dq-inauspicious-grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 10px;
+  }
+  .dq-inauspicious-item-label {
+    font-size: 11px;
+    font-weight: 600;
+    color: #6b7280;
+  }
+  .dq-inauspicious-item-value {
+    font-size: 14px;
+    font-weight: 800;
+    color: #dc2626;
+    margin-top: 1px;
+  }
+  .dq-disha-box {
+    border-radius: 12px;
+    padding: 12px 16px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: rgba(255, 251, 235, 0.7);
+    border: 1px solid rgba(253, 230, 138, 0.5);
+  }
+  .dq-disha-left {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  .dq-disha-icon {
+    width: 38px;
+    height: 38px;
+    border-radius: 999px;
+    background: #fff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+    color: #d97706;
+    flex-shrink: 0;
+  }
+  .dq-disha-title {
+    font-size: 12px;
+    font-weight: 700;
+    color: #b45309;
+    letter-spacing: 0.03em;
+  }
+  .dq-disha-sub {
+    font-size: 11px;
+    color: #6b7280;
+    font-weight: 600;
+    margin-top: 2px;
+    display: block;
+  }
+  .dq-disha-value {
+    font-size: 14px;
+    font-weight: 800;
+    color: #b45309;
+    background: #fff;
+    padding: 6px 14px;
+    border-radius: 999px;
+    border: 1px solid #fde68a;
+  }
+
+  /* Additional Details */
+  .dq-details-card {
+    background: linear-gradient(to bottom right, #f5f2fc, #ece6fa);
+  }
+  .dq-details-list {
+    display: flex;
+    flex-direction: column;
+  }
+  .dq-details-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 9px 0;
+    border-bottom: 1px solid rgba(233, 213, 255, 0.5);
+  }
+  .dq-details-row:last-child {
+    border-bottom: none;
+  }
+  .dq-details-label {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 13px;
+    font-weight: 600;
+    color: #4b5563;
+  }
+  .dq-details-value {
+    font-size: 13px;
+    font-weight: 700;
+    color: #1f2937;
+  }
+
+  /* What is Panchang */
+  .dq-about-card {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 18px;
+    text-align: center;
+  }
+  .dq-about-icon {
+    width: 60px;
+    height: 60px;
+    border-radius: 999px;
+    background: #fffbeb;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #d97706;
+    border: 1px solid #fde68a;
+    flex-shrink: 0;
+  }
+  .dq-about-text h3 {
+    font-size: 17px;
+    font-weight: 800;
+    color: #1f2937;
+    margin-bottom: 8px;
+  }
+  .dq-about-text p {
+    font-size: 13px;
+    color: #4b5563;
+    line-height: 1.6;
+    font-weight: 500;
+  }
+  .dq-about-kalash {
+    flex-shrink: 0;
+    width: 170px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  /* =========================================================
+     RESPONSIVE LAYOUT BREAKPOINTS
+     Mobile-first base above == always a single stacked column.
+     From tablet (768px) the inner grids (Panchang Elements,
+     inauspicious-timings row, About card) go multi-column.
+     From desktop (1024px) the two-card ROWS themselves split
+     into a main column + a narrower side column, matching the
+     reference design.
+     ========================================================= */
+
+  @media (min-width: 768px) {
+    .dq-panchang-grid { grid-template-columns: 1fr 1fr; }
+    .dq-inauspicious-grid { grid-template-columns: repeat(3, 1fr); }
+    .dq-about-card {
+      flex-direction: row;
+      justify-content: space-between;
+      text-align: left;
+    }
+    .dq-about-kalash { width: 200px; }
+  }
+
+  @media (min-width: 1024px) {
+    .dq-row--main {
+      grid-template-columns: minmax(0, 2fr) minmax(280px, 1fr);
+    }
+    .dq-row--sky {
+      grid-template-columns: minmax(0, 2fr) minmax(280px, 1fr);
+    }
+    .dq-skyrow {
+      grid-template-columns: 1fr 1fr;
+    }
+    .dq-sky-card {
+      height: 190px;
+    }
+  }
 `;
 
 export default function PanchangPage() {
@@ -593,8 +798,6 @@ export default function PanchangPage() {
 
   // Dynamic Tailwind loader
   useEffect(() => {
-    // If a previous mount already loaded the CDN script, Tailwind is
-    // already active — don't show the loading state again.
     if (window.tailwind) {
       setIsStylesReady(true);
     }
@@ -612,7 +815,7 @@ export default function PanchangPage() {
       if (window.tailwind) {
         window.tailwind.config = {
           corePlugins: {
-            preflight: false, // Prevents Tailwind reset from overriding site Bootstrap/global styles
+            preflight: false,
           }
         };
       }
@@ -624,7 +827,6 @@ export default function PanchangPage() {
       const el = document.getElementById("tailwind-cdn-script");
       if (el) document.head.removeChild(el);
 
-      // Cleanup styles injected by Tailwind Play CDN
       const styleTags = document.querySelectorAll("style");
       styleTags.forEach((s) => {
         if (s.textContent && (s.textContent.includes("tailwindcss") || s.textContent.includes("--tw-"))) {
@@ -636,9 +838,6 @@ export default function PanchangPage() {
 
   const d = getPanchangData(dayOffset);
 
-  // Show a minimal, dependency-free loading state while Tailwind's CDN
-  // script is still loading — this is what was causing the broken/
-  // overlapping mobile layout (utility classes with no CSS applied yet).
   if (!isStylesReady) {
     return (
       <div
@@ -709,12 +908,7 @@ export default function PanchangPage() {
 
           {/* Badge row */}
           <div className="puja-hero-badges relative z-10 flex flex-wrap gap-3 px-6 pb-6 md:px-12 md:pb-8">
-            {[
-              // { icon: Sunrise, label: "Authentic Vedic Data" },
-              // { icon: Clock, label: "Accurate Timings" },
-              // { icon: Sparkles, label: "Trusted by Millions" },
-              // { icon: Compass, label: "Guidance for Every Moment" },
-            ].map((b, i) => {
+            {[].map((b, i) => {
               const Icon = b.icon;
               return (
                 <div key={i} className="puja-hero-badge flex items-center gap-2 px-3 py-2 rounded-full bg-black/30 border border-white/15 backdrop-blur-sm">
@@ -780,34 +974,34 @@ export default function PanchangPage() {
           3. MAIN LAYOUT CONTENT (ROW-BASED GRIDS)
           ========================================== */}
       {/* Section 1: Panchang Elements + Today's Festivals */}
-      <section className="max-w-6xl mx-auto px-4 md:px-6 mb-6 grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div className="lg:col-span-2">
+      <section className="max-w-6xl mx-auto px-4 md:px-6 dq-row dq-row--main">
+        <div>
           {/* Panchang Elements Card */}
-          <div className="bg-white rounded-2xl border border-[#EDE6D8] p-6 shadow-sm h-full">
-            <div className="flex items-center gap-2.5 mb-5 pb-3 border-b border-[#EDE6D8]">
+          <div className="dq-panel">
+            <div className="dq-panel-header">
               <Calendar size={18} className="text-orange-500" />
-              <h3 className="text-base md:text-lg font-bold text-gray-800">Panchang Elements</h3>
+              <h3>Panchang Elements</h3>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-2">
+            <div className="dq-panchang-grid">
               {[
-                { label: "TITHI", value: d.tithi, sub: d.tithiSub, icon: Sunrise, color: "bg-[#F4623A] text-white" },
-                { label: "KARANA", value: d.karana, sub: d.karanaSub, icon: Sparkles, color: "bg-[#2FA84F] text-white" },
-                { label: "NAKSHATRA", value: d.nakshatra, sub: d.nakshatraSub, icon: Star, color: "bg-[#8A4FE0] text-white" },
-                { label: "PAKSHA", value: d.paksha, sub: d.season, icon: Moon, color: "bg-[#3B7FE0] text-white" },
-                { label: "YOGA", value: d.yoga, sub: d.yogaSub, icon: Wind, color: "bg-[#2D8FE0] text-white" },
-                { label: "MONTH", value: d.month, sub: d.season, icon: Calendar, color: "bg-[#E0508F] text-white" },
+                { label: "TITHI", value: d.tithi, sub: d.tithiSub, icon: Sunrise, color: "#F4623A" },
+                { label: "KARANA", value: d.karana, sub: d.karanaSub, icon: Sparkles, color: "#2FA84F" },
+                { label: "NAKSHATRA", value: d.nakshatra, sub: d.nakshatraSub, icon: Star, color: "#8A4FE0" },
+                { label: "PAKSHA", value: d.paksha, sub: d.season, icon: Moon, color: "#3B7FE0" },
+                { label: "YOGA", value: d.yoga, sub: d.yogaSub, icon: Wind, color: "#2D8FE0" },
+                { label: "MONTH", value: d.month, sub: d.season, icon: Calendar, color: "#E0508F" },
               ].map((el, i) => {
                 const Icon = el.icon;
                 return (
-                  <div key={i} className="flex items-center gap-4 py-3 border-b border-gray-50 last:border-b-0 hover:bg-gray-50/50 rounded-xl px-2 transition-colors">
-                    <div className={`w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0 ${el.color}`}>
+                  <div key={i} className="dq-panchang-row">
+                    <div className="dq-panchang-icon" style={{ background: el.color }}>
                       <Icon size={15} />
                     </div>
                     <div>
-                      <span className="text-[10px] md:text-[11px] font-bold tracking-wider text-gray-400 uppercase">{el.label}</span>
-                      <h4 className="text-sm md:text-base font-bold text-gray-800 leading-tight mt-0.5">{el.value}</h4>
-                      {el.sub && <span className="text-xs text-gray-500 font-medium">{el.sub}</span>}
+                      <span className="dq-panchang-label">{el.label}</span>
+                      <h4 className="dq-panchang-value">{el.value}</h4>
+                      {el.sub && <span className="dq-panchang-sub">{el.sub}</span>}
                     </div>
                   </div>
                 );
@@ -818,80 +1012,82 @@ export default function PanchangPage() {
 
         <div>
           {/* Today's Festivals Card */}
-          <div className="rounded-2xl p-6 bg-gradient-to-br from-[#FFF0F5] to-[#FFF5EE] border border-[#EDE6D8] shadow-sm h-full flex flex-col justify-between">
-            <div>
-              <div className="flex items-center gap-2 mb-4 pb-2.5 border-b border-pink-100">
-                <Crown size={18} className="text-pink-600" />
-                <h3 className="text-base md:text-lg font-bold text-gray-800">Today's Festivals</h3>
-              </div>
-              <div className="space-y-3">
-                {d.festivals.map((fest, idx) => (
-                  <div key={idx} className="bg-white rounded-xl p-4 shadow-2xs border border-pink-100/30 flex items-center gap-3">
-                    <span className="w-2.5 h-2.5 rounded-full bg-purple-600 flex-shrink-0 animate-pulse"></span>
-                    <span className="text-xs md:text-sm font-semibold text-gray-700">{fest}</span>
-                  </div>
-                ))}
-              </div>
+          <div className="dq-panel dq-festival-today-card">
+            <div className="dq-panel-header" style={{ borderColor: "#fbcfe8" }}>
+              <Crown size={18} className="text-pink-600" />
+              <h3>Today's Festivals</h3>
+            </div>
+            <div className="dq-festival-today-list">
+              {d.festivals.map((fest, idx) => (
+                <div key={idx} className="dq-festival-today-item">
+                  <span className="dq-festival-today-dot"></span>
+                  <span className="text-xs md:text-sm font-semibold text-gray-700">{fest}</span>
+                </div>
+              ))}
+            </div>
+            <div className="dq-festival-today-note">
+              <Sparkles size={13} className="text-pink-500 flex-shrink-0" />
+              <span>Considered favorable for puja and new beginnings.</span>
             </div>
           </div>
         </div>
       </section>
 
       {/* Section 2: Sun & Moon Timings + Upcoming Festivals */}
-      <section className="max-w-6xl mx-auto px-4 md:px-6 mb-6 grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div className="lg:col-span-2 grid grid-cols-1 md:grid-cols-2 gap-6">
+      <section className="max-w-6xl mx-auto px-4 md:px-6 dq-row dq-row--sky">
+        <div className="dq-skyrow">
           {/* Sun Timings Card */}
-          <div className="rounded-2xl p-6 relative overflow-hidden border border-[#EDE6D8] bg-gradient-to-br from-[#FFF8EC] to-[#FFE9CC] shadow-sm flex flex-col justify-between h-full min-h-[190px]">
+          <div className="dq-sky-card dq-sky-card--sun">
             <div>
-              <div className="flex items-center gap-2 mb-4">
-                <div className="w-8 h-8 rounded-full bg-white flex items-center justify-center shadow-sm text-orange-500">
-                  <Sun size={16} className="fill-orange-400" />
+              <div className="dq-sky-card-head">
+                <div className="dq-sky-card-icon">
+                  <Sun size={16} className="fill-orange-400 text-orange-500" />
                 </div>
-                <h4 className="text-sm md:text-base font-bold text-gray-800">Sun Timings</h4>
+                <h4 className="dq-sky-card-title">Sun Timings</h4>
               </div>
-              <div className="flex justify-between items-center z-10 relative">
+              <div className="dq-sky-card-times" style={{ marginTop: 14 }}>
                 <div>
-                  <span className="text-xs text-gray-500 font-medium">Sunrise</span>
-                  <p className="text-lg md:text-xl font-black text-orange-600 mt-0.5">{d.sunrise}</p>
+                  <span className="dq-sky-card-time-label">Sunrise</span>
+                  <p className="dq-sky-card-time-value">{d.sunrise}</p>
                 </div>
                 <div>
-                  <span className="text-xs text-gray-500 font-medium">Sunset</span>
-                  <p className="text-lg md:text-xl font-black text-orange-600 mt-0.5">{d.sunset}</p>
+                  <span className="dq-sky-card-time-label">Sunset</span>
+                  <p className="dq-sky-card-time-value">{d.sunset}</p>
                 </div>
               </div>
             </div>
-            <div className="mt-4 text-xs md:text-sm font-semibold text-gray-700 z-10 relative">
-              Sun Sign: <span className="text-orange-600">{d.sunSign}</span>
+            <div className="dq-sky-card-sign">
+              Sun Sign: <span style={{ color: "#ea580c" }}>{d.sunSign}</span>
             </div>
-            <svg viewBox="0 0 300 60" className="absolute bottom-0 left-0 w-full h-auto opacity-10 pointer-events-none fill-orange-500 z-0">
+            <svg viewBox="0 0 300 60" className="dq-sky-card-wave fill-orange-500">
               <path d="M0,60 C40,45 80,45 120,55 C160,65 200,60 240,40 C280,20 300,30 320,60 Z" />
             </svg>
           </div>
 
           {/* Moon Timings Card */}
-          <div className="rounded-2xl p-6 relative overflow-hidden border border-[#EDE6D8] bg-gradient-to-br from-[#EEF2FF] to-[#DCE4FF] shadow-sm flex flex-col justify-between h-full min-h-[190px]">
+          <div className="dq-sky-card dq-sky-card--moon">
             <div>
-              <div className="flex items-center gap-2 mb-4">
-                <div className="w-8 h-8 rounded-full bg-white flex items-center justify-center shadow-sm text-indigo-500">
-                  <Moon size={16} className="fill-indigo-400" />
+              <div className="dq-sky-card-head">
+                <div className="dq-sky-card-icon">
+                  <Moon size={16} className="fill-indigo-400 text-indigo-500" />
                 </div>
-                <h4 className="text-sm md:text-base font-bold text-gray-800">Moon Timings</h4>
+                <h4 className="dq-sky-card-title">Moon Timings</h4>
               </div>
-              <div className="flex justify-between items-center z-10 relative">
+              <div className="dq-sky-card-times" style={{ marginTop: 14 }}>
                 <div>
-                  <span className="text-xs text-gray-500 font-medium">Moonrise</span>
-                  <p className="text-lg md:text-xl font-black text-indigo-600 mt-0.5">{d.moonrise}</p>
+                  <span className="dq-sky-card-time-label">Moonrise</span>
+                  <p className="dq-sky-card-time-value">{d.moonrise}</p>
                 </div>
                 <div>
-                  <span className="text-xs text-gray-500 font-medium">Moonset</span>
-                  <p className="text-lg md:text-xl font-black text-indigo-600 mt-0.5">{d.moonset}</p>
+                  <span className="dq-sky-card-time-label">Moonset</span>
+                  <p className="dq-sky-card-time-value">{d.moonset}</p>
                 </div>
               </div>
             </div>
-            <div className="mt-4 text-xs md:text-sm font-semibold text-gray-700 z-10 relative">
-              Moon Sign: <span className="text-indigo-600">{d.moonSign}</span>
+            <div className="dq-sky-card-sign">
+              Moon Sign: <span style={{ color: "#4f46e5" }}>{d.moonSign}</span>
             </div>
-            <svg viewBox="0 0 300 60" className="absolute bottom-0 left-0 w-full h-auto opacity-10 pointer-events-none fill-indigo-500 z-0">
+            <svg viewBox="0 0 300 60" className="dq-sky-card-wave fill-indigo-500">
               <path d="M0,50 Q60,35 120,48 T240,30 Q280,30 300,50 L300,60 L0,60 Z" />
             </svg>
           </div>
@@ -899,34 +1095,32 @@ export default function PanchangPage() {
 
         <div>
           {/* Upcoming Festivals Card */}
-          <div className="bg-white rounded-2xl border border-[#EDE6D8] p-6 shadow-sm h-full flex flex-col justify-between">
-            <div>
-              <div className="flex items-center gap-2 mb-4 pb-2.5 border-b border-[#EDE6D8]">
-                <Calendar size={18} className="text-orange-500" />
-                <h3 className="text-base md:text-lg font-bold text-gray-800">Upcoming Festivals</h3>
-              </div>
-
-              <div className="space-y-1">
-                {[
-                  { name: "Sakat Chauth", date: "6 January" },
-                  { name: "Sankashti Chaturthi", date: "6 January" },
-                  { name: "Kalashtami", date: "10 January" },
-                  { name: "Lohri", date: "14 January" },
-                  { name: "Makara Sankranti", date: "15 January" },
-                  { name: "Pongal", date: "15 January" },
-                ].map((it, idx) => (
-                  <div key={idx} className="flex items-center justify-between py-2.5 border-b border-gray-50 last:border-b-0">
-                    <div className="flex items-center gap-2">
-                      <Calendar size={14} className="text-gray-400" />
-                      <span className="text-xs md:text-sm font-semibold text-gray-700">{it.name}</span>
-                    </div>
-                    <span className="text-xs text-orange-500 font-bold bg-orange-50 px-2.5 py-0.5 rounded-full border border-orange-100/50">{it.date}</span>
-                  </div>
-                ))}
-              </div>
+          <div className="dq-panel">
+            <div className="dq-panel-header">
+              <Calendar size={18} className="text-orange-500" />
+              <h3>Upcoming Festivals</h3>
             </div>
 
-            <button className="w-full mt-4 py-2.5 rounded-full text-xs md:text-sm font-bold flex items-center justify-center gap-2 bg-[#FFF9F2] text-orange-600 border border-orange-200 hover:bg-orange-50 transition-colors shadow-2xs">
+            <div className="dq-upcoming-list">
+              {[
+                { name: "Sakat Chauth", date: "6 January" },
+                { name: "Sankashti Chaturthi", date: "6 January" },
+                { name: "Kalashtami", date: "10 January" },
+                { name: "Lohri", date: "14 January" },
+                { name: "Makara Sankranti", date: "15 January" },
+                { name: "Pongal", date: "15 January" },
+              ].map((it, idx) => (
+                <div key={idx} className="dq-upcoming-item">
+                  <div className="dq-upcoming-name">
+                    <Calendar size={14} className="text-gray-400" />
+                    <span>{it.name}</span>
+                  </div>
+                  <span className="dq-upcoming-date">{it.date}</span>
+                </div>
+              ))}
+            </div>
+
+            <button className="dq-upcoming-btn">
               <Calendar size={15} /> View Full Calendar
             </button>
           </div>
@@ -934,24 +1128,24 @@ export default function PanchangPage() {
       </section>
 
       {/* Section 3: Auspicious & Inauspicious Timings + Additional Details */}
-      <section className="max-w-6xl mx-auto px-4 md:px-6 mb-6 grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div className="lg:col-span-2">
+      <section className="max-w-6xl mx-auto px-4 md:px-6 dq-row dq-row--main">
+        <div>
           {/* Auspicious & Inauspicious Timings Card */}
-          <div className="bg-white rounded-2xl border border-[#EDE6D8] p-6 shadow-sm h-full">
-            <div className="flex items-center gap-2.5 mb-5 pb-3 border-b border-[#EDE6D8]">
+          <div className="dq-panel">
+            <div className="dq-panel-header">
               <Clock size={18} className="text-orange-500" />
-              <h3 className="text-base md:text-lg font-bold text-gray-800">Auspicious & Inauspicious Timings</h3>
+              <h3>Auspicious &amp; Inauspicious Timings</h3>
             </div>
 
-            <div className="space-y-4">
-              <div className="rounded-xl px-5 py-4 flex items-center justify-between bg-emerald-50/70 border border-emerald-100/50 shadow-xs relative overflow-hidden">
+            <div className="dq-auspicious-list">
+              <div className="dq-muhurat-box">
                 <div>
-                  <h4 className="text-xs md:text-sm font-bold text-emerald-700 tracking-wider">ABHIJIT MUHURAT</h4>
-                  <span className="text-[11px] text-gray-500 font-semibold mt-0.5 block">Most Auspicious Time</span>
+                  <h4 className="dq-muhurat-title">ABHIJIT MUHURAT</h4>
+                  <span className="dq-muhurat-sub">Most Auspicious Time</span>
                 </div>
-                <span className="text-sm md:text-base font-extrabold text-emerald-700 z-10">{d.abhijit}</span>
-                <div className="absolute right-0 top-0 bottom-0 opacity-10 w-24 flex items-center justify-center">
-                  <svg width="60" height="60" viewBox="0 0 100 100" className="fill-emerald-800">
+                <span className="dq-muhurat-value">{d.abhijit}</span>
+                <div className="dq-muhurat-motif">
+                  <svg width="56" height="56" viewBox="0 0 100 100" className="fill-emerald-800">
                     <circle cx="50" cy="50" r="40" fill="none" stroke="currentColor" strokeWidth="2" strokeDasharray="5 5" />
                     <circle cx="50" cy="50" r="30" fill="none" stroke="currentColor" strokeWidth="1" />
                     <path d="M50,10 L50,90 M10,50 L90,50 M20,20 L80,80 M20,80 L80,20" stroke="currentColor" strokeWidth="1.5" />
@@ -959,38 +1153,36 @@ export default function PanchangPage() {
                 </div>
               </div>
 
-              <div className="rounded-xl px-5 py-4 bg-red-50/60 border border-red-100/50 shadow-xs">
-                <div className="flex items-center gap-2 mb-3 pb-2 border-b border-red-100/50">
+              <div className="dq-inauspicious-box">
+                <div className="dq-inauspicious-head">
                   <AlertTriangle size={15} className="text-red-500" />
-                  <span className="text-xs font-bold text-red-600 tracking-wider">INAUSPICIOUS TIMINGS</span>
+                  <span>INAUSPICIOUS TIMINGS</span>
                 </div>
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <div className="dq-inauspicious-grid">
                   {[
                     { label: "Rahu Kaal", val: d.rahu },
                     { label: "Gulika Kaal", val: d.gulika },
                     { label: "Yamaghant Kaal", val: d.yamaghant }
                   ].map((it, idx) => (
-                    <div key={idx} className="flex flex-col">
-                      <span className="text-[11px] font-semibold text-gray-500">{it.label}</span>
-                      <span className="text-sm font-extrabold text-red-600 mt-0.5">{it.val}</span>
+                    <div key={idx}>
+                      <span className="dq-inauspicious-item-label">{it.label}</span>
+                      <span className="dq-inauspicious-item-value" style={{ display: "block" }}>{it.val}</span>
                     </div>
                   ))}
                 </div>
               </div>
 
-              <div className="rounded-xl px-5 py-4 flex items-center justify-between bg-amber-50/70 border border-amber-100/50">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-full bg-white flex items-center justify-center shadow-xs text-amber-600">
+              <div className="dq-disha-box">
+                <div className="dq-disha-left">
+                  <div className="dq-disha-icon">
                     <Compass size={17} />
                   </div>
                   <div>
-                    <h4 className="text-xs md:text-sm font-bold text-amber-700 tracking-wider">Disha Shool</h4>
-                    <span className="text-[11px] text-gray-500 font-semibold block mt-0.5">Avoid travel in this direction</span>
+                    <h4 className="dq-disha-title">Disha Shool</h4>
+                    <span className="dq-disha-sub">Avoid travel in this direction</span>
                   </div>
                 </div>
-                <span className="text-sm md:text-base font-extrabold text-amber-700 bg-white px-4 py-1.5 rounded-full border border-amber-100 shadow-2xs">
-                  {d.direction}
-                </span>
+                <span className="dq-disha-value">{d.direction}</span>
               </div>
             </div>
           </div>
@@ -998,32 +1190,31 @@ export default function PanchangPage() {
 
         <div>
           {/* Additional Details Card */}
-          <div className="rounded-2xl p-6 bg-gradient-to-br from-[#F5F2FC] to-[#ECE6FA] border border-[#EDE6D8] shadow-sm h-full flex flex-col justify-between">
-            <div>
-              <div className="flex items-center gap-2 mb-4 pb-2.5 border-b border-purple-100">
-                <Sparkles size={18} className="text-purple-600" />
-                <h3 className="text-base md:text-lg font-bold text-gray-800">Additional Details</h3>
-              </div>
+          <div className="dq-panel dq-details-card">
+            <div className="dq-panel-header" style={{ borderColor: "#e9d5ff" }}>
+              <Sparkles size={18} className="text-purple-600" />
+              <h3>Additional Details</h3>
+            </div>
 
-              <div className="space-y-1">
-                {[
-                  { label: "Moon Placement", value: d.direction, icon: Moon },
-                  { label: "Season", value: "Hemant", icon: Wind },
-                  { label: "Sun Sign", value: d.sunSign, icon: Sun },
-                  { label: "Moon Sign", value: d.moonSign, icon: Sparkles }
-                ].map((r, i) => {
-                  const Icon = r.icon;
-                  return (
-                    <div key={i} className="flex items-center justify-between py-3 border-b border-purple-100/50 last:border-b-0">
-                      <div className="flex items-center gap-2 text-xs md:text-sm font-semibold text-gray-600">
-                        <Icon size={14} className="text-purple-600" />
-                        <span>{r.label}</span>
-                      </div>
-                      <span className="text-xs md:text-sm font-bold text-gray-800">{r.value}</span>
+            <div className="dq-details-list">
+              {[
+                { label: "Nakshatra", value: d.nakshatra, icon: Star },
+                { label: "Season", value: "Hemant", icon: Wind },
+                { label: "Sun Sign", value: d.sunSign, icon: Sun },
+                { label: "Moon Sign", value: d.moonSign, icon: Moon },
+                { label: "Disha Shool", value: d.direction, icon: Compass }
+              ].map((r, i) => {
+                const Icon = r.icon;
+                return (
+                  <div key={i} className="dq-details-row">
+                    <div className="dq-details-label">
+                      <Icon size={14} className="text-purple-600" />
+                      <span>{r.label}</span>
                     </div>
-                  );
-                })}
-              </div>
+                    <span className="dq-details-value">{r.value}</span>
+                  </div>
+                );
+              })}
             </div>
           </div>
         </div>
@@ -1032,19 +1223,19 @@ export default function PanchangPage() {
       {/* Section 4: What is Panchang (Full Width) */}
       <section className="max-w-6xl mx-auto px-4 md:px-6 mb-8">
         {/* What is Panchang Explanation Card */}
-        <div className="bg-white rounded-2xl border border-[#EDE6D8] p-6 md:p-8 shadow-sm flex flex-col md:flex-row items-center justify-between gap-6 md:gap-8">
-          <div className="w-16 h-16 rounded-full bg-amber-50 flex items-center justify-center flex-shrink-0 text-amber-600 border border-amber-100">
-            <Flower2 className="w-8 h-8" />
+        <div className="dq-panel dq-about-card">
+          <div className="dq-about-icon">
+            <Flower2 className="w-7 h-7" />
           </div>
-          <div className="flex-1">
-            <h3 className="text-lg md:text-xl font-extrabold text-gray-800 mb-2.5">What is Panchang?</h3>
-            <p className="text-xs md:text-sm text-gray-600 leading-relaxed font-medium">
+          <div className="dq-about-text" style={{ flex: 1 }}>
+            <h3>What is Panchang?</h3>
+            <p>
               A Panchang is a Hindu calendar that provides details about important celestial occurrences and their influence on life.
               The term "Panchang" is derived from the Sanskrit words <span className="font-semibold text-orange-600">Pancha (five)</span> and <span className="font-semibold text-orange-600">Anga (limb)</span>, meaning "five limbs" or components.
               These five elements - Tithi (Lunar Day), Vara (Day of the Week), Nakshatra (Constellation), Yoga (Auspicious Combination), and Karana (Half of a Tithi) - help determine the most auspicious or inauspicious timings for daily life activities, ceremonies, and rituals.
             </p>
           </div>
-          <div className="flex-shrink-0 w-48 md:w-56 flex items-center justify-center">
+          <div className="dq-about-kalash">
             <Kalash size={150} />
           </div>
         </div>

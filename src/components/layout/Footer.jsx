@@ -12,38 +12,40 @@ const Footer = () => {
         duration: `${3 + Math.random() * 4}s`
     })), []);
 
-	const columns = [
-        { 
-            title: "// Services", 
+    const columns = [
+        {
+            title: "// Services",
             items: [
                 { label: "Puja", url: "/puja" },
                 { label: "Chadhava", url: "/chadhava" },
                 { label: "Panchang", url: "/panchang" },
                 { label: "Astrology Tools", url: "/astrology_calculator_hub" },
-                 
-            ] 
+
+            ]
         },
-        { 
-            title: "// Support", 
+        {
+            title: "// Support",
             items: [
                 { label: "Help Center", url: "/help" },
                 { label: "Consult with Astrologer", url: "/astrologer" },
                 { label: "Register as Astrologer", url: "/astrologer_registration" },
                 { label: "Refund Policy", url: "/cancellation_refund_policy" }
-            ] 
+            ]
         },
-        { 
-            title: "// Company", 
+        {
+            title: "// Company",
             items: [
                 { label: "About Us", url: "/about_us" },
                 { label: "Careers", url: "/careers" },
                 { label: "Security", url: "/security" },
                 { label: "Contact Us", url: "/contact_us" },
-               
-            ] 
+                { label: "Our Blog", url: "/blog" }
+
+
+            ]
         }
     ];
-return (
+    return (
         <footer className="footer-diviniq-final" style={{ background: "linear-gradient(135deg, #6E2A22, #2A0C10)" }}>
             {/* Twinkling Background Layer */}
             {starField.map(star => (
@@ -54,7 +56,7 @@ return (
             ))}
 
             <div className="container-fluid p-0 position-relative z-index-1">
-                
+
                 {/* --- 1. Top Section: Branding & App --- */}
                 <div className="row align-items-center mb-5 pb-5  border-white-10">
                     <div className="col-lg-6 mb-4 mb-lg-0">
@@ -69,14 +71,14 @@ return (
                             <a href="https://play.google.com/store/apps/details?id=com.diviniq.app" className="app-btn-elite">
                                 <i className="fab fa-apple fs-4"></i>
                                 <div className="text-start">
-                                    <small className="d-block opacity-50" style={{fontSize: '9px'}}>DOWNLOAD ON THE</small>
+                                    <small className="d-block opacity-50" style={{ fontSize: '9px' }}>DOWNLOAD ON THE</small>
                                     <span className="fw-bold">App Store</span>
                                 </div>
                             </a>
                             <a href="https://play.google.com/store/apps/details?id=com.diviniq.app" className="app-btn-elite my-2 my-md-0">
                                 <i className="fab fa-google-play fs-4 text-warning"></i>
                                 <div className="text-start">
-                                    <small className="d-block opacity-50" style={{fontSize: '9px'}}>GET IT ON</small>
+                                    <small className="d-block opacity-50" style={{ fontSize: '9px' }}>GET IT ON</small>
                                     <span className="fw-bold">Google Play</span>
                                 </div>
                             </a>
@@ -96,7 +98,7 @@ return (
                             </div>
                         </div>
                     ))}
-                    
+
                     {/* Newsletter as 4th Column */}
                     <div className="col-lg-3">
                         <h4 className="footer-title-modern">// Newsletter</h4>

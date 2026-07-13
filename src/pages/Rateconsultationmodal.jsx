@@ -39,7 +39,7 @@ export default function RateConsultationModal({ onClose, onSkip, onSubmit }) {
 
   return (
     <div className="modal-overlay">
-      <div className="modal-card modal-card--wide">
+      <div className="modal-card modal-card--wide modal-card--compact">
         <button className="modal-close" onClick={onClose} aria-label="Close">
           <X size={18} />
         </button>
@@ -49,24 +49,36 @@ export default function RateConsultationModal({ onClose, onSkip, onSubmit }) {
           Your feedback helps us and our experts improve.
         </p>
 
-        <div className="star-row">
-          {[1, 2, 3, 4, 5].map((i) => (
-            <button
-              key={i}
-              type="button"
-              className="star-btn"
-              onClick={() => setRating(i)}
-              onMouseEnter={() => setHoverRating(i)}
-              onMouseLeave={() => setHoverRating(0)}
-              aria-label={`Rate ${i} star${i > 1 ? 's' : ''}`}
-            >
-              <Star
-                size={28}
-                fill="currentColor"
-                className={i <= activeRating ? 'star star--filled' : 'star'}
-              />
-            </button>
-          ))}
+        <div className="star-row" style={{ display: 'flex', justifyContent: 'center', gap: 4 }}>
+          {[1, 2, 3, 4, 5].map((i) => {
+            const filled = i <= activeRating;
+            return (
+              <button
+                key={i}
+                type="button"
+                className="star-btn"
+                onClick={() => setRating(i)}
+                onMouseEnter={() => setHoverRating(i)}
+                onMouseLeave={() => setHoverRating(0)}
+                aria-label={`Rate ${i} star${i > 1 ? 's' : ''}`}
+                style={{
+                  border: 'none',
+                  background: 'transparent',
+                  padding: 2,
+                  cursor: 'pointer',
+                  lineHeight: 0,
+                  display: 'inline-flex',
+                }}
+              >
+                <Star
+                  size={26}
+                  strokeWidth={1.5}
+                  color={filled ? '#f5a623' : '#d8d5cf'}
+                  fill={filled ? '#f5a623' : 'none'}
+                />
+              </button>
+            );
+          })}
         </div>
         {activeRating > 0 && (
           <p className="rating-label">{RATING_LABELS[activeRating]}</p>
@@ -95,6 +107,7 @@ export default function RateConsultationModal({ onClose, onSkip, onSubmit }) {
             maxLength={300}
             value={review}
             onChange={(e) => setReview(e.target.value)}
+            style={{ resize: 'none' }}
           />
           <span className="char-count">{review.length}/300</span>
         </div>
@@ -121,13 +134,38 @@ export default function RateConsultationModal({ onClose, onSkip, onSubmit }) {
           Submit as anonymous
         </label>
 
-        <div className="modal-actions">
-          <button className="btn btn--outline" onClick={onSkip}>
+        <div className="modal-actions" style={{ display: 'flex', gap: 12 }}>
+          <button
+            className="btn btn--outline"
+            onClick={onSkip}
+            style={{
+              flex: 0.85,
+              padding: '13px 18px',
+              borderRadius: 12,
+              fontSize: 14,
+              fontWeight: 600,
+              cursor: 'pointer',
+              background: '#ffffff',
+              color: '#1a1a1f',
+              border: '1px solid #e9e6e2',
+            }}
+          >
             Skip
           </button>
           <button
             className="btn btn--primary"
             onClick={() => onSubmit?.({ rating, category, review, tags, anonymous })}
+            style={{
+              flex: 1.15,
+              padding: '13px 18px',
+              borderRadius: 12,
+              fontSize: 14,
+              fontWeight: 600,
+              cursor: 'pointer',
+              background: '#9c2954',
+              color: '#ffffff',
+              border: '1px solid transparent',
+            }}
           >
             Submit Review
           </button>

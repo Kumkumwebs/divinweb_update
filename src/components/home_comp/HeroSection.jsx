@@ -25,8 +25,11 @@ const HeroSection = ({ astrologer }) => {
 						verified astrologers – all from the comfort of your home.
 					</p>
 					<div className="dq-hero-actions">
-						<a href="/puja" className="dq-btn">Book Puja</a>
-						<a href="/astrologer" className="dq-btn dq-btn-outline">
+						<a href="/puja" className="dq-btn dq-btn-outline hide-mobile">
+							Book Puja
+						</a>
+
+						<a href="/astrologer" className="dq-btn dq-btn-outline hide-mobile">
 							Consult Astrologer
 						</a>
 					</div>

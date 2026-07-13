@@ -462,7 +462,7 @@ const AstrologerDetail = () => {
             {/* ══ RIGHT SIDEBAR ══ */}
             <div className="col-lg-4">
               <div className="ad-sticky">
-                <div className=".ad-fee-card ">
+                <div className="ad-fee-card">
                   <div className="ad-fee-lbl">Consultation Fee</div>
                   <div className="ad-fee-row">
                     <span className="ad-fee-amt">₹{price}</span>
@@ -545,8 +545,8 @@ const AstrologerDetail = () => {
           </div>
 
           {/* ══ FULL-WIDTH SECTIONS BELOW ══ */}
-          <div style={{ marginTop: -200}}>
-
+{/* ══ FULL-WIDTH SECTIONS BELOW ══ */}
+          <div className="ad-full-width-sections">
             {/* Consultation Process + Reviews — single row */}
             <div className="ad-card" style={{ marginBottom: 14, overflow: 'hidden' }}>
               <div className="row g-4 mx-0">
@@ -575,12 +575,13 @@ const AstrologerDetail = () => {
                   <div className="d-flex align-items-center gap-3 mb-3">
                     <div className="ad-card-title mb-0"><i className="fas fa-comments" />Customer Reviews</div>
                     <button
-                      className="btn btn-link p-0"
-                      style={{ fontSize: 12, color: '#7c1d40', fontWeight: 700, textDecoration: 'none', marginLeft: 500 }}
+                      className="btn btn-link p-0 ad-reviews-viewall"
+                      style={{ fontSize: 12, color: '#7c1d40', fontWeight: 700, textDecoration: 'none' }}
                       onClick={() => setPopup('reviews')}
                     >
                       View All
-                    </button>                  </div>
+                    </button>
+                  </div>
                   <div className="row g-3">
                     {reviewsSource.slice(0, 3).map((r, i) => (
                       <div key={i} className="col-md-4">
@@ -844,6 +845,18 @@ const AstrologerDetail = () => {
           </div>
         </div>
       )}
+      {/* Mobile sticky Chat/Call bar */}
+      <div className="ad-mobile-cta-bar">
+        <button className="ad-mobile-chat-btn" onClick={() => setWalletModal('chat')}>
+          <i className="fas fa-comment-dots" />
+          Chat Now
+        </button>
+        <button className="ad-mobile-call-btn" onClick={() => setWalletModal('call')}>
+          <i className="fas fa-phone" />
+          Call Now
+        </button>
+      </div>
+
       <NewAppDownloadModal
         isOpen={showModal}
         onClose={() => setShowModal(false)}

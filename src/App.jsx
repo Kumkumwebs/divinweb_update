@@ -19,7 +19,7 @@ import ContactUs from './pages/ContactUs';
 import Security from './pages/SecurityPage';
 import Careers from './pages/Careers';
 import ScrollToTop from './components/common/ScrollToTop';
-import CursorFollower from './components/common/CursorFollower';
+// import CursorFollower from './components/common/CursorFollower';
 import ChadhavaCartPage from './components/common/ChadhavaCartInfo';
 import PujaReviewBookingPage from './pages/PujaReviewBookingPage';
 import PujaFillForm from './pages/PujaReviewForm';
@@ -55,6 +55,9 @@ import Orders from './pages/Orders';
 import BlogList from './pages/BlogList';
 import BlogDetail from './pages/BlogDetail';
 import RestoreOngoingSession from './pages/RestoreOngoingSession';
+import Notification from './pages/Notification';
+import { useEffect } from "react";
+import { initNotifications } from "./services/notification";
 
 function NotFound() {
 	return (
@@ -65,7 +68,11 @@ function NotFound() {
 	);
 }
 
-function App() {
+		function App() {
+	useEffect(() => {
+		initNotifications();
+	}, []);
+
 	return (
 		<LanguageProvider>
 		 <AudioCallProvider>
@@ -73,7 +80,7 @@ function App() {
 		<Router>
 			<ScrollToTop />
 			{/* Cursor Follower - Same as original */}
-			<CursorFollower />
+			{/* <CursorFollower /> */}
 			{/* Slider Drag Cursor - Same as original */}
 			<div className="slider-drag-cursor">
 				<i className="fas fa-angle-left me-2"></i> DRAG{' '}
@@ -102,10 +109,11 @@ function App() {
 				<Route path="/love_calculator" element={<LoveCalculator />} />
 				<Route path="/horoscope" element={<Horoscope />} />
 				<Route path="/send_gift/:id" element={<SendGiftModal />} />
-				<Route Path="/faqs" element={<FAQSection />} />
+				<Route path="/faqs" element={<FAQSection />} />
 				<Route path="/orders" element={<Orders />} />
 				<Route path="/blog" element={<BlogList />} />
 				<Route path="/blog/:id" element={<BlogDetail />} />
+				<Route path="/notification" element={<Notification />} />
 				<Route
 					path="/friendship_calculator"
 					element={<FriendshipCalculator />}

@@ -16,6 +16,7 @@ import {
 } from '../services/liveService';
 import { getUserId, getUserName } from '../services/Liveconfig';
 import apiService from '../services/apiServices';
+import EndCallFlow from './EndCallFlow';
 import './ChatConsultation.css';
 
 /* ── helpers ── */
@@ -516,9 +517,10 @@ const ChatConsultation = () => {
   const elapsedSecs = Math.max(maxSeconds - (chatCtx.chatTimeLeft || 0), 0);
   const [sending, setSending] = useState(false);
   const [previewImage, setPreviewImage] = useState(null);
-  const [showRating, setShowRating] = useState(false);
-  const [ratingScore, setRatingScore] = useState(0);
-  const [ratingReview, setRatingReview] = useState('');
+
+  // Drives the full 5-step end-of-consultation sequence
+  // (EndCallFlow: confirm -> rate -> thankYou -> gift -> ended).
+  const [endFlowOpen, setEndFlowOpen] = useState(false);
    const [showGift, setShowGift] = useState(false);
    const [giftList, setGiftList] = useState(STATIC_GIFTS); 
 

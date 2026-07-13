@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import Header from '../components/layout/Header';
 import Footer from '../components/layout/Footer';
 import SideMenu from '../components/layout/SideMenu';
@@ -43,6 +43,8 @@ const estimateReadTime = (text) => {
 const ITEMS_PER_PAGE = 9;
 
 const BlogList = () => {
+  const navigate = useNavigate();
+
   const [showSideMenu, setShowSideMenu] = useState(false);
   const [showMobileMenu, setShowMobileMenu] = useState(false);
   const [showSearch, setShowSearch] = useState(false);
@@ -290,7 +292,12 @@ const BlogList = () => {
                   const plainTextDescription = stripHtml(blog.description);
                   const blogCategory = CATEGORY_MAP[blog.category_id] || 'Astrology';
                   return (
-                    <div className="bl-card" key={blog._id}>
+                    <div
+                      className="bl-card"
+                      key={blog._id}
+                      onClick={() => navigate(`/blog/${blog._id}`)}
+                      style={{ cursor: 'pointer' }}
+                    >
                       <div className="bl-card-img-wrap">
                         <span className="bl-card-badge">{blogCategory}</span>
                         <img
@@ -310,7 +317,11 @@ const BlogList = () => {
                           <span className="bl-card-meta">
                             {apiService.formatDate(blog.Created_date)} &bull; {estimateReadTime(plainTextDescription)}
                           </span>
-                          <Link to={`/blog/${blog._id}`} className="bl-card-link">
+                          <Link
+                            to={`/blog/${blog._id}`}
+                            className="bl-card-link"
+                            onClick={(e) => e.stopPropagation()}
+                          >
                             Read More <span>&rarr;</span>
                           </Link>
                         </div>

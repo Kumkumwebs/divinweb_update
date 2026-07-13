@@ -18,6 +18,8 @@ import LoginModal from '../components/common/LoginModal';
 import AuthService from '../services/authServices';
 import './home.css';
 import MobileBottomNav from '../components/layout/MobileNavbar';
+import AppPromoBanner from '../components/home_comp/AppPromoBanner';
+
 
 const Home = () => {
 	const [showSideMenu, setShowSideMenu] = useState(false);
@@ -62,6 +64,8 @@ const Home = () => {
 			/>
 
 			{/* Header */}
+			<AppPromoBanner />
+
 			<Header
 				onMenuToggle={() => setShowMobileMenu(true)}
 				onSideMenuToggle={() => setShowSideMenu(true)}

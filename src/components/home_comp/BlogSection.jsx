@@ -27,7 +27,12 @@ const BlogSection = ({ blog }) => {
 				<div className="dq-blog-wrap">
 					<div className="dq-blog-grid">
 						{items.slice(0, 6).map((item) => (
-							<div className="dq-blog-card" key={item.id || item.title}>
+							<div
+								className="dq-blog-card"
+								key={item.id || item._id || item.title}
+								onClick={() => (window.location.href = `/blog/${item._id || item.id}`)}
+								style={{ cursor: 'pointer' }}
+							>
 								<img src={item.img} alt={item.title} />
 								<div className="dq-blog-body">
 									<span className="dq-blog-tag">{item.tag}</span>
