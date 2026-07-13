@@ -30,7 +30,7 @@ const STATIC_GIFTS = [
 ];
 
 // ─── Success Popup ────────────────────────────────────────────────────────────
-function SuccessPopup({ gift, astrologerName, astrologerId, onClose }) {
+function SuccessPopup({ gift, astrologerName, astrologerId, onClose, showActions = true }) {
   const navigate = useNavigate();
 
   const go = (mode) => {
@@ -87,6 +87,7 @@ function SuccessPopup({ gift, astrologerName, astrologerId, onClose }) {
         </p>
 
         {/* Chat Now / Call Now */}
+        {showActions && (
         <div style={{ display: "flex", gap: 10, marginBottom: 16 }}>
           <button
             onClick={() => go("chat")}
@@ -124,7 +125,7 @@ function SuccessPopup({ gift, astrologerName, astrologerId, onClose }) {
             Call Now
           </button>
         </div>
-
+ )}
         <button
           onClick={onClose}
           style={{
@@ -144,12 +145,13 @@ function SuccessPopup({ gift, astrologerName, astrologerId, onClose }) {
 
 // ─── Main Modal ───────────────────────────────────────────────────────────────
 export function SendGiftModal({
-  isOpen,                // optional: inline usage. Omitted (route usage) => treated as open.
-  onClose,               // optional: falls back to navigate(-1)
-  astrologerName,        // optional: falls back to route state, then 'Astrologer'
-  astrologerId,          // optional: falls back to the :id route param
+  isOpen,
+  onClose,
+  astrologerName,
+  astrologerId,
   astrologerImage,
-  gifts: giftsProp,      // optional: pass the API gift list from the parent (real _ids)
+  gifts: giftsProp,
+  showChatCallActions = true,   // pass false when opened from an already-active chat/call screen
 }) {
   const params = useParams();
   const navigate = useNavigate();
@@ -253,6 +255,7 @@ export function SendGiftModal({
         astrologerName={astroName}
         astrologerId={astroId}
         onClose={() => { setSentGift(null); close(); }}
+        showActions={showChatCallActions}
       />
     );
   }

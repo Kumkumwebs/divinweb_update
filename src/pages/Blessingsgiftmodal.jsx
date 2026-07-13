@@ -16,8 +16,23 @@ export default function BlessingsGiftModal({
   onMaybeLater,
   onSendGift,
   onClose,
+  gifts,   // optional: real API gift list from the parent ({_id,title,price,image/emoji})
 }) {
   const [selected, setSelected] = useState(null);
+
+  // Normalize whatever shape the parent passed to this component's own
+  // {id,label,price,emoji} shape — falls back to the static GIFTS above if
+  // nothing (or an empty array) was passed, so this still works standalone
+  // (e.g. from the /consultation/check demo harness).
+  const displayGifts = Array.isArray(gifts) && gifts.length > 0
+    ? gifts.map(g => ({
+        id: g._id ?? g.id,
+        label: g.title ?? g.label,
+        price: g.price,
+        emoji: g.emoji,
+        image: g.image,
+      }))
+    : GIFTS;
 
   const handleSend = () => {
     if (!selected) return;
@@ -39,7 +54,7 @@ export default function BlessingsGiftModal({
         </p>
 
         <div className="gift-grid">
-          {GIFTS.map((g) => (
+          {displayGifts.map((g) => (
             <button
               key={g.id}
               type="button"

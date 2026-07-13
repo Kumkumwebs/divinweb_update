@@ -144,6 +144,7 @@ export async function getWalletBalance() {
   }
 }
 
+
 /**
  * lastCallList — used on app load to restore an in-progress session so the
  * floating bars reappear after a refresh. Defensive field mapping.

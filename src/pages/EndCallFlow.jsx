@@ -49,12 +49,13 @@ export default function EndCallFlow({
   amountUsed,
   remainingBalance,
   astrologerName = 'Astrologer',
-  onCancel,        // "Continue Call" / close on step 1
-  onConfirmEnd,    // called when user confirms "End Call" — do your real hangup here
-  onSubmitRating,  // (payload) => Promise|void
-  onSendGift,      // (giftId) => Promise|void — optional
-  onFinish,        // called at the very end ("View Profile")
-  initialStep = 'confirm', // pass 'rate' when the call already ended remotely (skip the confirm step)
+  gifts,           // real API gift list, forwarded to BlessingsGiftModal
+  onCancel,
+  onConfirmEnd,
+  onSubmitRating,
+  onSendGift,
+  onFinish,
+  initialStep = 'confirm',
 }) {
   const [step, setStep] = useState(initialStep); // confirm | rate | thankYou | gift | ended
   const [ratingScore, setRatingScore] = useState(5);
@@ -103,6 +104,7 @@ export default function EndCallFlow({
       {step === 'gift' && (
         <BlessingsGiftModal
           astrologerName={astrologerName}
+          gifts={gifts}
           onMaybeLater={() => setStep('ended')}
           onSendGift={async (giftId) => {
             await onSendGift?.(giftId);

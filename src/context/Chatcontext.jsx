@@ -87,6 +87,22 @@ export function ChatProvider({ children }) {
     };
   }, [chatActive]);
 
+  function resolveElapsedSeconds(data2) {
+    console.log('[DEBUG] resolveElapsedSeconds — raw data2:', data2);
+    const diff = Number(data2?.difference);
+    if (Number.isFinite(diff) && diff >= 0) { console.log('[DEBUG] using difference:', diff); return diff; }
+    if (data2?.start_time) {
+      const startMs = new Date(data2.start_time).getTime();
+      if (Number.isFinite(startMs)) {
+        const el = Math.max(Math.floor((Date.now() - startMs) / 1000), 0);
+        console.log('[DEBUG] using start_time, computed elapsed:', el);
+        return el;
+      }
+    }
+    console.log('[DEBUG] resolveElapsedSeconds falling through to 0');
+    return 0;
+  }
+
   // Subscribe to Firebase CallSession for server-authoritative time
   const subscribeFirebase = useCallback((channelId) => {
     if (firebaseSubRef.current) {
@@ -144,20 +160,7 @@ export function ChatProvider({ children }) {
         setChatTimeLeft((prev) => (Math.abs(prev - serverSeconds) > 30 ? serverSeconds : prev));
       }
 
-      // Fallback before first debit: derive from wallet/rate + started_at
-      if (maxMinutes == null && startedAt) {
-        const info = chatInfoRef.current;
-        if (info) {
-          const rate = parseFloat(info.rate || '1');
-          const wallet = parseFloat(info.wallet || '0');
-          if (rate > 0 && wallet > 0) {
-            const maxSeconds = Math.floor((wallet / rate) * 60);
-            const elapsed = Math.floor((Date.now() - Number(startedAt)) / 1000);
-            const remaining = Math.max(maxSeconds - elapsed, 0);
-            setChatTimeLeft((prev) => (Math.abs(prev - remaining) > 30 ? remaining : prev));
-          }
-        }
-      }
+      
     }, (err) => {
       console.error('[ChatContext] Firebase CallSession listener error:', err);
     });

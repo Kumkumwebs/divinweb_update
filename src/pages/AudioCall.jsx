@@ -420,6 +420,13 @@ const AudioCall = () => {
     ctx.setIsMuted(next);
     agoraManager.setMuted(next);
   };
+  const handleSubmitCallRating = async (payload) => {
+    try {
+      await addRating(channelId, payload?.rating || 5, payload?.review || '');
+    } catch (err) {
+      console.error('[AudioCall] add_rating failed:', err?.response?.data || err.message);
+    }
+  };
   const toggleSpeaker = () => {
     const next = !spk;
     setSpk(next);
@@ -697,7 +704,9 @@ const AudioCall = () => {
         astrologerId={astrologer_id}
         astrologerImage={pImg}
         walletBalance={wallet}
+        showChatCallActions={false}
       />
+   
     </div>
   );
 };

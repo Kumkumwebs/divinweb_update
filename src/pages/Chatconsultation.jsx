@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useParams, useNavigate, useLocation, Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
+import EndCallFlow from './EndCallFlow';
 
 
 import { db } from '../services/liveFirebase';
@@ -191,6 +192,16 @@ function AudioPlayer({ src, onReady }) {
     const applyDuration = (d) => {
       if (isFinite(d) && d > 0) setDuration(d);
     };
+    const handleSubmitChatRating = async (payload) => {
+      // Backend's add_rating only stores rating + review — category/tags/
+      // anonymous from RateConsultationModal aren't persisted server-side,
+      // so we don't send them.
+      try {
+        await addRating(gid, payload?.rating || 5, payload?.review || '');
+      } catch (err) {
+        console.error('[ChatConsultation] add_rating failed:', err?.response?.data || err.message);
+      }
+    };
 
     const fixInfiniteDuration = () => {
       if (fixingDurationRef.current) return;
@@ -371,14 +382,21 @@ const ChatConsultation = () => {
   const [resolving, setResolving] = useState(true);
   const [resolveErr, setResolveErr] = useState('');
 
-  useEffect(() => {
+ useEffect(() => {
     let cancelled = false;
-    let reloaded = false;
-    try {
-      reloaded = performance.getEntriesByType('navigation')[0]?.type === 'reload';
-    } catch { /* Performance Navigation Timing not supported — assume not a reload */ }
+    // FIX: performance.getEntriesByType('navigation')[0].type reflects the
+    // BROWSER DOCUMENT's load type — set once per tab lifetime — not
+    // whether THIS specific SPA route change was a refresh. Once true
+    // (e.g. user refreshed any page earlier in the session), it stays
+    // true for every future client-side navigate() for the rest of the
+    // tab, incorrectly treating fresh hand-offs from ChatCallingScreen as
+    // reloads and forcing an unnecessary/slower backend round-trip that
+    // left gid/astrologer_id empty in the meantime.
+    // location.key is the correct signal: React Router sets it to
+    // 'default' only on a genuine hard refresh / direct URL load, and to
+    // a fresh unique value on every programmatic navigate().
+    const reloaded = location.key === 'default';
     console.log('[ChatConsultation] resolving session — reloaded:', reloaded, 'chatCtx.chatInfo:', chatCtx.chatInfo, 'router state (st):', st);
-
     (async () => {
       // 1) Same-session resume — chatCtx already tracking this chat.
       if (chatCtx.chatInfo?.gid) {
@@ -516,9 +534,11 @@ const ChatConsultation = () => {
   const elapsedSecs = Math.max(maxSeconds - (chatCtx.chatTimeLeft || 0), 0);
   const [sending, setSending] = useState(false);
   const [previewImage, setPreviewImage] = useState(null);
-  const [showRating, setShowRating] = useState(false);
-  const [ratingScore, setRatingScore] = useState(0);
-  const [ratingReview, setRatingReview] = useState('');
+  const [endFlowOpen, setEndFlowOpen] = useState(false);
+  // 'confirm' = user tapped End Chat locally, walk them through confirm→...
+  // 'rate'    = the astrologer/backend already ended the session remotely
+  //             (Firebase status), so we skip straight past the confirm step.
+  const [endFlowInitialStep, setEndFlowInitialStep] = useState('confirm');
    const [showGift, setShowGift] = useState(false);
    const [giftList, setGiftList] = useState(STATIC_GIFTS); 
 
@@ -691,6 +711,28 @@ const ChatConsultation = () => {
     return () => { cancelled = true; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [gid, astrologer_id]);
+
+  /* ── detect the astrologer/backend ending the session remotely ──
+     CallSession/{gid} status flips to end_astro / wallet_empty / rejected
+     when the OTHER side ends it (or the wallet runs out) — ChatContext
+     already watches this for the billing countdown, but we also need to
+     surface it here so the rating flow opens automatically instead of the
+     user being stuck on a dead chat with no explanation. */
+     useEffect(() => {
+      if (!gid) return;
+      const REMOTE_END_STATUSES = ['end_astro', 'wallet_empty', 'rejected'];
+      const sessionRef = ref(db, `CallSession/${gid}`);
+      const handler = (snap) => {
+        const status = String(snap.val()?.status ?? '');
+        if (REMOTE_END_STATUSES.includes(status) && !endingRef.current) {
+          endingRef.current = true; // stop handleEndChat from also firing end_user
+          setEndFlowInitialStep('rate');
+          setEndFlowOpen(true);
+        }
+      };
+      onValue(sessionRef, handler);
+      return () => off(sessionRef, 'value', handler);
+    }, [gid]);
 
   /* Elapsed time is now a derived value (see maxSeconds/elapsedSecs above),
      recalculated automatically on every render as chatCtx.chatTimeLeft
@@ -1026,25 +1068,45 @@ const saveNoteToFirebase = useCallback(async (text) => {
  
 
 
-  /* ── end chat → rating ── */
-  const handleEndChat = async () => {
-    if (endingRef.current) { setShowRating(true); return; }
+  /* ── end chat → EndCallFlow (confirm → rate → thankYou → gift → ended) ── */
+  const handleEndChat = () => {
+    if (endingRef.current) return; // already ending (e.g. remote end already opened the flow)
+    setEndFlowInitialStep('confirm');
+    setEndFlowOpen(true);
+  };
+
+  const handleConfirmEndChat = async () => {
+    if (endingRef.current) return;
     endingRef.current = true;
     writeTyping(false);
     try { await callStatusUpdate(gid, 'end_user'); } catch { /* silent */ }
-    setShowRating(true);
   };
 
-  const submitRating = async () => {
-    try { await addRating(gid, ratingScore || 5, ratingReview); } catch { /* silent */ }
-    chatCtx.stopChatTimer();
-    setShowRating(false);
-    navigate('/', { replace: true });
+  const handleSubmitChatRating = async (payload) => {
+    try { await addRating(gid, payload?.rating || 5, payload?.review || ''); } catch { /* silent */ }
   };
 
-  const skipRating = () => {
+  const handleSendBlessingGift = async (giftId) => {
+    const gift = giftList.find((g) => String(g._id) === String(giftId));
+    if (!gift) {
+      console.warn('[ChatConsultation] EndCallFlow gift send — id not found in giftList:', giftId, giftList);
+      return;
+    }
+    try {
+      await apiService.postBearer('https://admin.diviniq.in/user_api/gift_transaction', {
+        to: String(astrologer_id),
+        giftId: String(gift._id),
+        amount: Number(gift.price),
+        type: 'normal',
+      });
+    } catch (err) {
+      console.error('[ChatConsultation] EndCallFlow gift send failed:', err?.response?.data || err.message);
+    }
+  };
+
+  const handleEndFlowFinish = () => {
     chatCtx.stopChatTimer();
-    setShowRating(false);
+    setEndFlowOpen(false);
     navigate('/', { replace: true });
   };
 
@@ -1609,36 +1671,32 @@ const saveNoteToFirebase = useCallback(async (text) => {
       )}
 
       {/* rating dialog */}
-      {showRating && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}>
-          <div style={{ background: '#fff', borderRadius: 20, padding: 28, width: 'min(400px,92vw)', textAlign: 'center' }}>
-            <h3 style={{ margin: '0 0 6px', color: '#1f2937' }}>Rate your consultation</h3>
-            <p style={{ color: '#6b7280', fontSize: 13, marginTop: 0 }}>How was your session with {name}?</p>
-            <div style={{ display: 'flex', gap: 8, justifyContent: 'center', margin: '14px 0', fontSize: 30 }}>
-              {[1, 2, 3, 4, 5].map((i) => (
-                <span key={i} style={{ cursor: 'pointer', color: i <= ratingScore ? '#f5a623' : '#d1d5db' }} onClick={() => setRatingScore(i)}>★</span>
-              ))}
-            </div>
-            <textarea value={ratingReview} onChange={(e) => setRatingReview(e.target.value)}
-              placeholder="Write a short review (optional)" rows={3}
-              style={{ width: '100%', borderRadius: 12, border: '1px solid #e5e7eb', padding: 10, resize: 'none', fontSize: 13 }} />
-            <div style={{ display: 'flex', gap: 10, marginTop: 16 }}>
-              <button onClick={skipRating} style={{ flex: 1, padding: 12, borderRadius: 30, border: '1px solid #e5e7eb', background: '#fff', fontWeight: 600, cursor: 'pointer' }}>Skip</button>
-              <button onClick={submitRating} style={{ flex: 1, padding: 12, borderRadius: 30, border: 'none', background: '#7b1a3a', color: '#fff', fontWeight: 700, cursor: 'pointer' }}>Submit</button>
-            </div>
-          </div>
-        </div>
+     {/* End Chat → Rate → Thank You → Gift → Ended — same UI as /consultation/check, real API binding */}
+     {endFlowOpen && (
+        <EndCallFlow
+          duration={formatTimer(elapsedSecs)}
+          amountUsed={`₹${Math.round((elapsedSecs / 60) * rate)}`}
+          remainingBalance={`₹${remainingBalance}`}
+          astrologerName={name}
+          gifts={giftList}
+          initialStep={endFlowInitialStep}
+          onCancel={() => setEndFlowOpen(false)}
+          onConfirmEnd={handleConfirmEndChat}
+          onSubmitRating={handleSubmitChatRating}
+          onSendGift={handleSendBlessingGift}
+          onFinish={handleEndFlowFinish}
+        />
       )}
-
 <SendGiftModal
-        isOpen={showGift}
-        onClose={() => setShowGift(false)}
-        astrologerName={name}
-        astrologerId={astrologer_id}
-        astrologerImage={profileImg}
-        gifts={giftList}
-        walletBalance={wallet}
-      />
+  isOpen={showGift}
+  onClose={() => setShowGift(false)}
+  astrologerName={name}
+  astrologerId={astrologer_id}
+  astrologerImage={profileImg}
+  gifts={giftList}
+  walletBalance={wallet}
+  showChatCallActions={false}
+/>
     </div>
   );
 };
