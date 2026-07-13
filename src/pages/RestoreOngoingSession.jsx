@@ -4,6 +4,7 @@ import { db } from '../services/liveFirebase';
 import { useChat } from '../context/ChatContext';
 import { useAudioCall } from '../context/AudioCallContext';
 import { agoraManager } from '../services/Agoramanager.';
+import apiService from '../services/apiServices';
 import { lastCallList, fetchAgoraToken } from '../services/liveService';
 import NewAppDownloadModal from '../components/common/NewAppDownloadModel'; // adjust this path if it lives elsewhere in your project
 

@@ -7,7 +7,6 @@ import { useAudioCall } from '../context/AudioCallContext';
 import { agoraManager } from '../services/Agoramanager.';
 import apiService from '../services/apiServices';
 import SendGiftModal from './Sendgiftmodal';
-import EndCallFlow from './EndCallFlow';
 import {
   fetchAgoraToken,
   callStatusUpdate,
@@ -257,14 +256,9 @@ const AudioCall = () => {
   const [spk, setSpk] = useState(true);
   const [onHold, setOnHold] = useState(false);
   const [err, setErr] = useState('');
-
-  // Drives the full 5-step end-of-consultation sequence
-  // (EndCallFlow: confirm -> rate -> thankYou -> gift -> ended).
-  const [endFlowOpen, setEndFlowOpen] = useState(false);
-  // When the call ends remotely (astrologer left / disconnected), the call
-  // is already over — the flow should open directly on the rating step
-  // instead of asking the user to "confirm" ending a call that's done.
-  const [endFlowInitialStep, setEndFlowInitialStep] = useState('confirm');
+  const [showRating, setShowRating] = useState(false);
+  const [ratingScore, setRatingScore] = useState(0);
+  const [ratingReview, setRatingReview] = useState('');
   const [showGiftModal, setShowGiftModal] = useState(false);
 
   // FIX: Remaining Balance / Time Remaining were static or dependent on
@@ -307,34 +301,6 @@ const AudioCall = () => {
     }, 1000);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
-
-  /* ── tears down the Agora session + backend call status. Pure teardown —
-     does not decide what the UI should show next. ── */
-  const endCallSession = useCallback(async (status = 'end_user', remote = false) => {
-    if (endingRef.current) return;
-    endingRef.current = true;
-    if (timerRef.current) clearInterval(timerRef.current);
-    if (pollRef.current) clearInterval(pollRef.current);
-    setCallState('ended');
-    ctx.setCallStatus('ended');
-    try { if (!remote) await callStatusUpdate(channelId, status); } catch { /* silent */ }
-    await leave();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [channelId]);
-
-  /* ── astrologer left / poll detected a remote end: call is already over,
-     so open the flow straight on the rating step (skip "End Call?"). ── */
-  const handleRemoteEnd = useCallback(async () => {
-    await endCallSession('end_user', true);
-    setEndFlowInitialStep('rate');
-    setEndFlowOpen(true);
-  }, [endCallSession]);
-
-  /* ── user clicked "End Call" in EndCallFlow's confirm step: actually
-     hang up now. ── */
-  const handleConfirmEnd = useCallback(async () => {
-    await endCallSession('end_user', false);
-  }, [endCallSession]);
 
   const handleEnd = useCallback(async (status = null, { remote = false } = {}) => {
     if (endingRef.current) return;
