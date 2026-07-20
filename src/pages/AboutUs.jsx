@@ -15,9 +15,9 @@ import './AboutUs.css';
    ALL IMAGE PATHS  →  public/assets/img/about/
 ══════════════════════════════════════ */
 const IMG = {
-  hero: '/assets/img/about/ab-hero.png',
-  statsBar: '/assets/img/about/ab-stats-bar.png',
-  storyThumb: '/assets/img/about/ab-story-thumb.png',
+  hero: '/assets/img/about/ab-hero.webp',
+  statsBar: '/assets/img/about/ab-stats-bar.webp',
+  storyThumb: '/assets/img/about/ab-story-thumb.webp',
   appPhones: '/assets/img/about/ab-app-phones.png',
   svcAstro: '/assets/img/about/purple-icon.svg',
   svcPuja: '/assets/img/about/pink-lotus-icon.svg',
@@ -527,7 +527,7 @@ const AppDownload = () => (
   <section className="ab-app">
     <div className="ab-app-banner-wrap">
       <img
-        src="/assets/img/about/middlebanner_about.png"
+        src="/assets/img/about/middlebanner_about.webp"
         alt="DiviniQ App – Your Spiritual Companion"
         className="ab-app-banner-img"
       />

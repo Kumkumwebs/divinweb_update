@@ -12,7 +12,7 @@ const HeroSection = ({ astrologer }) => {
 		<>
 			<section
 				className="dq-hero"
-				style={{ backgroundImage: `url(/assets/img/home/banner_home_page.png)` }}
+				style={{ backgroundImage: `url(/assets/img/home/banner_home_page.webp)` }}
 			>
 				<div className="dq-hero-inner">
 					<h1>

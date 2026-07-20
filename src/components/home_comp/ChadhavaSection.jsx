@@ -28,12 +28,52 @@ const handleImgError = (e) => {
 
 const ChadhavaSection = ({ chadhava }) => {
 	const rawItems = chadhava?.length ? chadhava : null;
-	const items = rawItems
-		? rawItems.map((c) => ({
+
+	// Helper: does this record actually have a real image, or would it
+	// fall back to the placeholder? Checked across every possible field.
+	const hasRealImage = (c) =>
+		Boolean(
+			c.chadhavaImage ||
+			c.bannerImages?.[0] ||
+			c.galleryImages?.[0] ||
+			c.gallery?.[0] ||
+			c.images?.[0]
+		);
+
+	// Items with a real image show first; items without one (which would
+	// otherwise render the placeholder) sink to the bottom. Within each
+	// group, most recently added Chadhava comes first.
+	const sortedItems = rawItems
+		? [...rawItems].sort((a, b) => {
+				const aHasImg = hasRealImage(a);
+				const bHasImg = hasRealImage(b);
+				if (aHasImg !== bHasImg) return aHasImg ? -1 : 1;
+
+				const dateA = new Date(a.createdAt || a.updatedAt || 0).getTime();
+				const dateB = new Date(b.createdAt || b.updatedAt || 0).getTime();
+				if (dateB !== dateA) return dateB - dateA;
+				return (b._id || '').localeCompare(a._id || '');
+		  })
+		: null;
+
+	const items = sortedItems
+		? sortedItems.map((c) => ({
 				id: c._id,
 				name: c.title,
 				temple: c.templeName,
-				image: c.chadhavaImage || PLACEHOLDER,
+				// Same fallback chain as the Chadhava detail page: some
+				// records only have chadhavaImage populated, others only
+				// have bannerImages (or galleryImages/gallery/images).
+				// Check every possible field before falling back to the
+				// placeholder, so the listing image matches what the
+				// detail page shows for the same record.
+				image:
+					c.chadhavaImage ||
+					c.bannerImages?.[0] ||
+					c.galleryImages?.[0] ||
+					c.gallery?.[0] ||
+					c.images?.[0] ||
+					PLACEHOLDER,
 				price: c.price,
 		  }))
 		: FALLBACK_ITEMS.map((c) => ({ ...c, image: c.image || PLACEHOLDER }));

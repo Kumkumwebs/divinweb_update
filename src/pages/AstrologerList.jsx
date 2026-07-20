@@ -12,6 +12,13 @@ import NewAppDownloadModal from '../components/common/NewAppDownloadModel';
 import './AstrologerList.css';
 import MobileBottomNav from '../components/layout/MobileNavbar';
 
+// NOTE: verify this exact path against your backend router mount point —
+// the handler is `router.post("/new_consultation_add", ...)`, normally
+// mounted under a prefix. Follows the same pattern as other endpoints in
+// this codebase (https://admin.diviniq.in/user_api/..., /puja/..., etc).
+// Adjust the prefix below if your backend mounts it differently.
+const CONSULTATION_API = "https://admin.diviniq.in/user_api/new_consultation_add";
+
 /* helpers */
 const COLORS = ['#7c3aed','#059669','#dc2626','#d97706','#2563eb','#db2777'];
 const initials = (n='') => n.trim().split(' ').slice(0,2).map(w=>w[0]).join('').toUpperCase();
@@ -107,13 +114,153 @@ const AstrologerCard = ({ astro, onChat }) => {
   );
 };
 
+/* ── Personalized Recommendation Modal — posts to /new_consultation_add ── */
+const RecommendationModal = ({ isOpen, onClose }) => {
+  const [name, setName] = useState("");
+  const [phone, setPhone] = useState("");
+  const [message, setMessage] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+  const [result, setResult] = useState(null); // { ok: true|false, msg }
+
+  if (!isOpen) return null;
+
+  const reset = () => {
+    setName(""); setPhone(""); setMessage(""); setResult(null); setSubmitting(false);
+  };
+  const handleClose = () => { reset(); onClose(); };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    if (!name.trim() || !phone.trim()) {
+      setResult({ ok: false, msg: "Please enter your name and phone number." });
+      return;
+    }
+    setSubmitting(true);
+    setResult(null);
+    try {
+      const res = await apiService.post(CONSULTATION_API, {
+        service: "consultation",
+        name: name.trim(),
+        phone: phone.trim(),
+        message: message.trim(),
+      });
+      if (res?.status) {
+        setResult({ ok: true, msg: "Thanks! Our team will reach out to you shortly." });
+      } else {
+        setResult({ ok: false, msg: res?.message || "Something went wrong. Please try again." });
+      }
+    } catch (err) {
+      console.error("consultation submit error:", err);
+      setResult({ ok: false, msg: "Network error. Please try again." });
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  return (
+    <div
+      style={{
+        position: "fixed", inset: 0, background: "rgba(0,0,0,0.55)",
+        zIndex: 9999, display: "flex", alignItems: "center", justifyContent: "center", padding: 20,
+      }}
+      onClick={handleClose}
+    >
+      <div
+        style={{
+          background: "#fff", borderRadius: 18, width: "100%", maxWidth: 420,
+          padding: "26px 24px", boxShadow: "0 25px 60px rgba(0,0,0,0.3)",
+        }}
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 6 }}>
+          <h5 style={{ margin: 0, fontSize: 17, fontWeight: 800, color: "#111827" }}>
+            Get a Free Recommendation
+          </h5>
+          <button
+            onClick={handleClose}
+            style={{
+              width: 28, height: 28, borderRadius: "50%", border: "1.5px solid #e5e7eb",
+              background: "#fff", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center",
+              flexShrink: 0,
+            }}
+          >
+            <i className="fas fa-times" />
+          </button>
+        </div>
+        <p style={{ fontSize: 12.5, color: "#6b7280", margin: "0 0 18px" }}>
+          Tell us what you're looking for and our team will match you with the right astrologer.
+        </p>
+
+        {result?.ok ? (
+          <div style={{ textAlign: "center", padding: "18px 0" }}>
+            <i className="fas fa-check-circle" style={{ fontSize: 34, color: "#059669", marginBottom: 10, display: "block" }} />
+            <p style={{ fontSize: 13.5, color: "#111827", fontWeight: 600, margin: 0 }}>{result.msg}</p>
+            <button
+              onClick={handleClose}
+              className="al-rec-btn"
+              style={{ marginTop: 18 }}
+            >
+              Done
+            </button>
+          </div>
+        ) : (
+          <form onSubmit={handleSubmit}>
+            <input
+              type="text"
+              placeholder="Your Name"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              style={{
+                width: "100%", padding: "11px 14px", marginBottom: 12,
+                border: "1.5px solid #e5e7eb", borderRadius: 9, fontSize: 13.5, outline: "none",
+              }}
+            />
+            <input
+              type="tel"
+              placeholder="Phone Number"
+              value={phone}
+              onChange={(e) => setPhone(e.target.value)}
+              style={{
+                width: "100%", padding: "11px 14px", marginBottom: 12,
+                border: "1.5px solid #e5e7eb", borderRadius: 9, fontSize: 13.5, outline: "none",
+              }}
+            />
+            <textarea
+              placeholder="What are you looking for? (optional)"
+              value={message}
+              onChange={(e) => setMessage(e.target.value)}
+              rows={3}
+              style={{
+                width: "100%", padding: "11px 14px", marginBottom: 12,
+                border: "1.5px solid #e5e7eb", borderRadius: 9, fontSize: 13.5, outline: "none",
+                resize: "vertical", fontFamily: "inherit",
+              }}
+            />
+            {result?.ok === false && (
+              <p style={{ color: "#dc2626", fontSize: 12, marginBottom: 10 }}>{result.msg}</p>
+            )}
+            <button
+              type="submit"
+              className="al-rec-btn"
+              disabled={submitting}
+              style={{ opacity: submitting ? 0.7 : 1, cursor: submitting ? "not-allowed" : "pointer" }}
+            >
+              {submitting ? "Submitting..." : "Submit Request"}
+            </button>
+          </form>
+        )}
+      </div>
+    </div>
+  );
+};
+
 /* Recommend Card */
-const RecommendCard = ({ onChat }) => (
+const RecommendCard = ({ onOpen }) => (
   <div className="al-rec">
     <div className="al-rec-ico"><i className="fas fa-magic" /></div>
     <div className="al-rec-t">Can't find the right match?</div>
     <p className="al-rec-s">Let us help you connect with the best-suited astrologer</p>
-    <button className="al-rec-btn" onClick={()=>onChat(null)}>Get Free Recommendation</button>
+    <button className="al-rec-btn" onClick={onOpen}>Get Free Recommendation</button>
     <div style={{fontSize:11,color:'#9ca3af',marginBottom:8}}>Trusted by 50K+ users</div>
     <div>
       {['#7c3aed','#059669','#dc2626','#d97706','#2563eb'].map((c,i)=>(
@@ -197,12 +344,26 @@ const AstrologerList = () => {
   const [selectedAstro, setSelectedAstro] = useState(null);
   const [drawerOpen,    setDrawerOpen]    = useState(false);
   const [page,          setPage]          = useState(1);
-  const [totalPages,    setTotalPages]    = useState(5);
+  // The API returns no total-page/count field at all, so we can't know the
+  // real total up front. Instead we track the highest page we've confirmed
+  // exists, and whether the current page came back "full" (== PAGE_SIZE
+  // results) as a signal that a next page likely exists.
+  const PAGE_SIZE = 9;
+  const [maxKnownPage, setMaxKnownPage] = useState(1);
+  const [hasNextPage,  setHasNextPage]  = useState(false);
+  // Some backends ignore the `page` param entirely and just return the
+  // same first-page results every time. We detect that by fingerprinting
+  // each successful response's result IDs and comparing to the last
+  // genuinely-new page we saw — if page 2+ comes back identical to an
+  // earlier page, there is no real next page, no matter how many results
+  // it contains.
+  const lastSeenIdsRef = React.useRef(null);
   const [filters, setFilters] = useState({experience:'all',payBucket:'',sortBy:'relevant',specs:[],language:''});
   // Nav menus
   const [showSideMenu,   setShowSideMenu]   = useState(false);
   const [showMobileMenu, setShowMobileMenu] = useState(false);
   const [showSearch,     setShowSearch]     = useState(false);
+  const [showRecModal,   setShowRecModal]   = useState(false);
 
   const fetchAstrologers = useCallback(async (p=1) => {
     setLoading(true); setError(false);
@@ -213,7 +374,31 @@ const AstrologerList = () => {
         language_id:'',gender:'',sort_val:filters.sortBy,is_question:'',
         skill_id:'',country:'',report_id:'',expert_astro:''
       });
-      if (res?.results){ setAstrologers(res.results); if(res.total_pages) setTotalPages(Number(res.total_pages)); }
+      if (res?.results){
+        const idsStr = res.results.map(r => r.id || r._id).join(',');
+        const isDuplicate = p > 1 && idsStr === lastSeenIdsRef.current;
+
+        if (isDuplicate) {
+          // The API just handed back the same data as a prior page — it
+          // isn't really paginating. Snap back to the last genuinely
+          // distinct page and stop offering to go further.
+          const realLastPage = Math.max(1, p - 1);
+          setMaxKnownPage(realLastPage);
+          setHasNextPage(false);
+          if (page !== realLastPage) setPage(realLastPage);
+        } else {
+          setAstrologers(res.results);
+          lastSeenIdsRef.current = idsStr;
+          // Only mark THIS page as confirmed/known — never guess that
+          // p+1 exists just because this page happened to be full. A
+          // full page is merely a *hint* that another page might exist
+          // (used to enable the › arrow below); it is not proof, so it
+          // must never make an unvisited page number appear in the list.
+          setMaxKnownPage(prev => Math.max(prev, p));
+          const full = res.results.length >= PAGE_SIZE;
+          setHasNextPage(full);
+        }
+      }
       else setError(true);
     } catch { setError(true); }
     finally   { setLoading(false); }
@@ -223,7 +408,25 @@ const AstrologerList = () => {
 
   const goPage     = p => { setPage(p); window.scrollTo({top:0,behavior:'smooth'}); };
   const handleApply = () => { setPage(1); fetchAstrologers(1); setDrawerOpen(false); };
-  const pages = Array.from({length:Math.min(totalPages,5)},(_,i)=>i+1);
+
+  // Builds a sliding window of page numbers centered on the current page.
+  // "total" here is the highest page we've actually confirmed exists so
+  // far (maxKnownPage) — not a real API total, since the API doesn't
+  // provide one.
+  const getPageWindow = (current, total, size = 5) => {
+    if (total <= size) return Array.from({ length: total }, (_, i) => i + 1);
+    let start = Math.max(1, current - Math.floor(size / 2));
+    let end = start + size - 1;
+    if (end > total) {
+      end = total;
+      start = end - size + 1;
+    }
+    return Array.from({ length: end - start + 1 }, (_, i) => start + i);
+  };
+
+  const pages = getPageWindow(page, maxKnownPage);
+  const isLastKnownPage = page >= maxKnownPage && !hasNextPage;
+  const isSinglePage = maxKnownPage <= 1 && !hasNextPage;
 
   return (
     <div className="main-wrapper" style={{paddingTop:0,marginTop:0}}>
@@ -240,7 +443,7 @@ const AstrologerList = () => {
       <div className="al-hero-outer">
         <div className="container">
           <img
-            src="/assets/img/bg/astroguruji.png"
+            src="/assets/img/bg/astroguruji.webp"
             alt="Consult India's Verified Vedic Masters"
             className="al-hero-img"
           />
@@ -350,24 +553,37 @@ const AstrologerList = () => {
                           </div>
                         ))}
                         <div className="col-6 col-md-4">
-                          <RecommendCard onChat={setSelectedAstro} />
+                          <RecommendCard onOpen={() => setShowRecModal(true)} />
                         </div>
                       </>
                   }
                 </div>
               )}
 
-              {/* Pagination */}
-              {!loading && !error && astrologers.length > 0 && (
+              {/* Pagination — no real total-page count exists in the API
+                  response, so we can't jump straight to "last page." We
+                  only ever show pages we've actually confirmed by fetching
+                  them, and the right arrow advances one page at a time,
+                  disabled once a page comes back with fewer than
+                  PAGE_SIZE results. */}
+              {!loading && !error && astrologers.length > 0 && !isSinglePage && (
                 <div className="al-pg">
                   <button className="al-pg-btn" disabled={page===1} onClick={()=>goPage(page-1)}>
                     <i className="fas fa-chevron-left" style={{fontSize:11}} />
                   </button>
+
+                  {pages[0] > 1 && (
+                    <>
+                      <button className="al-pg-btn" onClick={()=>goPage(1)}>1</button>
+                      {pages[0] > 2 && <span className="al-pg-dots">…</span>}
+                    </>
+                  )}
+
                   {pages.map(p=>(
                     <button key={p} className={`al-pg-btn${page===p?' cur':''}`} onClick={()=>goPage(p)}>{p}</button>
                   ))}
-                  {totalPages>5 && <span className="al-pg-dots">…</span>}
-                  <button className="al-pg-btn" disabled={page===totalPages} onClick={()=>goPage(page+1)}>
+
+                  <button className="al-pg-btn" disabled={isLastKnownPage} onClick={()=>goPage(page+1)}>
                     <i className="fas fa-chevron-right" style={{fontSize:11}} />
                   </button>
                 </div>
@@ -386,6 +602,9 @@ const AstrologerList = () => {
           ?`Speak with ${selectedAstro.name} for clarity on ${selectedAstro.category?.[0]?.name||'Life'}.`
           :'Join thousands who found clarity.'}
       />
+
+      <RecommendationModal isOpen={showRecModal} onClose={() => setShowRecModal(false)} />
+
       <Footer />
       <ScrollTop />
       <MobileBottomNav/>

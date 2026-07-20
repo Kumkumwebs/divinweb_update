@@ -6,7 +6,7 @@ import { useAudioCall } from '../context/AudioCallContext';
 import { agoraManager } from '../services/Agoramanager.';
 import apiService from '../services/apiServices';
 import { lastCallList, fetchAgoraToken } from '../services/liveService';
-import NewAppDownloadModal from '../components/common/NewAppDownloadModel'; // adjust this path if it lives elsewhere in your project
+// import NewAppDownloadModal from '../components/common/NewAppDownloadModel'; // adjust this path if it lives elsewhere in your project
 
 // Broadened to match the same "still active" values used elsewhere in this
 // codebase (ChatCallingScreen's ACCEPTED_VALUES), on top of the exact
@@ -227,12 +227,14 @@ const RestoreOngoingSession = () => {
   }, []);
 
   return (
-    <NewAppDownloadModal
-      isOpen={showAppDownload}
-      onClose={() => setShowAppDownload(false)}
-      title="Continue your video consultation"
-      subtitle="Video calls are available in the DivinIQ app — download it to rejoin your session."
-    />
+<></>
+    // <div></div>
+    // <NewAppDownloadModal
+    //   isOpen={showAppDownload}
+    //   onClose={() => setShowAppDownload(false)}
+    //   title="Continue your video consultation"
+    //   subtitle="Video calls are available in the DivinIQ app — download it to rejoin your session."
+    // />
   );
 };
 

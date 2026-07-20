@@ -226,7 +226,7 @@ const STYLES = `
 
   /* ---- "Explore Sacred Panchang" hero banner ---- */
   .puja-hero-card {
-    background-image: url('/assets/img/bg/panchang_hero_bg.png');
+    background-image: url('/assets/img/bg/panchang_hero_bg.webp');
     background-size: cover;
     background-position: center;
     padding-top: 8px;

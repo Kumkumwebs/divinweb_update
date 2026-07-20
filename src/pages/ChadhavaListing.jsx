@@ -8,8 +8,16 @@ import MobileMenu from '../components/layout/MobileMenu';
 import PopupSearch from '../components/layout/PopupSearch';
 import ScrollTop from '../components/common/ScrollTop';
 import ChadhavaService from '../services/chadhavaServices';
+import apiService from '../services/apiServices';
 import './ChadhavaListing.css';
 import MobileBottomNav from '../components/layout/MobileNavbar';
+
+// NOTE: verify this exact path against your backend router mount point —
+// the handler is `router.post("/new_consultation_add", ...)`, normally
+// mounted under a prefix. Follows the same pattern as other endpoints in
+// this codebase (https://admin.diviniq.in/user_api/..., /puja/..., etc).
+// Adjust the prefix below if your backend mounts it differently.
+const CONSULTATION_API = "https://admin.diviniq.in/user_api/new_consultation_add";
 
 /* ── helpers ── */
 const BADGE_MAP = [
@@ -70,11 +78,14 @@ const ChadhavaCard = ({ item, index, onView }) => {
       </button>
 
       {/* Image */}
+   {/* Image */}
       <div className="ch-img-wrap">
-        {item.image && !imgErr
-          ? <img src={item.chadhavaImage || item.image || item.pimage} alt={item.title || item.name} onError={()=>setImgErr(true)} />
-          : <div className="ch-img-placeholder"><i className="fas fa-om" /></div>
-        }
+        {(() => {
+          const imgSrc = item.chadhavaImage || item.image || item.pimage;
+          return imgSrc && !imgErr
+            ? <img src={imgSrc} alt={item.title || item.name} onError={()=>setImgErr(true)} />
+            : <div className="ch-img-placeholder"><i className="fas fa-om" /></div>;
+        })()}
       </div>
 
       {/* Body */}
@@ -105,13 +116,153 @@ const ChadhavaCard = ({ item, index, onView }) => {
   );
 };
 
+/* ── Personalized Recommendation Modal — posts to /new_consultation_add ── */
+const RecommendationModal = ({ isOpen, onClose }) => {
+  const [name, setName] = useState("");
+  const [phone, setPhone] = useState("");
+  const [message, setMessage] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+  const [result, setResult] = useState(null); // { ok: true|false, msg }
+
+  if (!isOpen) return null;
+
+  const reset = () => {
+    setName(""); setPhone(""); setMessage(""); setResult(null); setSubmitting(false);
+  };
+  const handleClose = () => { reset(); onClose(); };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    if (!name.trim() || !phone.trim()) {
+      setResult({ ok: false, msg: "Please enter your name and phone number." });
+      return;
+    }
+    setSubmitting(true);
+    setResult(null);
+    try {
+      const res = await apiService.post(CONSULTATION_API, {
+        service: "chadhava",
+        name: name.trim(),
+        phone: phone.trim(),
+        message: message.trim(),
+      });
+      if (res?.status) {
+        setResult({ ok: true, msg: "Thanks! Our team will reach out to you shortly." });
+      } else {
+        setResult({ ok: false, msg: res?.message || "Something went wrong. Please try again." });
+      }
+    } catch (err) {
+      console.error("consultation submit error:", err);
+      setResult({ ok: false, msg: "Network error. Please try again." });
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  return (
+    <div
+      style={{
+        position: "fixed", inset: 0, background: "rgba(0,0,0,0.55)",
+        zIndex: 9999, display: "flex", alignItems: "center", justifyContent: "center", padding: 20,
+      }}
+      onClick={handleClose}
+    >
+      <div
+        style={{
+          background: "#fff", borderRadius: 18, width: "100%", maxWidth: 420,
+          padding: "26px 24px", boxShadow: "0 25px 60px rgba(0,0,0,0.3)",
+        }}
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 6 }}>
+          <h5 style={{ margin: 0, fontSize: 17, fontWeight: 800, color: "#111827" }}>
+            Get a Personalized Recommendation
+          </h5>
+          <button
+            onClick={handleClose}
+            style={{
+              width: 28, height: 28, borderRadius: "50%", border: "1.5px solid #e5e7eb",
+              background: "#fff", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center",
+              flexShrink: 0,
+            }}
+          >
+            <i className="fas fa-times" />
+          </button>
+        </div>
+        <p style={{ fontSize: 12.5, color: "#6b7280", margin: "0 0 18px" }}>
+          Tell us what you're looking for and our team will suggest the right Chadhava offering for you.
+        </p>
+
+        {result?.ok ? (
+          <div style={{ textAlign: "center", padding: "18px 0" }}>
+            <i className="fas fa-check-circle" style={{ fontSize: 34, color: "#059669", marginBottom: 10, display: "block" }} />
+            <p style={{ fontSize: 13.5, color: "#111827", fontWeight: 600, margin: 0 }}>{result.msg}</p>
+            <button
+              onClick={handleClose}
+              className="ch-rec-btn"
+              style={{ marginTop: 18 }}
+            >
+              Done
+            </button>
+          </div>
+        ) : (
+          <form onSubmit={handleSubmit}>
+            <input
+              type="text"
+              placeholder="Your Name"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              style={{
+                width: "100%", padding: "11px 14px", marginBottom: 12,
+                border: "1.5px solid #e5e7eb", borderRadius: 9, fontSize: 13.5, outline: "none",
+              }}
+            />
+            <input
+              type="tel"
+              placeholder="Phone Number"
+              value={phone}
+              onChange={(e) => setPhone(e.target.value)}
+              style={{
+                width: "100%", padding: "11px 14px", marginBottom: 12,
+                border: "1.5px solid #e5e7eb", borderRadius: 9, fontSize: 13.5, outline: "none",
+              }}
+            />
+            <textarea
+              placeholder="What are you looking for? (optional)"
+              value={message}
+              onChange={(e) => setMessage(e.target.value)}
+              rows={3}
+              style={{
+                width: "100%", padding: "11px 14px", marginBottom: 12,
+                border: "1.5px solid #e5e7eb", borderRadius: 9, fontSize: 13.5, outline: "none",
+                resize: "vertical", fontFamily: "inherit",
+              }}
+            />
+            {result?.ok === false && (
+              <p style={{ color: "#dc2626", fontSize: 12, marginBottom: 10 }}>{result.msg}</p>
+            )}
+            <button
+              type="submit"
+              className="ch-rec-btn"
+              disabled={submitting}
+              style={{ opacity: submitting ? 0.7 : 1, cursor: submitting ? "not-allowed" : "pointer" }}
+            >
+              {submitting ? "Submitting..." : "Submit Request"}
+            </button>
+          </form>
+        )}
+      </div>
+    </div>
+  );
+};
+
 /* ── Recommend Card ── */
-const RecommendCard = () => (
+const RecommendCard = ({ onOpen }) => (
   <div className="ch-rec">
     <div className="ch-rec-ico"><i className="fas fa-hands-praying" /></div>
     <div className="ch-rec-t">Can't find the right offering?</div>
     <p className="ch-rec-s">Tell us your requirements and our team will help you.</p>
-    <button className="ch-rec-btn">Get Personalized Recommendation</button>
+    <button className="ch-rec-btn" onClick={onOpen}>Get Personalized Recommendation</button>
     <div className="ch-rec-trust">Trusted by 50K+ Devotees</div>
     <div>
       {['#c0392b','#e67e22','#27ae60','#2980b9','#8e44ad'].map((c,i)=>(
@@ -224,20 +375,24 @@ const ChadhavaListing = () => {
   const [showSideMenu,   setShowSideMenu]   = useState(false);
   const [showMobileMenu, setShowMobileMenu] = useState(false);
   const [showSearch,     setShowSearch]     = useState(false);
+  const [showRecModal,   setShowRecModal]   = useState(false);
+
+  const PAGE_SIZE = 9;
+  const [allItems, setAllItems] = useState([]); // full list from the API, unsliced
 
   const fetchItems = useCallback(async () => {
     setLoading(true); setError(false);
     try {
       const res = await ChadhavaService.getChadhavaList(filters.search || null);
       // API: { status:true, data:[{ result:[...] }] }
-      if (res?.status && res?.data?.[0]?.result) {
-        const list = res.data[0].result;
-        setItems(list);
-        setTotalPages(Math.ceil(list.length / 9) || 1);
-      } else if (res?.results) {
-        setItems(res.results);
-      } else if (Array.isArray(res)) {
-        setItems(res);
+      let list = null;
+      if (res?.status && res?.data?.[0]?.result) list = res.data[0].result;
+      else if (res?.results) list = res.results;
+      else if (Array.isArray(res)) list = res;
+
+      if (list) {
+        setAllItems(list);
+        setTotalPages(Math.max(1, Math.ceil(list.length / PAGE_SIZE)));
       } else {
         setError(true);
       }
@@ -247,11 +402,20 @@ const ChadhavaListing = () => {
 
   useEffect(()=>{ fetchItems(); },[fetchItems]);
 
+  // Since the API returns everything in one shot, pagination here is
+  // purely a client-side slice of the already-fetched full list — the
+  // "page" state just picks which 9-item window of allItems to show.
+  useEffect(() => {
+    const start = (page - 1) * PAGE_SIZE;
+    setItems(allItems.slice(start, start + PAGE_SIZE));
+  }, [allItems, page]);
+
   const handleSearch = () => { setFilters(f=>({...f,search:searchVal})); setPage(1); };
-  const handleApply  = () => { fetchItems(); setDrawerOpen(false); };
+  const handleApply  = () => { setPage(1); fetchItems(); setDrawerOpen(false); };
   const handleView   = (item) => navigate(`/chadhava/${item._id || item.id}`);
   const goPage = (p) => { setPage(p); window.scrollTo({top:0,behavior:'smooth'}); };
   const pages  = Array.from({length:Math.min(totalPages,5)},(_,i)=>i+1);
+  const isSinglePage = totalPages <= 1;
 
   return (
     <div className="main-wrapper" style={{paddingTop:0,marginTop:0}}>
@@ -270,7 +434,7 @@ const ChadhavaListing = () => {
       <div className="ch-hero-outer">
         <div className="container">
           <div className="ch-hero">
-            <img src="/assets/img/bg/chadawa.png" alt="Explore Holy Chadavas - Sacred Offerings" className="ch-hero-img" />
+            <img src="/assets/img/bg/chadawa.webp" alt="Explore Holy Chadavas - Sacred Offerings" className="ch-hero-img" />
            
           </div>
 
@@ -324,7 +488,7 @@ const ChadhavaListing = () => {
                 <div className="ch-mhdr-right">
                   {!loading && (
                     <span className="ch-showing">
-                      Showing 1–{items.length} of {items.length > 0 ? `${items.length}+` : '45'} offerings
+                      Showing {allItems.length > 0 ? (page - 1) * PAGE_SIZE + 1 : 0}–{Math.min(page * PAGE_SIZE, allItems.length)} of {allItems.length} offerings
                     </span>
                   )}
                   <select className="ch-sort-sel" value={filters.sortBy} onChange={e=>setFilters(f=>({...f,sortBy:e.target.value}))}>
@@ -361,14 +525,14 @@ const ChadhavaListing = () => {
                             <ChadhavaCard item={item} index={i} onView={handleView} />
                           </div>
                         ))}
-                        <div className="col-12 col-md-4"><RecommendCard /></div>
+                        <div className="col-12 col-md-4"><RecommendCard onOpen={() => setShowRecModal(true)} /></div>
                       </>
                   }
                 </div>
               )}
 
               {/* Pagination */}
-              {!loading && !error && items.length > 0 && (
+              {!loading && !error && items.length > 0 && !isSinglePage && (
                 <div className="ch-pg">
                   <button className="ch-pg-btn" disabled={page===1} onClick={()=>goPage(page-1)}>
                     <i className="fas fa-chevron-left" style={{fontSize:11}} />
@@ -391,6 +555,8 @@ const ChadhavaListing = () => {
       <Footer />
       <ScrollTop />
       <MobileBottomNav/>
+
+      <RecommendationModal isOpen={showRecModal} onClose={() => setShowRecModal(false)} />
     </div>
   );
 };

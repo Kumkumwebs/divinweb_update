@@ -8,8 +8,17 @@ import MobileMenu from "../components/layout/MobileMenu";
 import PopupSearch from "../components/layout/PopupSearch";
 import ScrollTop from "../components/common/ScrollTop";
 import PujaService from "../services/pujaServices";
+import apiService from "../services/apiServices";
 import "./PujaListing.css";
 import MobileBottomNav from "../components/layout/MobileNavbar";
+
+// NOTE: verify this exact path against your backend router mount point —
+// the route handler you shared is `router.post("/new_consultation_add", ...)`,
+// which is normally mounted under a prefix (e.g. /user_api). This follows
+// the same pattern as every other endpoint in this codebase
+// (https://admin.diviniq.in/user_api/..., /puja/..., etc). Adjust the
+// prefix below if your backend mounts it differently.
+const CONSULTATION_API = "https://admin.diviniq.in/user_api/new_consultation_add";
 
 /* ── helpers ── */
 const BADGE_MAP = [
@@ -135,8 +144,148 @@ const PujaCard = ({ item, index, onView }) => {
   );
 };
 
+/* ── Personalized Recommendation Modal — posts to /new_consultation_add ── */
+const RecommendationModal = ({ isOpen, onClose }) => {
+  const [name, setName] = useState("");
+  const [phone, setPhone] = useState("");
+  const [message, setMessage] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+  const [result, setResult] = useState(null); // { ok: true|false, msg }
+
+  if (!isOpen) return null;
+
+  const reset = () => {
+    setName(""); setPhone(""); setMessage(""); setResult(null); setSubmitting(false);
+  };
+  const handleClose = () => { reset(); onClose(); };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    if (!name.trim() || !phone.trim()) {
+      setResult({ ok: false, msg: "Please enter your name and phone number." });
+      return;
+    }
+    setSubmitting(true);
+    setResult(null);
+    try {
+      const res = await apiService.post(CONSULTATION_API, {
+        service: "puja",
+        name: name.trim(),
+        phone: phone.trim(),
+        message: message.trim(),
+      });
+      if (res?.status) {
+        setResult({ ok: true, msg: "Thanks! Our team will reach out to you shortly." });
+      } else {
+        setResult({ ok: false, msg: res?.message || "Something went wrong. Please try again." });
+      }
+    } catch (err) {
+      console.error("consultation submit error:", err);
+      setResult({ ok: false, msg: "Network error. Please try again." });
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  return (
+    <div
+      style={{
+        position: "fixed", inset: 0, background: "rgba(0,0,0,0.55)",
+        zIndex: 9999, display: "flex", alignItems: "center", justifyContent: "center", padding: 20,
+      }}
+      onClick={handleClose}
+    >
+      <div
+        style={{
+          background: "#fff", borderRadius: 18, width: "100%", maxWidth: 420,
+          padding: "26px 24px", boxShadow: "0 25px 60px rgba(0,0,0,0.3)",
+        }}
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 6 }}>
+          <h5 style={{ margin: 0, fontSize: 17, fontWeight: 800, color: "#111827" }}>
+            Get a Personalized Recommendation
+          </h5>
+          <button
+            onClick={handleClose}
+            style={{
+              width: 28, height: 28, borderRadius: "50%", border: "1.5px solid #e5e7eb",
+              background: "#fff", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center",
+              flexShrink: 0,
+            }}
+          >
+            <i className="fas fa-times" />
+          </button>
+        </div>
+        <p style={{ fontSize: 12.5, color: "#6b7280", margin: "0 0 18px" }}>
+          Tell us what you're looking for and our team will suggest the right pooja for you.
+        </p>
+
+        {result?.ok ? (
+          <div style={{ textAlign: "center", padding: "18px 0" }}>
+            <i className="fas fa-check-circle" style={{ fontSize: 34, color: "#059669", marginBottom: 10, display: "block" }} />
+            <p style={{ fontSize: 13.5, color: "#111827", fontWeight: 600, margin: 0 }}>{result.msg}</p>
+            <button
+              onClick={handleClose}
+              className="pj-rec-btn"
+              style={{ marginTop: 18 }}
+            >
+              Done
+            </button>
+          </div>
+        ) : (
+          <form onSubmit={handleSubmit}>
+            <input
+              type="text"
+              placeholder="Your Name"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              style={{
+                width: "100%", padding: "11px 14px", marginBottom: 12,
+                border: "1.5px solid #e5e7eb", borderRadius: 9, fontSize: 13.5, outline: "none",
+              }}
+            />
+            <input
+              type="tel"
+              placeholder="Phone Number"
+              value={phone}
+              onChange={(e) => setPhone(e.target.value)}
+              style={{
+                width: "100%", padding: "11px 14px", marginBottom: 12,
+                border: "1.5px solid #e5e7eb", borderRadius: 9, fontSize: 13.5, outline: "none",
+              }}
+            />
+            <textarea
+              placeholder="What are you looking for? (optional)"
+              value={message}
+              onChange={(e) => setMessage(e.target.value)}
+              rows={3}
+              style={{
+                width: "100%", padding: "11px 14px", marginBottom: 12,
+                border: "1.5px solid #e5e7eb", borderRadius: 9, fontSize: 13.5, outline: "none",
+                resize: "vertical", fontFamily: "inherit",
+              }}
+            />
+            {result?.ok === false && (
+              <p style={{ color: "#dc2626", fontSize: 12, marginBottom: 10 }}>{result.msg}</p>
+            )}
+            <button
+              type="submit"
+              className="pj-rec-btn"
+              disabled={submitting}
+              style={{ opacity: submitting ? 0.7 : 1, cursor: submitting ? "not-allowed" : "pointer" }}
+            >
+              {submitting ? "Submitting..." : "Submit Request"}
+            </button>
+          </form>
+        )}
+      </div>
+    </div>
+  );
+};
+
 /* ── Recommend Card ── */
-const RecommendCard = () => (
+const RecommendCard = ({ onOpen }) => (
   <div className="pj-rec">
     <div className="pj-rec-ico">
       <i className="fas fa-fire-flame-curved" />
@@ -146,7 +295,7 @@ const RecommendCard = () => (
       Share your requirement and our team will help you find the best pooja for
       you.
     </p>
-    <button className="pj-rec-btn">Get Personalized Recommendation</button>
+    <button className="pj-rec-btn" onClick={onOpen}>Get Personalized Recommendation</button>
     <div style={{ fontSize: 11, color: "#9ca3af", marginBottom: 8 }}>
       Trusted by 50K+ Devotees
     </div>
@@ -351,6 +500,7 @@ const PujaListing = () => {
   const [showSideMenu, setShowSideMenu] = useState(false);
   const [showMobileMenu, setShowMobileMenu] = useState(false);
   const [showSearch, setShowSearch] = useState(false);
+  const [showRecModal, setShowRecModal] = useState(false);
 
   /* ── Fetch ── */
  /* ── Fetch ── */
@@ -494,7 +644,7 @@ const PujaListing = () => {
         <div className="container">
           <div className="pj-hero">
             <img
-              src="/assets/img/bg/pooja.png"
+              src="/assets/img/bg/pooja.webp"
               alt="Explore Sacred Poojas"
               className="pj-hero-img"
             />
@@ -642,11 +792,11 @@ const PujaListing = () => {
                           />
                         </div>
                       ))}
-                  {!loading && <div className="col-12 col-md-4"><RecommendCard /></div>}
+                  {!loading && <div className="col-12 col-md-4"><RecommendCard onOpen={() => setShowRecModal(true)} /></div>}
                 </div>
               )}
 
-              {!loading && !error && items.length > 0 && (
+              {!loading && !error && items.length > 0 && totalPages > 1 && (
                 <div className="pj-pg">
                   <button
                     className="pj-pg-btn"
@@ -695,6 +845,8 @@ const PujaListing = () => {
       <Footer />
       <ScrollTop />
       <MobileBottomNav/>
+
+      <RecommendationModal isOpen={showRecModal} onClose={() => setShowRecModal(false)} />
 
       {/* ── Card overrides: shorter cards + hover effects + mobile polish ── */}
    

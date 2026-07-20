@@ -30,6 +30,59 @@
 .pd-bc-inner span { color: #555; font-weight: 500; }
 .pd-bc-inner i { font-size: 11px; color: #ccc; }
 
+/* ── Mobile-only full-width swipeable hero carousel ──
+   Hidden by default (desktop keeps the pd-hero-bg image instead).
+   Shown only under the 860px breakpoint — sits above the hero banner. */
+.pd-hero-mobile-carousel{
+    display:none;
+}
+@media(max-width:860px){
+  .pd-hero-mobile-carousel{
+    display:block;
+    position:relative;
+  }
+  .pd-hero-mobile-track{
+    display:flex;
+    overflow-x:auto;
+    scroll-snap-type:x mandatory;
+    -webkit-overflow-scrolling:touch;
+    scrollbar-width:none;
+  }
+  .pd-hero-mobile-track::-webkit-scrollbar{ display:none; }
+  .pd-hero-mobile-slide{
+    width:100%;
+    flex:0 0 100%;
+    height:240px;
+    object-fit:cover;
+    scroll-snap-align:start;
+    background:#f5ede0;
+    display:block;
+  }
+  .pd-hero-mobile-dots{
+    position:absolute;
+    bottom:12px;
+    left:0;
+    right:0;
+    display:flex;
+    justify-content:center;
+    gap:6px;
+    z-index:2;
+  }
+  .pd-hero-mobile-dot{
+    width:7px;
+    height:7px;
+    border-radius:50%;
+    background:rgba(255,255,255,0.55);
+    transition:width 0.2s,background 0.2s;
+    cursor:pointer;
+  }
+  .pd-hero-mobile-dot.active{
+    width:18px;
+    border-radius:4px;
+    background:#fff;
+  }
+}
+
 /* ══════════════════════════════
    HERO — desktop: bg + text left + card right
    ══════════════════════════════ */
@@ -1226,3 +1279,8 @@
   .pd-rev-card { width: 240px; }
   .pd-pkg-scroll-grid > div { width: 100%; }
 }
+.pd-pkg-select-btn {
+    width: auto !important;
+    padding: 8px 14px !important;
+    font-size: 11px !important;
+  }

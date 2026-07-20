@@ -257,7 +257,7 @@ const HoroscopePage = () => {
             <section
                 className="hs-hero"
                 style={{
-                    backgroundImage: 'url("/assets/img/images/horoscope-banner.png")',
+                    backgroundImage: 'url("/assets/img/images/horoscope-banner.webp")',
                     backgroundSize: 'cover',
                     backgroundPosition: 'center',
                 }}

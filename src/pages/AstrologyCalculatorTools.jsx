@@ -140,7 +140,7 @@ const AstrologyCalculatorHub = () => {
       <div className="at-hero-outer">
         <div className="container">
           <img
-            src="/assets/img/tool_img/tool_banner.png"
+            src="/assets/img/tool_img/tool_banner.webp"
             alt="Vedic & Numerology Calculators"
             className="at-hero-img"
           />

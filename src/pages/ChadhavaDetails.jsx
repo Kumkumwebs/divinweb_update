@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { Link, useParams, useNavigate } from 'react-router-dom';
 import ChadhavaService from '../services/chadhavaServices';
 import apiService from '../services/apiServices';
@@ -31,9 +31,6 @@ const useCountdown = (targetDate) => {
 
 const pad = n => String(n).padStart(2, '0');
 
-// Inline SVG placeholders — these are data URIs, so they never trigger a
-// network request and can never themselves fail to load. Used whenever a
-// real image URL (from the API or demo content) fails.
 const IMAGE_PLACEHOLDER =
   "data:image/svg+xml;charset=UTF-8," +
   encodeURIComponent(`
@@ -53,8 +50,6 @@ const AVATAR_PLACEHOLDER =
     </svg>
   `);
 
-// Swaps to a placeholder exactly once — the dataset flag stops any
-// possibility of a retry loop even if this somehow fires more than once.
 const handleImgError = (fallbackSrc) => (e) => {
   const img = e.currentTarget;
   if (img.dataset.fallback === 'done') return;
@@ -65,11 +60,11 @@ const handleImgError = (fallbackSrc) => (e) => {
 const clampStyle = (expanded) =>
   !expanded
     ? {
-        display: '-webkit-box',
-        WebkitLineClamp: 3,
-        WebkitBoxOrient: 'vertical',
-        overflow: 'hidden',
-      }
+      display: '-webkit-box',
+      WebkitLineClamp: 3,
+      WebkitBoxOrient: 'vertical',
+      overflow: 'hidden',
+    }
     : undefined;
 
 const FaqItem = ({ num, q, a }) => {
@@ -86,7 +81,6 @@ const FaqItem = ({ num, q, a }) => {
   );
 };
 
-/* Simple "View All" popup — same pattern as AstrologerDetail's ViewAllPopup */
 const ViewAllReviewsPopup = ({ reviews, onClose }) => (
   <div
     style={{
@@ -118,10 +112,10 @@ const ViewAllReviewsPopup = ({ reviews, onClose }) => (
           <i className="fas fa-times" />
         </button>
       </div>
-      <div style={{ padding: 20, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 14 }}>
+      <div style={{ padding: 20, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 14, minHeight: 0, flex: 1 }}>
         {reviews.map((r, i) => (
-          <div key={i} className="cd-rev-card" style={{ width: '100%' }}>
-            <div className="cd-rev-card-body">
+          <div key={i} className="cd-rev-card" style={{ width: '100%', flexShrink: 0 }}>
+            <div className="cd-rev-card-body" style={{ overflow: 'visible' }}>
               <div className="cd-rev-stars">
                 {[1, 2, 3, 4, 5].map(s => <i key={s} className={`fa${s <= Math.floor(r.rating) ? 's' : 'r'} fa-star`} />)}
                 <span>{r.rating}</span>
@@ -143,37 +137,56 @@ const ViewAllReviewsPopup = ({ reviews, onClose }) => (
   </div>
 );
 
-/* demo image fallbacks — only used until real images exist for these
-   specific sections (reviews / similar / gallery), since the API doesn't
-   appear to provide them yet */
-// const DEMO_PRASAD = [
-//   'https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=200&h=200&fit=crop',
-//   'https://images.unsplash.com/photo-1567620905732-2d1ec7ab7445?w=200&h=200&fit=crop',
-//   'https://images.unsplash.com/photo-1607532941433-304659e8198a?w=200&h=200&fit=crop',
-//   'https://images.unsplash.com/photo-1546793665-c74683f339c1?w=200&h=200&fit=crop',
-// ];
-// const DEMO_SIM = [
-//   'https://images.unsplash.com/photo-1609429019995-8c40f49535a5?w=150&h=150&fit=crop',
-//   'https://images.unsplash.com/photo-1571019613454-1cb2f99b2d8b?w=150&h=150&fit=crop',
-//   'https://images.unsplash.com/photo-1588392382834-a891154bca4d?w=150&h=150&fit=crop',
-//   'https://images.unsplash.com/photo-1600618528240-fb9fc964b853?w=150&h=150&fit=crop',
-//   'https://images.unsplash.com/photo-1605296867304-46d5465a13f1?w=150&h=150&fit=crop',
-//   'https://images.unsplash.com/photo-1567620905732-2d1ec7ab7445?w=150&h=150&fit=crop',
-//   'https://images.unsplash.com/photo-1546793665-c74683f339c1?w=150&h=150&fit=crop',
-//   'https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=150&h=150&fit=crop',
-// ];
-// const DEMO_GAL = [
-//   'https://images.unsplash.com/photo-1609429019995-8c40f49535a5?w=120&h=90&fit=crop',
-//   'https://images.unsplash.com/photo-1571019613454-1cb2f99b2d8b?w=120&h=90&fit=crop',
-//   'https://images.unsplash.com/photo-1588392382834-a891154bca4d?w=120&h=90&fit=crop',
-//   'https://images.unsplash.com/photo-1567620905732-2d1ec7ab7445?w=120&h=90&fit=crop',
-// ];
-// const DEMO_AVATAR = [
-//   'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=80&h=80&fit=crop&crop=face',
-//   'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=80&h=80&fit=crop&crop=face',
-//   'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=80&h=80&fit=crop&crop=face',
-//   'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=80&h=80&fit=crop&crop=face',
-// ];
+const GalleryPopup = ({ images, onClose }) => (
+  <div
+    style={{
+      position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.75)',
+      zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20,
+    }}
+    onClick={onClose}
+  >
+    <div
+      style={{
+        background: '#fff', borderRadius: 20, width: '100%', maxWidth: 780,
+        maxHeight: '85vh', overflow: 'hidden', display: 'flex', flexDirection: 'column',
+        boxShadow: '0 25px 60px rgba(0,0,0,0.3)',
+      }}
+      onClick={(e) => e.stopPropagation()}
+    >
+      <div style={{
+        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+        padding: '18px 22px', borderBottom: '1px solid #f0e8e0',
+      }}>
+        <h5 style={{ margin: 0, fontSize: 16, fontWeight: 700, color: '#7b1a3a' }}>
+          Gallery ({images.length} Photo{images.length > 1 ? 's' : ''})
+        </h5>
+        <button
+          onClick={onClose}
+          style={{
+            width: 30, height: 30, borderRadius: '50%', border: '1.5px solid #e5e7eb',
+            background: '#fff', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
+          }}
+        >
+          <i className="fas fa-times" />
+        </button>
+      </div>
+      <div style={{
+        padding: 20, overflowY: 'auto',
+        display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: 14,
+      }}>
+        {images.map((src, i) => (
+          <img
+            key={i}
+            src={src}
+            alt={`Gallery ${i + 1}`}
+            onError={handleImgError(IMAGE_PLACEHOLDER)}
+            style={{ width: '100%', height: 160, objectFit: 'cover', borderRadius: 10, background: '#f5ede0' }}
+          />
+        ))}
+      </div>
+    </div>
+  </div>
+);
 
 const DEFAULT_INC = [
   { icon: 'fas fa-user-edit', name: 'Sankalp', sub: 'In your name' },
@@ -199,9 +212,43 @@ const DEFAULT_FAQS = [
   { q: 'Is a home inspection really necessary?', a: 'All our pandits are verified and experienced. You will receive real-time video updates during the ritual.' },
 ];
 
-/* ══════════════════════════════════════ */
+const DEFAULT_REVIEWS = [
+  {
+    rating: 5,
+    text: 'The entire ritual felt so authentic and heartfelt. I received the prasad within a week, and the video updates during the puja gave me real peace of mind.',
+    name: 'Priya Sharma',
+    city: 'Delhi',
+    avatar: 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=80&h=80&fit=crop&crop=face',
+    img: 'https://images.unsplash.com/photo-1605021206688-bcc23d68e8b9?w=300&h=340&fit=crop',
+  },
+  {
+    rating: 5,
+    text: 'Booked this Chadhava for my parents\' wellbeing. The pandit ji was very thorough, and the WhatsApp updates made us feel connected to the temple.',
+    name: 'Rohit Verma',
+    city: 'Mumbai',
+    avatar: 'https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?w=80&h=80&fit=crop&crop=face',
+    img: 'https://images.unsplash.com/photo-1582510003544-4d00b7f74220?w=300&h=340&fit=crop',
+  },
+  {
+    rating: 4,
+    text: 'Smooth booking process and genuine service. The prasad packaging was beautiful and everything arrived exactly as promised.',
+    name: 'Anjali Nair',
+    city: 'Bengaluru',
+    avatar: 'https://images.unsplash.com/photo-1531746020798-e6953c6e8e04?w=80&h=80&fit=crop&crop=face',
+    img: 'https://images.unsplash.com/photo-1600424563132-e35199c9a4d1?w=300&h=340&fit=crop',
+  },
+  {
+    rating: 5,
+    text: 'Second time booking a Chadhava through DivinIQ. Reliable, respectful of tradition, and the customer support answered all my questions promptly.',
+    name: 'Karthik Reddy',
+    city: 'Hyderabad',
+    avatar: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=80&h=80&fit=crop&crop=face',
+    img: 'https://images.unsplash.com/photo-1609599006353-e629aaabfeae?w=300&h=340&fit=crop',
+  },
+];
+
 const ChadhavaDetails = () => {
-  const { id } = useParams(); // route: /chadhava/:name/:id
+  const { id } = useParams();
   const navigate = useNavigate();
   const { isLoggedIn } = useStorage();
 
@@ -210,30 +257,100 @@ const ChadhavaDetails = () => {
   const [error, setError] = useState(false);
 
   const [showLoginModal, setShowLoginModal] = useState(false);
-  // Remembers which "Add" the user was trying to make when the login
-  // modal interrupted them, so we can finish that action automatically
-  // once they log in successfully.
-  const [pendingAction, setPendingAction] = useState(null); // { type: 'addon' | 'prasad', id }
+  const [pendingAction, setPendingAction] = useState(null);
 
   const [revDot, setRevDot] = useState(0);
   const [simIdx, setSimIdx] = useState(0);
   const [showAllReviews, setShowAllReviews] = useState(false);
+  const [showGallery, setShowGallery] = useState(false);
 
-  // --- Cart state ---
-  const [addonQtys, setAddonQtys] = useState({});   // { addon_id: qty }
-  const [prasadQtys, setPrasadQtys] = useState({}); // { prasad_id: qty }
+  const [addonQtys, setAddonQtys] = useState({});
+  const [prasadQtys, setPrasadQtys] = useState({});
   const [cartSyncing, setCartSyncing] = useState(false);
 
   const [showSideMenu, setShowSideMenu] = useState(false);
   const [showSearch, setShowSearch] = useState(false);
   const [showMobileMenu, setShowMobileMenu] = useState(false);
 
-  // Tracks whether the "select your package" (addons/prasad) section is
-  // currently visible on screen, so the mobile sticky button can hide
-  // itself there instead of overlapping that section.
   const [addonsSectionVisible, setAddonsSectionVisible] = useState(false);
 
   const SIM_VISIBLE = 4;
+
+  const addonsRowRef = useRef(null);
+  const prasadRowRef = useRef(null);
+  const scrollRow = (ref, dir) => {
+    ref.current?.scrollBy({ left: dir * 240, behavior: 'smooth' });
+  };
+
+  const heroMobileRef = useRef(null);
+  const [heroMobileIdx, setHeroMobileIdx] = useState(0);
+  const heroUserInteractingRef = useRef(false);
+  const handleHeroMobileScroll = () => {
+    const el = heroMobileRef.current;
+    if (!el) return;
+    const idx = Math.round(el.scrollLeft / el.clientWidth);
+    setHeroMobileIdx(idx);
+  };
+  const scrollHeroMobileTo = (i) => {
+    const el = heroMobileRef.current;
+    if (!el) return;
+    el.scrollTo({ left: i * el.clientWidth, behavior: 'smooth' });
+  };
+
+  useEffect(() => {
+    const attachDragScroll = (el) => {
+      if (!el) return () => { };
+      let isDown = false;
+      let startX = 0;
+      let startScrollLeft = 0;
+      let moved = false;
+
+      const onPointerDown = (e) => {
+        isDown = true;
+        moved = false;
+        startX = e.clientX;
+        startScrollLeft = el.scrollLeft;
+        el.classList.add('cd-dragging');
+      };
+      const onPointerMove = (e) => {
+        if (!isDown) return;
+        const dx = e.clientX - startX;
+        if (Math.abs(dx) > 4) moved = true;
+        el.scrollLeft = startScrollLeft - dx;
+      };
+      const endDrag = () => {
+        isDown = false;
+        el.classList.remove('cd-dragging');
+      };
+      const onClickCapture = (e) => {
+        if (moved) {
+          e.preventDefault();
+          e.stopPropagation();
+        }
+      };
+
+      el.addEventListener('pointerdown', onPointerDown);
+      el.addEventListener('pointermove', onPointerMove);
+      el.addEventListener('pointerup', endDrag);
+      el.addEventListener('pointerleave', endDrag);
+      el.addEventListener('click', onClickCapture, true);
+
+      return () => {
+        el.removeEventListener('pointerdown', onPointerDown);
+        el.removeEventListener('pointermove', onPointerMove);
+        el.removeEventListener('pointerup', endDrag);
+        el.removeEventListener('pointerleave', endDrag);
+        el.removeEventListener('click', onClickCapture, true);
+      };
+    };
+
+    const cleanupAddons = attachDragScroll(addonsRowRef.current);
+    const cleanupPrasad = attachDragScroll(prasadRowRef.current);
+    return () => {
+      cleanupAddons();
+      cleanupPrasad();
+    };
+  }, [chadhava]);
 
   useEffect(() => {
     let isMounted = true;
@@ -261,7 +378,6 @@ const ChadhavaDetails = () => {
     return () => { isMounted = false; };
   }, [id]);
 
-  // --- Pre-fill cart quantities if this chadhava is already in the server cart ---
   useEffect(() => {
     let isMounted = true;
     const fetchCart = async () => {
@@ -284,53 +400,53 @@ const ChadhavaDetails = () => {
         console.error('Cart fetch error:', err);
       }
     };
-    // Skip the call entirely when logged out — the endpoint requires auth
-    // and will always 401, so there's nothing useful to pre-fill yet.
     if (chadhava?._id && isLoggedIn) fetchCart();
     return () => { isMounted = false; };
   }, [chadhava?._id, isLoggedIn]);
 
   const timer = useCountdown(chadhava?.offerEndsAt);
 
-  // Watch the "select your package" section so the mobile sticky button
-  // can hide itself while that section is already on screen. Uses two
-  // different thresholds for showing vs. hiding (hysteresis) so the
-  // button doesn't flicker right at the boundary. Debounced on scroll
-  // only (no 'resize' listener) — mobile browsers fire resize events
-  // as their address bar auto-hides/shows while scrolling, which was
-  // causing this to re-fire dozens of times a second and flicker.
+  const galleryImages = useMemo(() => {
+    const raw = [
+      chadhava?.chadhavaImage,
+      ...(chadhava?.bannerImages || []),
+      ...(chadhava?.galleryImages || []),
+      ...(chadhava?.gallery || []),
+      ...(chadhava?.images || []),
+      ...(chadhava?.photos || []),
+    ].filter(Boolean);
+    return raw.length
+      ? [...new Set(raw)]
+      : [IMAGE_PLACEHOLDER, IMAGE_PLACEHOLDER, IMAGE_PLACEHOLDER, IMAGE_PLACEHOLDER];
+  }, [chadhava]);
+
+  useEffect(() => {
+    if (galleryImages.length <= 1) return undefined;
+    const t = setInterval(() => {
+      if (heroUserInteractingRef.current) return;
+      const el = heroMobileRef.current;
+      if (!el) return;
+      const nextIdx = (Math.round(el.scrollLeft / el.clientWidth) + 1) % galleryImages.length;
+      scrollHeroMobileTo(nextIdx);
+    }, 4000);
+    return () => clearInterval(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [galleryImages.length]);
+
   useEffect(() => {
     if (!chadhava) return undefined;
     const el = document.getElementById('addons-section');
     if (!el) return undefined;
 
-    let debounceTimer = null;
-    const checkVisibility = () => {
-      const rect = el.getBoundingClientRect();
-      const viewportHeight = window.innerHeight;
-      setAddonsSectionVisible((prev) =>
-        prev
-          ? rect.bottom > 80 && rect.top < viewportHeight
-          : rect.top < viewportHeight * 0.6 && rect.bottom > 0
-      );
-    };
+    const observer = new IntersectionObserver(
+      ([entry]) => setAddonsSectionVisible(entry.isIntersecting),
+      { threshold: 0 }
+    );
+    observer.observe(el);
 
-    const onScroll = () => {
-      if (debounceTimer) clearTimeout(debounceTimer);
-      debounceTimer = setTimeout(checkVisibility, 120);
-    };
-
-    checkVisibility();
-    window.addEventListener('scroll', onScroll, { passive: true });
-    return () => {
-      if (debounceTimer) clearTimeout(debounceTimer);
-      window.removeEventListener('scroll', onScroll);
-    };
+    return () => observer.disconnect();
   }, [chadhava]);
 
-
-  // Proceed no longer gates on login — by the time there's anything in the
-  // cart, the user must already have logged in via the Add button flow below.
   const handleProceed = () => {
     navigate('/chadhava_review_booking', {
       state: {
@@ -341,7 +457,6 @@ const ChadhavaDetails = () => {
     });
   };
 
-  // --- Sync current selections to server cart ---
   const syncCart = async (nextAddonQtys, nextPrasadQtys) => {
     if (!chadhava?._id) return;
     setCartSyncing(true);
@@ -393,7 +508,6 @@ const ChadhavaDetails = () => {
     });
   };
 
-  // --- Gate the initial "Add" tap on login ---
   const handleAddonAddClick = (addonId) => {
     if (!isLoggedIn) {
       setPendingAction({ type: 'addon', id: addonId });
@@ -412,8 +526,6 @@ const ChadhavaDetails = () => {
     changePrasadQty(prasadId, 1);
   };
 
-  // Once login succeeds while the modal was open, finish whichever
-  // "Add" the user originally tapped.
   useEffect(() => {
     if (isLoggedIn && showLoginModal && pendingAction) {
       setShowLoginModal(false);
@@ -462,8 +574,7 @@ const ChadhavaDetails = () => {
   }
 
   const title = chadhava.title || 'Chadhava Offering';
-  const heroImage = chadhava.chadhavaImage || chadhava.bannerImages?.[0] || '/assets/img/chadawa_detail/pooja_group.png';
-  const galleryImages = chadhava.galleryImages?.length ? chadhava.galleryImages : [IMAGE_PLACEHOLDER, IMAGE_PLACEHOLDER, IMAGE_PLACEHOLDER, IMAGE_PLACEHOLDER];  const rating = chadhava.rating || 4.9;
+  const rating = chadhava.rating || 4.9;
   const reviewsCount = chadhava.reviewsCount || chadhava.reviews?.length || 0;
   const devoteesCount = chadhava.devoteesCount || '50K+';
   const price = chadhava.price ?? 0;
@@ -480,24 +591,24 @@ const ChadhavaDetails = () => {
 
   const ADDONS = chadhava.addons?.length
     ? chadhava.addons.map((a) => ({
-        id: a._id || a.id,
-        name: a.pname || a.name,
-        sub: a.subtitle || a.description || '',
-        price: a.pamount ? `₹${a.pamount}` : (a.price ? `₹${a.price}` : ''),
-        rawPrice: a.pamount || a.price || 0,
-        img: a.pimage || a.image,
-      }))
+      id: a._id || a.id,
+      name: a.pname || a.name,
+      sub: a.subtitle || a.description || '',
+      price: a.pamount ? `₹${a.pamount}` : (a.price ? `₹${a.price}` : ''),
+      rawPrice: a.pamount || a.price || 0,
+      img: a.pimage || a.image,
+    }))
     : [];
 
   const PRASAD = chadhava.prasad?.length
     ? chadhava.prasad.map((p) => ({
-        id: p._id || p.id,
-        name: p.name,
-        sub: p.subtitle || p.description || '',
-        price: p.amount ? `₹${p.amount}` : (p.price ? `₹${p.price}` : ''),
-        rawPrice: p.amount || p.price || 0,
-        img: p.image,
-      }))
+      id: p._id || p.id,
+      name: p.name,
+      sub: p.subtitle || p.description || '',
+      price: p.amount ? `₹${p.amount}` : (p.price ? `₹${p.price}` : ''),
+      rawPrice: p.amount || p.price || 0,
+      img: p.image,
+    }))
     : [];
 
   const addonsTotal = ADDONS.reduce((sum, a) => sum + (addonQtys[a.id] || 0) * a.rawPrice, 0);
@@ -530,14 +641,14 @@ const ChadhavaDetails = () => {
 
   const REVIEWS = chadhava.reviews?.length
     ? chadhava.reviews.map((r) => ({
-        rating: r.rating || 5,
-        text: r.text || r.comment || '',
-        name: r.name || r.userName || 'Devotee',
-        city: r.city || '',
-        avatar: r.avatar || AVATAR_PLACEHOLDER,
-        img: r.image || IMAGE_PLACEHOLDER,
-      }))
-    : [];
+      rating: r.rating || 5,
+      text: r.text || r.comment || '',
+      name: r.name || r.userName || 'Devotee',
+      city: r.city || '',
+      avatar: r.avatar || AVATAR_PLACEHOLDER,
+      img: r.image || IMAGE_PLACEHOLDER,
+    }))
+    : DEFAULT_REVIEWS;
 
   const slugify = (text) =>
     (text || '')
@@ -547,12 +658,12 @@ const ChadhavaDetails = () => {
 
   const SIMILAR = chadhava.similar?.length
     ? chadhava.similar.map((s) => ({
-        name: s.title || s.name,
-        price: s.price ? `₹${s.price}` : '',
-        rating: s.rating || 4.8,
-        img: s.chadhavaImage || s.image || IMAGE_PLACEHOLDER,
-        id: s._id || s.id,
-      }))
+      name: s.title || s.name,
+      price: s.price ? `₹${s.price}` : '',
+      rating: s.rating || 4.8,
+      img: s.chadhavaImage || s.image || IMAGE_PLACEHOLDER,
+      id: s._id || s.id,
+    }))
     : [];
 
   const simMax = Math.max(0, SIMILAR.length - SIM_VISIBLE);
@@ -602,20 +713,54 @@ const ChadhavaDetails = () => {
         }
       `}</style>
 
-      {/* ── BREADCRUMB ── */}
       <div className="cd-bc">
         <Link to="/">Home</Link>&nbsp;›&nbsp;
-        <Link to="/chadhava">Chadhava</Link>&nbsp;›&nbsp;
-        <span>{title}</span>
+        <Link to="/chadhava">Chadhava</Link>
       </div>
 
-      {/* ══ HERO ══ */}
-      <div className="cd-hero">
-        <div className="cd-hero-left">
-          <div className="cd-hero-bg" />
-          {/* <img className="cd-hero-deity-img" src={heroImage} alt={title}
-            onError={handleImgError(IMAGE_PLACEHOLDER)} /> */}
+      <div className="cd-hero-mobile-carousel">
+        <div
+          className="cd-hero-mobile-track"
+          ref={heroMobileRef}
+          onScroll={handleHeroMobileScroll}
+          onTouchStart={() => { heroUserInteractingRef.current = true; }}
+          onTouchEnd={() => {
+            setTimeout(() => { heroUserInteractingRef.current = false; }, 3000);
+          }}
+        >
+          {galleryImages.map((src, i) => (
+            <img
+              key={i}
+              className="cd-hero-mobile-slide"
+              src={src}
+              alt={`${title} ${i + 1}`}
+              onError={handleImgError(IMAGE_PLACEHOLDER)}
+            />
+          ))}
+        </div>
+        {galleryImages.length > 1 && (
+          <div className="cd-hero-mobile-dots">
+            {galleryImages.map((_, i) => (
+              <div
+                key={i}
+                className={`cd-hero-mobile-dot${i === heroMobileIdx ? ' active' : ''}`}
+                onClick={() => scrollHeroMobileTo(i)}
+              />
+            ))}
+          </div>
+        )}
+      </div>
+
+      <div
+        className="cd-hero"
+        style={{
+          backgroundImage: `url("${encodeURI(galleryImages[0])}")`,
+          backgroundColor: '#f5ede0',
+        }}
+      >
+        <div className="cd-hero-left" style={{ position: 'relative', overflow: 'hidden' }}>
           <div className="cd-hero-bg-overlay" />
+
           <div className="cd-hero-body">
             <div className="cd-auspicious"><i className="fas fa-crown" /> Most Auspicious – Limited Day</div>
             <h1 className="cd-hero-h1">{title}</h1>
@@ -641,7 +786,7 @@ const ChadhavaDetails = () => {
                 <img key={i} className="cd-gal-img" src={src} alt={`Gallery ${i + 1}`}
                   onError={handleImgError(IMAGE_PLACEHOLDER)} />
               ))}
-              <div className="cd-gal-more">
+              <div className="cd-gal-more" onClick={() => setShowGallery(true)} style={{ cursor: 'pointer' }}>
                 <span className="gm-num">View</span><br />
                 <span className="gm-num">{chadhava.galleryCount || `${galleryImages.length}+`}</span><br />
                 <span className="gm-lbl">Photos</span>
@@ -650,69 +795,36 @@ const ChadhavaDetails = () => {
           </div>
         </div>
 
-        {/* RIGHT booking card */}
-       <div className="cd-hero-right">
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            width: '100%',
+            minHeight: '1px',
+          }}
+        >
           <img
-            className="cd-hero-watermark"
-            src="/assets/img/pooja_fill/lotuskalash.png"
-            alt=""
-            onError={(e) => { e.target.style.display = 'none'; }}
-          />
-          <div className="cd-avail-bar">
-            <div className="cd-avail-pill"><i className="fas fa-exclamation-circle" /> Limited Availability</div>
-            {seatsLeft != null && (
-              <div className="cd-seats-pill">Only {seatsLeft} Seats Left</div>
-            )}
-          </div>
-          {chadhava.offerEndsAt && (
-            <>
-              <div className="cd-offer-row">
-                <i className="cd-offer-ico fas fa-clock" />
-                <span className="cd-offer-txt">Offer closes in</span>
-              </div>
-              <div className="cd-mini-timer">
-                {[{ val: pad(timer.d), lbl: 'Days' }, null, { val: pad(timer.h), lbl: 'Hours' }, null, { val: pad(timer.m), lbl: 'Mins' }, null, { val: pad(timer.s), lbl: 'Secs' }].map((item, i) =>
-                  item === null
-                    ? <span key={i} className="cd-mini-sep">:</span>
-                    : <div key={i} className="cd-mini-box"><div className="cd-mini-num">{item.val}</div><div className="cd-mini-lbl">{item.lbl}</div></div>
-                )}
-              </div>
-            </>
-          )}
-          <div className="cd-feat-badge"><i className="fas fa-fire" /> Featured Offering</div>
-          <div className="cd-book-price">{title}</div>
-          <div className="cd-price-desc" style={clampStyle(false)}>
-            {priceDesc}
-          </div>
-          <div className="cd-shri"><i className="fas fa-gopuram" /> {templeName}</div>
-          <Link
-            to="#"
-            className="cd-reserve-btn"
-            onClick={(e) => {
-              e.preventDefault();
-              document.getElementById('addons-section')?.scrollIntoView({
-                behavior: 'smooth',
-                block: 'start',
-              });
+            src="/assets/img/images/leftpannel.png"
+            alt={title}
+            onError={handleImgError(IMAGE_PLACEHOLDER)}
+            style={{
+              maxWidth: '100%',
+              maxHeight: '100%',
+              width: 'auto',
+              height: 'auto',
+              objectFit: 'contain',
+              display: 'block',
+              border: 'none',
+              outline: 'none',
+              borderRadius: '14px',
             }}
-          >
-            Reserve Your Offering <i className="fas fa-arrow-right" />
-          </Link>
-          <div className="cd-secure"><i className="fas fa-lock" /> 100% Secure Payments</div>
-          <div className="pd-bc-pay-icons">
-            <img src="/assets/img/about/upi.png" alt="UPI" className="pd-pay-img"
-              onError={e => { e.target.style.display = 'none'; }} />
-            <img src="/assets/img/about/visa.png" alt="Visa" className="pd-pay-img"
-              onError={e => { e.target.style.display = 'none'; }} />
-            <img src="/assets/img/about/mastercard.png" alt="Mastercard" className="pd-pay-img pd-pay-img--mc"
-              onError={e => { e.target.style.display = 'none'; }} />
-            <img src="/assets/img/about/rupay.png" alt="RuPay" className="pd-pay-img"
-              onError={e => { e.target.style.display = 'none'; }} />
-          </div>
+          />
         </div>
       </div>
 
-      {/* ══ TRUST STRIP ══ */}
+
+
       <div className="cd-trust">
         {[
           { icon: 'fas fa-gopuram', title: 'Temple Certified', sub: 'Authentic rituals from verified temples' },
@@ -727,138 +839,136 @@ const ChadhavaDetails = () => {
         ))}
       </div>
 
-      {/* ══ ADDONS + PRASAD ══ */}
       <div id="addons-section">
-      {ADDONS.length > 0 && (
-        <div className="cd-addons">
-          <div className="cd-addons-head">
-            <div className="cd-addons-title">✨ Enhance Your Seva (Add-ons)</div>
-            {/* <a href="#" className="cd-view-all">View All Add-ons</a> */}
-          </div>
-          <div className="cd-addons-scroll">
-            <button className="cd-addons-arr left"><i className="fas fa-chevron-left" /></button>
-            <div className="cd-addons-row">
-              {ADDONS.map((a, i) => {
-                const qty = addonQtys[a.id] || 0;
-                return (
-                  <div key={a.id || i} className="cd-addon-card">
-                    <img className="cd-addon-img" src={a.img} alt={a.name}
-                      onError={handleImgError(IMAGE_PLACEHOLDER)} />
-                    <div className="cd-addon-body">
-                      <div className="cd-addon-name">{a.name}</div>
-                      <div className="cd-addon-sub">{a.sub}</div>
-                      <div className="cd-addon-price">{a.price}</div>
-                      {qty === 0 ? (
-                        <button
-                          type="button"
-                          className="cd-add-btn"
-                          onClick={() => handleAddonAddClick(a.id)}
-                        >
-                          <i className="fas fa-plus" /> Add
-                        </button>
-                      ) : (
-                        <div
-                          style={{
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'space-between',
-                            background: '#0b845c',
-                            borderRadius: '20px',
-                            padding: '4px 8px',
-                          }}
-                        >
-                          <button
-                            type="button"
-                            onClick={() => changeAddonQty(a.id, -1)}
-                            style={{ background: 'transparent', border: 'none', color: '#fff', fontWeight: 700, fontSize: '16px', width: '22px', cursor: 'pointer' }}
-                          >
-                            −
-                          </button>
-                          <span style={{ color: '#fff', fontWeight: 700, fontSize: '13px' }}>{qty}</span>
-                          <button
-                            type="button"
-                            onClick={() => changeAddonQty(a.id, 1)}
-                            style={{ background: 'transparent', border: 'none', color: '#fff', fontWeight: 700, fontSize: '16px', width: '22px', cursor: 'pointer' }}
-                          >
-                            +
-                          </button>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                );
-              })}
+        {ADDONS.length > 0 && (
+          <div className="cd-addons">
+            <div className="cd-addons-head">
+              <div className="cd-addons-title">✨ Choose an Offering</div>
             </div>
-            <button className="cd-addons-arr right"><i className="fas fa-chevron-right" /></button>
+            <div className="cd-addons-scroll">
+              <button className="cd-addons-arr left" onClick={() => scrollRow(addonsRowRef, -1)}><i className="fas fa-chevron-left" /></button>
+              <div className="cd-addons-row" ref={addonsRowRef}>
+                {ADDONS.map((a, i) => {
+                  const qty = addonQtys[a.id] || 0;
+                  return (
+                    <div key={a.id || i} className="cd-addon-card">
+                      <img className="cd-addon-img" src={a.img} alt={a.name}
+                        onError={handleImgError(IMAGE_PLACEHOLDER)} />
+                      <div className="cd-addon-body">
+                        <div className="cd-addon-name">{a.name}</div>
+                        <div className="cd-addon-sub">{a.sub}</div>
+                        <div className="cd-addon-price">{a.price}</div>
+                        {qty === 0 ? (
+                          <button
+                            type="button"
+                            className="cd-add-btn"
+                            onClick={() => handleAddonAddClick(a.id)}
+                          >
+                            <i className="fas fa-plus" /> Add
+                          </button>
+                        ) : (
+                          <div
+                            style={{
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'space-between',
+                              background: '#0b845c',
+                              borderRadius: '20px',
+                              padding: '4px 8px',
+                            }}
+                          >
+                            <button
+                              type="button"
+                              onClick={() => changeAddonQty(a.id, -1)}
+                              style={{ background: 'transparent', border: 'none', color: '#fff', fontWeight: 700, fontSize: '16px', width: '22px', cursor: 'pointer' }}
+                            >
+                              −
+                            </button>
+                            <span style={{ color: '#fff', fontWeight: 700, fontSize: '13px' }}>{qty}</span>
+                            <button
+                              type="button"
+                              onClick={() => changeAddonQty(a.id, 1)}
+                              style={{ background: 'transparent', border: 'none', color: '#fff', fontWeight: 700, fontSize: '16px', width: '22px', cursor: 'pointer' }}
+                            >
+                              +
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+              <button className="cd-addons-arr right" onClick={() => scrollRow(addonsRowRef, 1)}><i className="fas fa-chevron-right" /></button>
+            </div>
           </div>
-        </div>
-      )}
+        )}
 
-      {/* ══ PRASAD ══ */}
-      {PRASAD.length > 0 && (
-        <div className="cd-addons">
-          <div className="cd-addons-head">
-            <div className="cd-addons-title">🙏 Add Blessed Prasad</div>
-          </div>
-          <div className="cd-addons-scroll">
-            <div className="cd-addons-row">
-              {PRASAD.map((p, i) => {
-                const qty = prasadQtys[p.id] || 0;
-                return (
-                  <div key={p.id || i} className="cd-addon-card">
-                    <img className="cd-addon-img" src={p.img} alt={p.name}
-                      onError={handleImgError(IMAGE_PLACEHOLDER)} />
-                    <div className="cd-addon-body">
-                      <div className="cd-addon-name">{p.name}</div>
-                      <div className="cd-addon-sub">{p.sub}</div>
-                      <div className="cd-addon-price">{p.price}</div>
-                      {qty === 0 ? (
-                        <button
-                          type="button"
-                          className="cd-add-btn"
-                          onClick={() => handlePrasadAddClick(p.id)}
-                        >
-                          <i className="fas fa-plus" /> Add
-                        </button>
-                      ) : (
-                        <div
-                          style={{
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'space-between',
-                            background: '#0b845c',
-                            borderRadius: '20px',
-                            padding: '4px 8px',
-                          }}
-                        >
+        {PRASAD.length > 0 && (
+          <div className="cd-addons">
+            <div className="cd-addons-head">
+              <div className="cd-addons-title">🙏 Add Blessed Prasad</div>
+            </div>
+            <div className="cd-addons-scroll">
+              <button className="cd-addons-arr left" onClick={() => scrollRow(prasadRowRef, -1)}><i className="fas fa-chevron-left" /></button>
+              <div className="cd-addons-row" ref={prasadRowRef}>
+                {PRASAD.map((p, i) => {
+                  const qty = prasadQtys[p.id] || 0;
+                  return (
+                    <div key={p.id || i} className="cd-addon-card">
+                      <img className="cd-addon-img" src={p.img} alt={p.name}
+                        onError={handleImgError(IMAGE_PLACEHOLDER)} />
+                      <div className="cd-addon-body">
+                        <div className="cd-addon-name">{p.name}</div>
+                        <div className="cd-addon-sub">{p.sub}</div>
+                        <div className="cd-addon-price">{p.price}</div>
+                        {qty === 0 ? (
                           <button
                             type="button"
-                            onClick={() => changePrasadQty(p.id, -1)}
-                            style={{ background: 'transparent', border: 'none', color: '#fff', fontWeight: 700, fontSize: '16px', width: '22px', cursor: 'pointer' }}
+                            className="cd-add-btn"
+                            onClick={() => handlePrasadAddClick(p.id)}
                           >
-                            −
+                            <i className="fas fa-plus" /> Add
                           </button>
-                          <span style={{ color: '#fff', fontWeight: 700, fontSize: '13px' }}>{qty}</span>
-                          <button
-                            type="button"
-                            onClick={() => changePrasadQty(p.id, 1)}
-                            style={{ background: 'transparent', border: 'none', color: '#fff', fontWeight: 700, fontSize: '16px', width: '22px', cursor: 'pointer' }}
+                        ) : (
+                          <div
+                            style={{
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'space-between',
+                              background: '#0b845c',
+                              borderRadius: '20px',
+                              padding: '4px 8px',
+                            }}
                           >
-                            +
-                          </button>
-                        </div>
-                      )}
+                            <button
+                              type="button"
+                              onClick={() => changePrasadQty(p.id, -1)}
+                              style={{ background: 'transparent', border: 'none', color: '#fff', fontWeight: 700, fontSize: '16px', width: '22px', cursor: 'pointer' }}
+                            >
+                              −
+                            </button>
+                            <span style={{ color: '#fff', fontWeight: 700, fontSize: '13px' }}>{qty}</span>
+                            <button
+                              type="button"
+                              onClick={() => changePrasadQty(p.id, 1)}
+                              style={{ background: 'transparent', border: 'none', color: '#fff', fontWeight: 700, fontSize: '16px', width: '22px', cursor: 'pointer' }}
+                            >
+                              +
+                            </button>
+                          </div>
+                        )}
+                      </div>
                     </div>
-                  </div>
-                );
-              })}
+                  );
+                })}
+              </div>
+              <button className="cd-addons-arr right" onClick={() => scrollRow(prasadRowRef, 1)}><i className="fas fa-chevron-right" /></button>
             </div>
           </div>
-        </div>
-      )}
+        )}
       </div>
 
-      {/* ══ INCLUDED + HOW ══ */}
       <div className="cd-inc-how">
         <div className="cd-inc-sec">
           <div className="cd-isec-title"><i className="fas fa-list-check" /> What's Included in Chadhava</div>
@@ -885,7 +995,6 @@ const ChadhavaDetails = () => {
         </div>
       </div>
 
-      {/* ══ ABOUT + VIDEO ══ */}
       <div className="cd-about-video">
         <div className="cd-about-wrap">
           <div className="cd-about-title">{aboutTitle}</div>
@@ -913,11 +1022,10 @@ const ChadhavaDetails = () => {
         )}
       </div>
 
-      {/* ══ REVIEWS + STATS ══ */}
       <div className="cd-reviews-sec">
         <div className="cd-rev-head">
           <div className="cd-rev-htitle"><i className="fas fa-star" /> Devotee Experiences</div>
-         <a href="#"
+          <a href="#"
             style={{ fontSize: 12.5, color: '#7b1a3a', fontWeight: 600 }}
             onClick={(e) => { e.preventDefault(); setShowAllReviews(true); }}
           >
@@ -927,7 +1035,6 @@ const ChadhavaDetails = () => {
         <div className="cd-rev-hsub">See what our devotees have to say</div>
 
         <div className="cd-rev-layout">
-          {/* LEFT: slider + dots */}
           <div className="cd-rev-left">
             <div className="cd-rev-slider">
               <div className="cd-rev-track" style={{ transform: `translateX(-${revDot * 100}%)` }}>
@@ -963,7 +1070,6 @@ const ChadhavaDetails = () => {
             </div>
           </div>
 
-          {/* RIGHT: stats + trusted bar */}
           <div className="cd-rev-right">
             <div className="cd-stats-row">
               {[
@@ -984,7 +1090,6 @@ const ChadhavaDetails = () => {
         </div>
       </div>
 
-      {/* ══ SIMILAR ══ */}
       {SIMILAR.length > 0 && (
         <div className="cd-similar">
           <div className="cd-sec-label">
@@ -1023,7 +1128,6 @@ const ChadhavaDetails = () => {
         </div>
       )}
 
-      {/* ══ FAQ ══ */}
       <div className="cd-faq">
         <div className="cd-sec-label">
           <i className="fas fa-om" /> Frequently Asked Questions <i className="fas fa-om" />
@@ -1033,7 +1137,6 @@ const ChadhavaDetails = () => {
         </div>
       </div>
 
-      {/* ══ CTA ══ */}
       <div className="cd-cta">
         <img className="cd-cta-diya left" src="/assets/img/puja/diya.png" alt="" onError={e => e.target.style.display = 'none'} />
         <img className="cd-cta-diya right" src="/assets/img/puja/diya.png" alt="" onError={e => e.target.style.display = 'none'} />
@@ -1060,12 +1163,12 @@ const ChadhavaDetails = () => {
         <ViewAllReviewsPopup reviews={REVIEWS} onClose={() => setShowAllReviews(false)} />
       )}
 
-      {/* ══ FOOTER ══ */}
+      {showGallery && (
+        <GalleryPopup images={galleryImages} onClose={() => setShowGallery(false)} />
+      )}
+
       <Footer />
 
-      {/* ══ MOBILE STICKY PROCEED BAR ══
-          Only shown when the floating cart bar isn't already occupying
-          the bottom of the screen (i.e. before anything's been added). */}
       {totalItemsCount === 0 && !addonsSectionVisible && (
         <div className="cd-mobile-proceed-wrap">
           <button
@@ -1083,7 +1186,6 @@ const ChadhavaDetails = () => {
         </div>
       )}
 
-      {/* ══ FLOATING CART BAR ══ */}
       {totalItemsCount > 0 && (
         <div
           style={{

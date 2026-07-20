@@ -25,47 +25,29 @@ button{cursor:pointer;font-family:inherit}
    HERO — two-column grid
    ═══════════════════════════════════════ */
 .cd-hero{
-  display:grid;
-  grid-template-columns:1fr 430px;
-  gap:24px;
-  min-height:650px;
-  position:relative;
-  background:#fff8f0;
-  align-items:start;
-  padding:24px;
-  border-radius:20px;
+    display:grid;
+    grid-template-columns: 1fr 430px;
+    gap:30px;
+    padding:20px;
+    min-height:500px;
+    position:relative;
+    z-index:4;
+    border-radius:20px;
+    overflow:hidden;
+    background-size:cover;
+    background-position:center center;
+    background-repeat:no-repeat;
 }
 /* ── Hero LEFT ── */
 .cd-hero-left{
     position:relative;
     min-height:580px;
     overflow:hidden;
-
-}
-/* bg_image 1: chadawa_detail_bg.png */
-.cd-hero{
-    display:grid;
-    grid-template-columns: 1fr 430px;
-    gap:30px;
-    padding:20px;
-    min-height:650px;
-    position:relative;
-    background:url('/assets/img/chadawa_detail/chadawa_detail_bg.png') center center/cover no-repeat;
-    border-radius:20px;
-    overflow:hidden;
 }
 
- 
-/* warm amber-to-transparent gradient — matches target */
 .cd-hero-bg-overlay{
+    position:absolute;
     inset:0;
-    background:linear-gradient(
-      90deg,
-      rgba(255,248,238,.92) 0%,
-      rgba(255,248,238,.75) 30%,
-      rgba(255,248,238,.35) 55%,
-      rgba(255,248,238,.15) 100%
-    );
     z-index:2;
 }
 
@@ -78,13 +60,6 @@ button{cursor:pointer;font-family:inherit}
     align-items:flex-start;
 }
 
-.cd-gallery{
-    position:absolute;
-    left:40px;
-    bottom: -22px;
-}
-/* ── img 2: pooja_group.png ──
-   Sits BEHIND the text, like the target — absolute, right-aligned */
 .cd-hero-deity-img{
     position:absolute;
     left:0;
@@ -94,9 +69,6 @@ button{cursor:pointer;font-family:inherit}
     z-index:1;
     object-fit:contain;
 }
-/* Re-layer the gradient over it so text is legible */
-.cd-hero-left .cd-hero-body{z-index:3}
-.cd-hero-bg-overlay{z-index:2}
 
 .cd-auspicious{
   display:inline-flex;align-items:center;gap:6px;
@@ -139,6 +111,8 @@ button{cursor:pointer;font-family:inherit}
     width:100%;
     margin-left:0;
     padding-left:0;
+    position:relative;
+    z-index:6;
 }
 .cd-gal-img{
     width:95px;
@@ -146,6 +120,8 @@ button{cursor:pointer;font-family:inherit}
     border-radius:10px;
     object-fit:cover;
     border:3px solid #fff;
+    position:relative;
+    z-index:6;
 }
 .cd-gal-more{
     width:95px;
@@ -154,95 +130,109 @@ button{cursor:pointer;font-family:inherit}
     text-align:center;
     border-radius:10px;
     background:rgba(0,0,0,.55);
-
+    position:relative;
+    z-index:6;
+    pointer-events:auto;
+    cursor:pointer;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    justify-content:center;
 }
 .cd-gal-more .gm-num{font-size:17px;font-weight:700;line-height:1.1}
 .cd-gal-more .gm-lbl{font-size:9.5px;font-weight:500}
 
-/* ── Hero RIGHT — booking card ── */
+/* ── Hero RIGHT — plain image, no card chrome ── */
 .cd-hero-right{
-    background:#fff;
-    border-radius:20px;
-    padding:30px;
     margin-top:10px;
-    box-shadow:0 10px 30px rgba(0,0,0,.08);
-    border:1px solid #f0e0cc;
-    display:flex;flex-direction:column;gap:14px;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    width:100%;
+    height:580px;          /* explicit height — matches .cd-hero-left's
+                               min-height:580px so both grid columns are
+                               the same height and the image has a real
+                               box to size itself against */
+}
+.cd-card-plain-img{
+    width:auto;
+    height:100%;
+    max-width:100%;
+    object-fit:contain;    /* scales the whole image to fit the 580px box
+                               without cropping, preserving its own aspect ratio */
+    border-radius:20px;
+    display:block;
+}
+
+/* ── Mobile-only full-width swipeable hero carousel ──
+   Hidden by default on desktop/tablet — only appears under the 768px
+   media query below, sitting ABOVE the hero banner (breadcrumb → this
+   carousel → hero). One full-width slide per view with dot indicators. */
+.cd-hero-mobile-carousel{
+    display:none;
+}
+@media(max-width:768px){
+  .cd-hero-mobile-carousel{
+    display:block;
     position:relative;
-    overflow:hidden;
-}
-
-.cd-hero-watermark{
+    width:100%;
+  }
+  .cd-hero-mobile-track{
+    display:flex;
+    width:100%;
+    overflow-x:auto;
+    scroll-snap-type:x mandatory;
+    -webkit-overflow-scrolling:touch;
+    scrollbar-width:none;
+  }
+  .cd-hero-mobile-track::-webkit-scrollbar{ display:none; }
+  .cd-hero-mobile-slide{
+    width:100%;
+    flex:0 0 100%;
+    max-width:100%;
+    height:340px;              /* fixed height so every slide is identical */
+    min-height:340px;
+    max-height:340px;
+    object-fit:cover;          /* fills the box, crops instead of distorting */
+    object-position:center;
+    scroll-snap-align:start;
+    scroll-snap-stop:always;   /* prevents skipping past a slide on fast swipes */
+    background:#f5ede0;
+    display:block;
+  }
+  .cd-hero-mobile-dots{
     position:absolute;
-    top:12px;
-    right:12px;
-    width:128px;
-    height:auto;
-    opacity:0.50;
-    pointer-events:none;
-    z-index:0;
+    bottom:14px;
+    left:0;
+    right:0;
+    display:flex;
+    justify-content:center;
+    gap:6px;
+    z-index:2;
+  }
+  .cd-hero-mobile-dot{
+    width:7px;
+    height:7px;
+    border-radius:50%;
+    background:rgba(255,255,255,0.55);
+    transition:width 0.2s,background 0.2s;
+    cursor:pointer;
+    box-shadow:0 1px 3px rgba(0,0,0,0.3);
+  }
+  .cd-hero-mobile-dot.active{
+    width:18px;
+    border-radius:4px;
+    background:#fff;
+  }
 }
 
-.cd-avail-bar{display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap}
-.cd-avail-pill{
-  display:flex;align-items:center;
-  background:#fff9f0;border:1px solid #f0d8b0;border-radius:20px;
-  padding:4px 12px;font-size:11px;font-weight:600;color:#b8860b;
+@media(max-width:480px){
+  .cd-hero-mobile-slide{
+    height:260px;
+    min-height:260px;
+    max-height:260px;
+  }
 }
-.cd-avail-pill i{font-size:10px;color:#f5a623}
-.cd-seats-pill{
-  background:#7b1a3a;color:#fff;
-  border-radius:20px;padding:4px 12px;font-size:11px;font-weight:700;
-  white-space:nowrap;
-}
-
-.cd-offer-row{display:flex;align-items:center;gap:6px}
-.cd-offer-ico{font-size:12px;color:#e87a2e}
-.cd-offer-txt{font-size:11.5px;color:#888}
-
-/* Countdown */
-.cd-mini-timer{display:flex;gap:5px;align-items:center;flex-wrap:wrap}
-.cd-mini-box{
-  display:flex;flex-direction:column;align-items:center;
-  background:#f9f5f0;border:1px solid #f0e0cc;border-radius:7px;
-  padding:6px 10px;min-width:48px;
-}
-.cd-mini-num{font-size:20px;font-weight:800;color:#222;line-height:1}
-.cd-mini-lbl{font-size:8.5px;color:#aaa;font-weight:500;margin-top:2px;text-transform:uppercase}
-.cd-mini-sep{font-size:18px;font-weight:700;color:#ccc;margin-bottom:4px;flex-shrink:0}
-
-.cd-feat-badge{
-  display:inline-flex;align-items:center;gap:5px;
-  background:#fff3cd;color:#b8860b;border:1px solid #f5d88a;
-  border-radius:4px;padding:3px 10px;font-size:10.5px;font-weight:700;
-  width:fit-content;
-}
-.cd-feat-badge i{color:#f5a623}
-
-.cd-book-price{font-size:36px;font-weight:800;color:#7b1a3a;line-height:1}
-.cd-book-price span{font-size:13px;font-weight:400;color:#888;margin-left:4px}
-.cd-price-desc{font-size:11.5px;color:#666;line-height:1.55}
-.cd-read-more{font-size:11.5px;color:#7b1a3a;font-weight:600;cursor:pointer;width:fit-content}
-.cd-shri{display:flex;align-items:center;gap:5px;font-size:11.5px;color:#e87a2e;font-weight:500}
-.cd-shri i{font-size:12px}
-
-.cd-reserve-btn{
-  width:100%;padding:14px;
-  background:#7b1a3a;color:#fff;border:none;border-radius:8px;
-  font-size:15px;font-weight:700;
-  display:flex;align-items:center;justify-content:center;gap:8px;
-  transition:background 0.2s;
-}
-.cd-reserve-btn:hover{background:#6a1533}
-.cd-reserve-btn i{font-size:14px}
-
-.cd-secure{
-  font-size:11px;color:#888;text-align:center;
-  display:flex;align-items:center;justify-content:center;gap:5px;
-}
-.cd-secure i{color:#4caf50;font-size:11px}
-.cd-pay-row{display:flex;align-items:center;justify-content:center;gap:10px;flex-wrap:wrap}
-.cd-pay-txt{font-size:12px;font-weight:700}
 
 /* ═══════════════════════════════════════
    TRUST STRIP
@@ -253,11 +243,11 @@ button{cursor:pointer;font-family:inherit}
   border-top:1px solid #f0e0cc;border-bottom:1px solid #f0e0cc;
   padding:14px 56px;
   margin: 0px 60px;
-    border-radius: 18px;
-    z-index: 3;
-    margin-top: -40px;
-    position: relative;
-    overflow: hidden;
+  border-radius: 18px;
+  z-index: 3;
+  margin-top: 0px;
+  position: relative;
+  overflow: hidden;
 }
 .cd-trust-item{
   display:flex;align-items:center;gap:10px;
@@ -300,19 +290,34 @@ button{cursor:pointer;font-family:inherit}
 .cd-addons-arr.right{right:0}
 .cd-addons-arr i{font-size:12px;color:#555}
 
-/* 4-col grid — matches target design */
 .cd-addons-row{
-  display:grid;grid-template-columns:repeat(4,1fr);gap:12px;
+  display:flex;gap:12px;
+  overflow-x:auto;scroll-behavior:smooth;
+  scrollbar-width:none;
+  -ms-overflow-style:none;
+  -webkit-overflow-scrolling:touch;
+  cursor:grab;
+  user-select:none;
 }
+.cd-addons-row::-webkit-scrollbar{ display:none; }
+.cd-addons-row.cd-dragging{
+  cursor:grabbing;
+  scroll-behavior:auto;
+}
+
 .cd-addon-card{
   border:1px solid #f0e0cc;border-radius:10px;
   overflow:hidden;background:#fff;
   display:flex;flex-direction:column;
   transition:box-shadow 0.2s;
+  width:220px;min-width:220px;flex-shrink:0;
 }
 .cd-addon-card:hover{box-shadow:0 4px 16px rgba(0,0,0,0.1)}
 .cd-addon-img{
-  width:100%;height:100px;object-fit:cover;
+  width:220px;height:120px;
+  min-width:220px;min-height:120px;
+  max-width:220px;max-height:120px;
+  object-fit:cover;
   background:#f5e8d8;display:block;flex-shrink:0;
 }
 .cd-addon-body{padding:10px 12px;display:flex;flex-direction:column;gap:4px;flex:1}
@@ -416,7 +421,6 @@ button{cursor:pointer;font-family:inherit}
   position:relative;border-radius:14px;overflow:hidden;
   background:#1a0c04;box-shadow:0 4px 20px rgba(0,0,0,0.2);
 }
-/* img 3: pooja_group_video.png */
 .cd-video-thumb{
   width:100%;height:240px;
   object-fit:cover;display:block;
@@ -453,7 +457,6 @@ button{cursor:pointer;font-family:inherit}
 .cd-rev-htitle i{color:#f5a623}
 .cd-rev-hsub{font-size:12px;color:#888;margin-bottom:16px}
 
-/* ── two-column: [review card + dots] | [stats 4-col + trusted bar] ── */
 .cd-rev-layout{
   display:grid;
   grid-template-columns:minmax(0,1fr) minmax(0,1fr);
@@ -461,10 +464,8 @@ button{cursor:pointer;font-family:inherit}
   align-items:start;
 }
 
-/* LEFT column wrapper */
 .cd-rev-left{ display:flex;flex-direction:column;gap:0;min-width:0 }
 
-/* slider container — clips overflow so only one card shows */
 .cd-rev-slider{
   width:100%;
   overflow:hidden;
@@ -483,7 +484,6 @@ button{cursor:pointer;font-family:inherit}
   box-sizing:border-box;
 }
 
-/* review card: text body left, prasad image right */
 .cd-rev-card{
   background:#fff;border:1px solid #f0e8e0;border-radius:12px;
   padding:18px;
@@ -514,7 +514,6 @@ button{cursor:pointer;font-family:inherit}
 .cd-rev-name{font-size:13px;font-weight:700;color:#222}
 .cd-rev-loc{font-size:11px;color:#888}
 
-/* prasad image — right side of card */
 .cd-rev-img{
   width:110px;height:120px;
   object-fit:cover;border-radius:10px;
@@ -530,13 +529,11 @@ button{cursor:pointer;font-family:inherit}
 }
 .cd-rev-dot.active{background:#7b1a3a;width:20px;border-radius:4px}
 
-/* RIGHT column wrapper */
 .cd-rev-right{
   display:flex;flex-direction:column;gap:14px;
   min-width:0;
 }
 
-/* stats: 2x2 grid */
 .cd-stats-row{
   display:grid;
   grid-template-columns:repeat(2,1fr);
@@ -581,12 +578,10 @@ button{cursor:pointer;font-family:inherit}
 .cd-sim-arr.right{right:16px}
 .cd-sim-arr i{font-size:12px;color:#555}
 
-/* scroll viewport — clips the track */
 .cd-sim-scroll{
   overflow:hidden;
   width:100%;
 }
-/* track — flex row of all cards, slides via translateX */
 .cd-sim-track{
   display:flex;
   width:100%;
@@ -595,7 +590,6 @@ button{cursor:pointer;font-family:inherit}
   will-change:transform;
 }
 .cd-sim-card{
-  /* each card = 25% of container minus gaps */
   width:calc(25% - 11px);
   min-width:calc(25% - 11px);
   flex-shrink:0;
@@ -646,15 +640,12 @@ button{cursor:pointer;font-family:inherit}
   position:relative;overflow:hidden;
   padding:32px 56px;
   display:flex;align-items:center;justify-content:space-between;gap:24px;
-  /* bg_last.png as background image */
   background:
     url('/assets/img/chadawa_detail/bg_last.png') center/cover no-repeat;
 }
-/* dark overlay so text stays readable */
 .cd-cta::before{
   content:'';
   position:absolute;inset:0;
- 
   z-index:0;
 }
 .cd-cta > *{position:relative;z-index:1}
@@ -671,7 +662,6 @@ button{cursor:pointer;font-family:inherit}
 }
 .cd-cta-text .t2{font-size:13.5px;color:rgba(255,255,255,0.78);margin-top:4px; margin-left: 135px}
 
-/* CTA button — styled to match bg_last image energy */
 .cd-cta-btn{
   display:flex;align-items:center;gap:8px;
   background:linear-gradient(135deg,#c0392b 0%,#7b1a3a 100%);
@@ -758,7 +748,6 @@ button{cursor:pointer;font-family:inherit}
   .cd-hero-h1{ font-size:28px }
   .cd-hero-h1 em{ font-size:32px }
 
-  .cd-addons-row{ grid-template-columns:repeat(2,1fr) }
   .cd-sim-grid{ grid-template-columns:repeat(2,1fr) }
   .cd-ft-top{ grid-template-columns:1fr 1fr;gap:20px }
   .cd-rev-layout{ grid-template-columns:minmax(0,1fr) minmax(0,1fr) }
@@ -781,8 +770,7 @@ button{cursor:pointer;font-family:inherit}
 
 /* ─ 768px ─ */
 @media(max-width:768px){
-  /* Hero stacks */
-  .cd-hero{ grid-template-columns:1fr }
+  .cd-hero{ grid-template-columns:1fr; background-image:none !important }
   .cd-hero-left{ min-height:380px }
   .cd-hero-deity-img{ width:55%;height:100% }
   .cd-hero-right{
@@ -792,43 +780,75 @@ button{cursor:pointer;font-family:inherit}
   .cd-hero-h1 em{ font-size:26px }
   .cd-hero-body{ padding:18px 20px }
 
-  /* Trust 2-col checkerboard */
+  .cd-gallery{
+    position:static;
+    margin-top:16px;
+    flex-wrap:nowrap;
+    gap:8px;
+    width:100%;
+  }
+
+  /* Equal-width tiles that stretch to fill the full row width (instead
+     of a fixed small px size), so the thumbnails + "View X+" box scale
+     nicely across different phone widths and never look cramped. */
+  .cd-gal-img{
+    flex:1 1 0;
+    width:auto;
+    height:90px;
+    min-width:0;
+  }
+  .cd-gal-more{
+    flex:1 1 0;
+    width:auto;
+    height:90px;
+    min-width:0;
+  }
+  .cd-gal-more .gm-num{ font-size:16px; }
+  .cd-gal-more .gm-lbl{ font-size:9.5px; }
+
+  /* "View X+ Photos" tile was cramped/hard to tap on mobile — give it
+     a bit more room and slightly larger text so it reads clearly. */
+  .cd-gal-more{
+    width:110px;
+    height:85px;
+  }
+  .cd-gal-more .gm-num{ font-size:18px; }
+  .cd-gal-more .gm-lbl{ font-size:10.5px; }
+
   .cd-trust{ grid-template-columns:1fr 1fr;padding:12px 16px }
   .cd-trust-item{ border-left:none !important;border-bottom:1px solid #f0e0cc;padding:10px 8px }
   .cd-trust-item:nth-child(odd){ border-right:1px solid #f0e0cc }
   .cd-trust-item:nth-last-child(-n+2){ border-bottom:none }
 
-  /* Addons 2-col */
   .cd-addons{ padding:20px 16px }
-  .cd-addons-row{ grid-template-columns:repeat(2,1fr) }
+  .cd-addon-card{ width:180px;min-width:180px }
+  .cd-addon-img{ width:180px;height:110px;min-width:180px;min-height:110px;max-width:180px;max-height:110px }
 
-  /* Inc+How stack */
   .cd-inc-how{ grid-template-columns:1fr;padding:20px 16px;gap:20px }
   .cd-inc-sec{ padding-right:0;padding-bottom:20px;border-bottom:1px solid #f0e8e0 }
   .cd-how-sec{ padding-left:0;border-left:none;padding-top:0 }
 
-  /* About+Video stack */
   .cd-about-video{ grid-template-columns:1fr;gap:20px;padding:20px 16px }
   .cd-video-thumb{ height:200px }
-  .cd-video-thumb{width:108px}
 
-
-  /* Reviews — stack to single column */
   .cd-reviews-sec{ padding:20px 16px }
   .cd-rev-layout{ grid-template-columns:1fr }
   .cd-rev-card{ flex-direction:row }
-  .cd-rev-img{ width:100px;height:110px }
+  .cd-rev-img{
+    width:100px;
+    height:110px;
+    display:block;          /* ensure it's never accidentally hidden */
+    object-fit:cover;
+    flex-shrink:0;
+  }
   .cd-stats-row{ grid-template-columns:repeat(2,1fr);margin-top:0 }
 
-  /* Similar — show 2 cards at a time on tablet */
   .cd-similar{ padding:20px 16px }
   .cd-sim-card{ width:calc(50% - 7px);min-width:calc(50% - 7px) }
 
-  /* FAQ 1-col */
   .cd-faq{ padding:20px 16px }
   .cd-faq-grid{ grid-template-columns:1fr }
 
-  /* CTA stacks */
   .cd-cta{
     flex-direction:column;gap:18px;
     text-align:center;padding:32px 20px;
@@ -836,7 +856,23 @@ button{cursor:pointer;font-family:inherit}
   .cd-cta-diya.right{ right:auto;left:50%;transform:translateX(-50%) scaleX(-1) }
   .cd-cta-btn{ width:100%;justify-content:center }
 
-  /* Footer */
+  /* Desktop uses margin-left:135px/220px to dodge the decorative diya
+     icons sitting on the left side of the CTA banner. On mobile the
+     layout stacks vertically instead, so those margins just shove the
+     text off-center and leave a stray empty gap — reset to 0 here. */
+  .cd-cta-text .t1,
+  .cd-cta-text .t2{
+    margin-left:0 !important;
+  }
+
+  /* Decorative diya icons overlap the stacked mobile layout and can
+     visually collide with the button below — shrink and fade them so
+     they read as background decoration instead of blocking content. */
+  .cd-cta-diya{
+    height:56px;
+    opacity:0.4;
+  }
+
   .cd-footer{ padding:28px 16px 16px }
   .cd-ft-top{ grid-template-columns:1fr 1fr }
 
@@ -852,26 +888,16 @@ button{cursor:pointer;font-family:inherit}
   .cd-hero-h1 em{ font-size:22px }
   .cd-hero-body{ padding:14px 14px }
 
-  .cd-book-price{ font-size:28px }
-
-  .cd-hero-watermark{
-    width:48px;
-    top:8px;
-    right:8px;
-  }
-
   .cd-features{ grid-template-columns:1fr }
-  .cd-addons-row{ grid-template-columns:1fr }
+  .cd-addon-card{ width:160px;min-width:160px }
+  .cd-addon-img{ width:160px;height:100px;min-width:160px;min-height:100px;max-width:160px;max-height:100px }
   .cd-sim-card{ width:100%;min-width:100% }
 
   .cd-trust{ grid-template-columns:1fr }
   .cd-trust-item{ border-right:none !important;border-bottom:1px solid #f0e0cc }
   .cd-trust-item:last-child{ border-bottom:none }
 
-  .cd-mini-num{ font-size:16px }
-  .cd-mini-box{ min-width:40px;padding:5px 7px }
-
-  .cd-gallery{ gap:4px }
+  .cd-gallery{ gap:4px;position:static;margin-top:12px;flex-wrap:wrap }
   .cd-gal-img{ width:64px;height:60px }
   .cd-gal-more{ width:64px;height:60px }
 
@@ -884,7 +910,6 @@ button{cursor:pointer;font-family:inherit}
   .cd-stats-row{ grid-template-columns:1fr 1fr }
   .cd-ft-top{ grid-template-columns:1fr }
 
-  /* Review card stacks on very small screens */
   .cd-rev-card{ flex-direction:column }
   .cd-rev-img{ width:100%;height:140px }
 

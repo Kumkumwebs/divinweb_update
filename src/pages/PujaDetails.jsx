@@ -353,9 +353,62 @@ const PujaDetails = () => {
 
   const [packagesSectionVisible, setPackagesSectionVisible] = useState(false);
 
+  // Mobile hero carousel — tracks active slide so the dot indicators
+  // stay in sync while the user swipes through pujaGalleryImages, and
+  // auto-advances on a timer (paused while the user is actively
+  // touching/dragging so it never fights a manual swipe).
+  const heroMobileRef = useRef(null);
+  const [heroMobileIdx, setHeroMobileIdx] = useState(0);
+  const heroUserInteractingRef = useRef(false);
+  const handleHeroMobileScroll = () => {
+    const el = heroMobileRef.current;
+    if (!el) return;
+    const idx = Math.round(el.scrollLeft / el.clientWidth);
+    setHeroMobileIdx(idx);
+  };
+  const scrollHeroMobileTo = (i) => {
+    const el = heroMobileRef.current;
+    if (!el) return;
+    el.scrollTo({ left: i * el.clientWidth, behavior: "smooth" });
+  };
+
   useEffect(() => {
     fetchPujaDetails();
   }, [id]);
+
+  // Gallery images for the mobile hero carousel. The API returns the
+  // multi-image array under "bannerImages" (confirmed via console log),
+  // not "images"/"gallery" — falls back to the single pujaImage (or
+  // placeholder) only if bannerImages is missing/empty.
+  // Computed with useMemo (not a plain const) and placed here, BEFORE the
+  // auto-advance effect below, to avoid a temporal-dead-zone crash — the
+  // effect's dependency array evaluates this value immediately when
+  // useEffect() is called during render, not lazily when the effect runs.
+  const pujaGalleryImages = React.useMemo(() => {
+    return pujaDetails?.bannerImages?.length ? pujaDetails.bannerImages :
+      pujaDetails?.images?.length ? pujaDetails.images :
+        pujaDetails?.gallery?.length ? pujaDetails.gallery :
+          pujaDetails?.pujaImage ? [pujaDetails.pujaImage] :
+            [IMAGE_PLACEHOLDER];
+  }, [pujaDetails]);
+
+  // Auto-advance the mobile hero carousel every 4s, looping back to the
+  // start after the last slide. Skips entirely if there's only 1 image.
+  // Pauses while the user is mid-touch/drag so it never yanks the
+  // carousel out from under an active swipe. No title/text is overlaid
+  // on these slides — just the plain swipeable photos + dot indicators.
+  useEffect(() => {
+    if (pujaGalleryImages.length <= 1) return undefined;
+    const t = setInterval(() => {
+      if (heroUserInteractingRef.current) return;
+      const el = heroMobileRef.current;
+      if (!el) return;
+      const nextIdx = (Math.round(el.scrollLeft / el.clientWidth) + 1) % pujaGalleryImages.length;
+      scrollHeroMobileTo(nextIdx);
+    }, 4000);
+    return () => clearInterval(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pujaGalleryImages.length]);
 
   const fetchPujaDetails = async () => {
     try {
@@ -383,28 +436,18 @@ const PujaDetails = () => {
     const el = document.getElementById("pd-packages-section");
     if (!el) return undefined;
 
-    let debounceTimer = null;
-    const checkVisibility = () => {
-      const rect = el.getBoundingClientRect();
-      const viewportHeight = window.innerHeight;
-      setPackagesSectionVisible((prev) =>
-        prev
-          ? rect.bottom > 80 && rect.top < viewportHeight
-          : rect.top < viewportHeight * 0.6 && rect.bottom > 0
-      );
-    };
+    // IntersectionObserver reliably reports "is any part of the packages
+    // section currently on screen" — used to hide the sticky mobile
+    // "Select Puja Package" bar exactly while the user is already looking
+    // at the real package cards (and their own per-card selection), and
+    // show it again everywhere else on the page.
+    const observer = new IntersectionObserver(
+      ([entry]) => setPackagesSectionVisible(entry.isIntersecting),
+      { threshold: 0 } // fires as soon as even 1px of the section is visible
+    );
+    observer.observe(el);
 
-    const onScroll = () => {
-      if (debounceTimer) clearTimeout(debounceTimer);
-      debounceTimer = setTimeout(checkVisibility, 120);
-    };
-
-    checkVisibility();
-    window.addEventListener("scroll", onScroll, { passive: true });
-    return () => {
-      if (debounceTimer) clearTimeout(debounceTimer);
-      window.removeEventListener("scroll", onScroll);
-    };
+    return () => observer.disconnect();
   }, [pujaDetails]);
 
   const handleSelectPackage = (type) => {
@@ -691,15 +734,15 @@ const PujaDetails = () => {
             background: #7B1F3A;
           }
 
-          /* Select button hidden until the card is chosen */
-          .pd-pkg-select-btn {
-            display: none !important;
-          }
+          // /* Select button hidden until the card is chosen */
+          // .pd-pkg-select-btn {
+          //   display: none !important;
+          // }
 
-          .pd-pkg-active .pd-pkg-select-btn {
-            display: flex !important;
-            margin-top: 10px !important;
-          }
+          // .pd-pkg-active .pd-pkg-select-btn {
+          //   display: flex !important;
+          //   margin-top: 10px !important;
+          // }
         }
 
         /* ── Hover effect: every card gets its own accent color ──
@@ -756,9 +799,44 @@ const PujaDetails = () => {
           <Link to="/">Home</Link>
           <i className="fas fa-angle-right" />
           <Link to="/puja">Puja</Link>
-          <i className="fas fa-angle-right" />
-          <span>{name?.replace(/-/g, " ") || pujaDetails?.puja_name}</span>
         </div>
+      </div>
+
+      {/* ══ MOBILE HERO CAROUSEL ══
+          Only visible on mobile (see CSS). Full-width swipeable images
+          with dot indicators, sitting above the hero banner. Desktop
+          keeps using pd-hero-bg as before. */}
+      <div className="pd-hero-mobile-carousel">
+        <div
+          className="pd-hero-mobile-track"
+          ref={heroMobileRef}
+          onScroll={handleHeroMobileScroll}
+          onTouchStart={() => { heroUserInteractingRef.current = true; }}
+          onTouchEnd={() => {
+            setTimeout(() => { heroUserInteractingRef.current = false; }, 3000);
+          }}
+        >
+          {pujaGalleryImages.map((src, i) => (
+            <img
+              key={i}
+              className="pd-hero-mobile-slide"
+              src={src}
+              alt={`${pujaDetails?.title || "Puja"} ${i + 1}`}
+              onError={handleImgError(IMAGE_PLACEHOLDER)}
+            />
+          ))}
+        </div>
+        {pujaGalleryImages.length > 1 && (
+          <div className="pd-hero-mobile-dots">
+            {pujaGalleryImages.map((_, i) => (
+              <div
+                key={i}
+                className={`pd-hero-mobile-dot${i === heroMobileIdx ? " active" : ""}`}
+                onClick={() => scrollHeroMobileTo(i)}
+              />
+            ))}
+          </div>
+        )}
       </div>
 
       {/* ══ HERO ══ */}
@@ -866,7 +944,12 @@ const PujaDetails = () => {
           </div>
           <button
             className="pd-bc-btn"
-            onClick={() => handleSelectPackage("individual")}
+            onClick={() => {
+              document.getElementById("pd-packages-section")?.scrollIntoView({
+                behavior: "smooth",
+                block: "start",
+              });
+            }}
           >
             Select Puja Package
           </button>
@@ -924,7 +1007,7 @@ const PujaDetails = () => {
         </div>
         <div className="pd-cd-right">
 
-           <a href="#"
+          <a href="#"
             className="pd-cd-share"
             onClick={(e) => {
               e.preventDefault();
@@ -934,7 +1017,7 @@ const PujaDetails = () => {
             <i className="fas fa-share-alt" /> Share with your loved ones
           </a>
 
-          <a  href="#"
+          <a href="#"
             className="pd-cd-share whatsapp"
             onClick={(e) => {
               e.preventDefault();
@@ -1023,7 +1106,7 @@ const PujaDetails = () => {
           <i className="fas fa-om" />
           <span className="pd-eyebrow-line" />
         </div>
-       <div className="pd-pkg-scroll-grid" style={{
+        <div className="pd-pkg-scroll-grid" style={{
           gap: "16px",
           width: "100%",
           padding: "0 0 24px"
@@ -1044,23 +1127,30 @@ const PujaDetails = () => {
             ];
             const isActive = selectedPkgId === pkg._id;
             return (
-            <div
-              key={pkg._id || i}
-              className={`pd-pkg-card-inner${isActive ? " pd-pkg-active" : ""}`}
-              onClick={() => setSelectedPkgId(pkg._id)}
-              style={{
-                background: "#fff",
-                borderRadius: "20px",
-                border: "1.5px solid #f0e6d3",
-                overflow: "hidden",
-                display: "flex",
-                flexDirection: "column",
-                alignItems: "center",
-                padding: "0 0 14px",
-                minWidth: 0,
-                position: "relative",
-                cursor: "pointer",
-              }}>
+              <div
+                key={pkg._id || i}
+                className={`pd-pkg-card-inner${isActive ? " pd-pkg-active" : ""}`}
+                onClick={() => {
+  setSelectedPkgId(pkg._id);
+  handleSelectPackage(
+    pkg.packageType?.toLowerCase() === "individual"
+      ? "individual"
+      : "family"
+  );
+}}
+                style={{
+                  background: "#fff",
+                  borderRadius: "20px",
+                  border: "1.5px solid #f0e6d3",
+                  overflow: "hidden",
+                  display: "flex",
+                  flexDirection: "column",
+                  alignItems: "center",
+                  padding: "0 0 14px",
+                  minWidth: 0,
+                  position: "relative",
+                  cursor: "pointer",
+                }}>
                 {/* RADIO CIRCLE — hidden on desktop, shown on mobile via CSS */}
                 <div className="pd-pkg-radio">
                   {isActive && (
@@ -1145,7 +1235,7 @@ const PujaDetails = () => {
 
                   {/* PRICE */}
                   <div style={{
-                   fontSize: "clamp(18px, 1.8vw, 26px)",
+                    fontSize: "clamp(18px, 1.8vw, 26px)",
                     fontWeight: 800,
                     color: "#7B1F3A",
                     marginBottom: 2,
@@ -1303,7 +1393,12 @@ const PujaDetails = () => {
         </div>
         <button
           className="pd-bc-btn-botom"
-          onClick={() => handleSelectPackage("individual")}
+          onClick={() => {
+            document.getElementById("pd-packages-section")?.scrollIntoView({
+              behavior: "smooth",
+              block: "start",
+            });
+          }}
         >
           Select Puja Package
         </button>

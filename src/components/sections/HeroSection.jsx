@@ -15,7 +15,7 @@ import 'swiper/css/navigation';
 import 'swiper/css/pagination';
 import 'swiper/css/effect-fade';
 import 'swiper/css/thumbs';
-import NewAppDownloadModal from '../common/NewAppDownloadModel';
+// import NewAppDownloadModal from '../common/NewAppDownloadModel';
 
 const HeroSection = ({astrologer}) => {
 	if(!astrologer) return null;
@@ -204,12 +204,12 @@ const HeroSection = ({astrologer}) => {
 						Scroll Down
 					</a>
 				</div>
-				 <NewAppDownloadModal
+				 {/* <NewAppDownloadModal
                 isOpen={!!selectedAstro} 
                 onClose={() => setSelectedAstro(null)}
                 title={selectedAstro ? `Consult ${selectedAstro.name}` : "Consult Master"}
                 subtitle={selectedAstro ? `Speak with ${selectedAstro.name} for clarity on ${selectedAstro.category?.[0]?.name || 'Life'}.` : "Join thousands who found clarity."}
-            />
+            /> */}
 			</div>
 		);
 };

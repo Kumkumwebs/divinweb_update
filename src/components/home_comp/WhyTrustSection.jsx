@@ -34,7 +34,7 @@ const WhyTrustSection = () => {
 				<div className="dq-why-trust">
 					<div
 						className="dq-video-thumb"
-						style={{ backgroundImage: `url(/assets/img/home/video_image.png)` }}
+						style={{ backgroundImage: `url(/assets/img/home/video_image.webp)` }}
 					>
 						<button className="dq-play-btn" aria-label="Play video">▶</button>
 					</div>
