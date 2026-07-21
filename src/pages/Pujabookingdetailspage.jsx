@@ -40,10 +40,10 @@ const PujaBookingDetailsPage = () => {
     if (booking) return;
     const fetchBooking = async () => {
       try {
-        const res = await apiService.postBearer('https://admin.diviniq.in/puja/mypujabookings', {});
+        // AFTER
+        const res = await apiService.getBearer(`https://admin.diviniq.in/puja/pujabookingdetails/${id}`);
         if (res && res.status) {
-          const match = res.bookPooja.find((b) => b._id === id);
-          setBooking(match || null);
+          setBooking(res.results || res.data || res.booking || null);
         }
       } catch (error) {
         console.error("Fetch error:", error);
@@ -103,6 +103,25 @@ const PujaBookingDetailsPage = () => {
     day: 'numeric', month: 'long', year: 'numeric', weekday: 'long'
   });
 
+  const handleDownloadInvoice = async () => {
+    try {
+      const blob = await apiService.getBearerBlob(
+        `https://admin.diviniq.in/puja/downloadinvoice/${booking._id}`
+      );
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `Invoice-${booking.puja_booking_id || booking._id}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      window.URL.revokeObjectURL(url);
+    } catch (err) {
+      console.error('Invoice download failed:', err);
+      alert('Could not download invoice. Please try again.');
+    }
+  };
+
   return (
     <div className="main-wrapper bg-light">
       <ScrollToTop />
@@ -124,8 +143,8 @@ const PujaBookingDetailsPage = () => {
                 {isSuccess
                   ? "Panditji has recited the names in order. Watch the video to hear your name."
                   : isPending
-                  ? "Your puja is scheduled. The video will be available once the ritual is completed."
-                  : "Video status unavailable for this booking."}
+                    ? "Your puja is scheduled. The video will be available once the ritual is completed."
+                    : "Video status unavailable for this booking."}
               </p>
               <button
                 className="pbd-watch-btn"
@@ -266,7 +285,7 @@ const PujaBookingDetailsPage = () => {
               </div>
             )}
 
-            <button className="pbd-invoice-btn">
+            <button className="pbd-invoice-btn" onClick={handleDownloadInvoice}>
               <i className="fas fa-file-invoice"></i> Download Invoice
             </button>
           </div>

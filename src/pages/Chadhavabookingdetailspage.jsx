@@ -40,10 +40,10 @@ const ChadhavaBookingDetailsPage = () => {
     if (booking) return;
     const fetchBooking = async () => {
       try {
-        const res = await apiService.postBearer('https://admin.diviniq.in/puja/mychdhavabookings', {});
+        // AFTER
+        const res = await apiService.getBearer(`https://admin.diviniq.in/puja/chadhavabookingdetails/${id}`);
         if (res && res.status) {
-          const match = (res.bookPooja || []).find((b) => b._id === id);
-          setBooking(match || null);
+          setBooking(res.results || res.data || res.booking || null);
         }
       } catch (error) {
         console.error("Chadhava booking fetch error:", error);
@@ -103,6 +103,25 @@ const ChadhavaBookingDetailsPage = () => {
     day: 'numeric', month: 'long', year: 'numeric', weekday: 'long'
   });
 
+  const handleDownloadInvoice = async () => {
+    try {
+      const blob = await apiService.getBearerBlob(
+        `https://admin.diviniq.in/puja/downloadchadhavainvoice/${booking._id}`
+      );
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `Invoice-${booking.chadhava_booking_id || booking._id}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      window.URL.revokeObjectURL(url);
+    } catch (err) {
+      console.error('Invoice download failed:', err);
+      alert('Could not download invoice. Please try again.');
+    }
+  };
+
   return (
     <div className="main-wrapper bg-light">
       <ScrollToTop />
@@ -142,8 +161,8 @@ const ChadhavaBookingDetailsPage = () => {
                   {isSuccess
                     ? "Panditji has performed your sankalp with full devotion. Watch the video to see your offering."
                     : isPending
-                    ? "Your Chadhava is scheduled. The ritual video will be available once it's completed."
-                    : "Video status unavailable for this booking."}
+                      ? "Your Chadhava is scheduled. The ritual video will be available once it's completed."
+                      : "Video status unavailable for this booking."}
                 </p>
                 <button
                   className="cbd-watch-btn"
@@ -280,7 +299,7 @@ const ChadhavaBookingDetailsPage = () => {
               </div>
             )}
 
-            <button className="cbd-invoice-btn">
+            <button className="cbd-invoice-btn" onClick={handleDownloadInvoice}>
               <i className="fas fa-file-invoice"></i> Download Invoice
             </button>
           </div>

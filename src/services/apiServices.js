@@ -1,14 +1,14 @@
 import axios from 'axios';
 
 const api = axios.create({
-  baseURL: import.meta.env.VITE_API_BASE_URL,
-  timeout: 30000, // Increased timeout for large image uploads
+	baseURL: import.meta.env.VITE_API_BASE_URL,
+	timeout: 30000, // Increased timeout for large image uploads
 });
 console.log("API base URL:", import.meta.env.VITE_API_BASE_URL);
 
 api.interceptors.response.use(
-  response => response.data,
-  error => Promise.reject(error)
+	response => response.data,
+	error => Promise.reject(error)
 );
 
 const apiService = {
@@ -41,6 +41,14 @@ const apiService = {
 	getBearer: (url, params = {}) =>
 		api.get(url, {
 			params,
+			headers: {
+				Authorization: `Bearer ${sessionStorage.getItem('token')}`,
+			},
+		}),
+
+	getBearerBlob: (url) =>
+		api.get(url, {
+			responseType: 'blob',
 			headers: {
 				Authorization: `Bearer ${sessionStorage.getItem('token')}`,
 			},

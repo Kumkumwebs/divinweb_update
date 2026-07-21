@@ -58,6 +58,7 @@ import RestoreOngoingSession from './pages/RestoreOngoingSession';
 import Notification from './pages/Notification';
 import { useEffect } from "react";
 import { initNotifications } from "./services/notification";
+import PujaLiveViewPage from './pages/PujaLiveViewPage';
 
 function NotFound() {
 	return (
@@ -114,6 +115,7 @@ function NotFound() {
 				<Route path="/blog" element={<BlogList />} />
 				<Route path="/blog/:id" element={<BlogDetail />} />
 				<Route path="/notification" element={<Notification />} />
+				<Route path="/puja-live/:id" element={<PujaLiveViewPage />} />
 				<Route
 					path="/friendship_calculator"
 					element={<FriendshipCalculator />}

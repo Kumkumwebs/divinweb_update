@@ -913,6 +913,47 @@ const AstrologerRegistration = () => {
                 </div>
             </section>
 
+            {/* ── Astrologer App Download Banner ── */}
+            <section className="pp-section pp-app-section">
+                <div className="pp-container">
+                    <div className="pp-app-banner-wrap">
+                        <img
+                            src="/assets/img/about/middlebanner_about.webp"
+                            alt="DiviniQ Astrologer App – Manage Consultations On the Go"
+                            className="pp-app-banner-img"
+                        />
+                        <div className="pp-app-overlay">
+                            <div className="pp-app-overlay-inner">
+                                <div className="pp-app-stores">
+                                    <div className="pp-app-scan">Download the App</div>
+                                    <div className="pp-app-sub">Get the DiviniQ Astrologer App Now</div>
+                                    <div className="pp-app-btns">
+                                        <a
+                                            href="https://play.google.com/store/apps/details?id=com.astrologer.diviniq&hl=en_IN"
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            className="pp-app-store-btn"
+                                        >
+                                            <i className="fab fa-google-play" />
+                                            <span className="pp-app-store-btn__txt"><small>GET IT ON</small>Google Play</span>
+                                        </a>
+                                        <a
+                                            href="https://apps.apple.com/"
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            className="pp-app-store-btn"
+                                        >
+                                            <i className="fab fa-apple" />
+                                            <span className="pp-app-store-btn__txt"><small>Download on the</small>App Store</span>
+                                        </a>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
             <TestimonialSection />
             <Footer />
             <ScrollTop />
@@ -1060,6 +1101,57 @@ const AstrologerRegistration = () => {
           border-radius: 18px;
           pointer-events: none;
           transition: border-color 0.3s ease;
+        }
+
+        /* ── App Download Banner ── */
+        .pp-app-section { padding: 0 0 60px; }
+        .pp-app-banner-wrap {
+          position: relative;
+          border-radius: 24px;
+          overflow: hidden;
+          box-shadow: 0 18px 45px rgba(65, 15, 25, 0.18);
+        }
+        .pp-app-banner-img {
+          width: 100%;
+          display: block;
+          object-fit: cover;
+        }
+        .pp-app-overlay {
+          position: absolute;
+          inset: 0;
+          display: flex;
+          align-items: center;
+          justify-content: flex-end;
+        }
+        .pp-app-overlay-inner {
+          display: flex;
+          align-items: center;
+          gap: 18px;
+          padding-right: 6%;
+        }
+        .pp-app-scan { color: #fff; font-weight: 700; font-size: 14px; }
+        .pp-app-sub { color: rgba(255,255,255,.75); font-size: 11.5px; margin-bottom: 10px; }
+        .pp-app-btns { display: flex; flex-direction: column; gap: 8px; }
+        .pp-app-store-btn {
+          display: inline-flex;
+          align-items: center;
+          gap: 8px;
+          padding: 7px 14px;
+          border-radius: 8px;
+          background: rgba(255,255,255,0.1);
+          border: 1px solid rgba(255,255,255,0.3);
+          color: #fff;
+          text-decoration: none;
+          transition: background 0.2s ease, transform 0.2s ease;
+        }
+        .pp-app-store-btn:hover { background: rgba(255,255,255,0.2); transform: translateY(-1px); color: #fff; }
+        .pp-app-store-btn i { font-size: 15px; }
+        .pp-app-store-btn__txt { display: flex; flex-direction: column; font-size: 11.5px; font-weight: 700; line-height: 1.2; }
+        .pp-app-store-btn__txt small { font-size: 8.5px; font-weight: 500; opacity: 0.8; text-transform: uppercase; }
+
+        @media (max-width: 860px) {
+          .pp-app-overlay { position: static; background: linear-gradient(135deg, #6E2A22, #2A0C10); }
+          .pp-app-overlay-inner { padding: 24px; flex-wrap: wrap; justify-content: center; text-align: center; }
         }
 
         /* ── Wizard container ── */

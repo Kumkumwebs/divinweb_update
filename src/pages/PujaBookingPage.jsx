@@ -19,7 +19,11 @@ const PujaBookingListPage = () => {
       try {
         const res = await apiService.postBearer('https://admin.diviniq.in/puja/mypujabookings', {});
         if (res && res.status) {
-          setBookings(res.bookPooja);
+          const list = Array.isArray(res.bookPooja) ? res.bookPooja : [];
+          const sorted = [...list].sort(
+            (a, b) => new Date(b.createdAt) - new Date(a.createdAt)
+          );
+          setBookings(sorted);
         }
       } catch (error) {
         console.error("Fetch error:", error);

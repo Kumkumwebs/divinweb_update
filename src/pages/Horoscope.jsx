@@ -501,7 +501,7 @@ const HoroscopePage = () => {
                             <p className="hs-cta__eyebrow">Want Personalized Guidance?</p>
                             <p className="hs-cta__sub">Talk to our expert astrologers and get solutions tailored just for you.</p>
                         </div>
-                        <a href="#" className="hs-cta__btn">
+                        <a href="/astrologer" className="hs-cta__btn">
                             <PhoneCall size={16} /> Consult Astrologer <ArrowRight size={16} />
                         </a>
                     </motion.div>
