@@ -99,6 +99,7 @@ const ChadhavaSection = ({ chadhava }) => {
 									alt={item.name}
 									loading="lazy"
 									onError={handleImgError}
+									style={{ width: "100%", aspectRatio: "1 / 1", objectFit: "cover", objectPosition: "center", display: "block" }}
 								/>
 								<span className="dq-chadhava-price">
 									{item.price > 0 ? `₹${item.price}` : 'Free Seva'}

@@ -589,11 +589,11 @@ const ChadhavaDetails = () => {
     { icon: 'fas fa-box-open', label: 'Holy Prasad' },
   ];
 
-  const ADDONS = chadhava.addons?.length
+const ADDONS = chadhava.addons?.length
     ? chadhava.addons.map((a) => ({
       id: a._id || a.id,
       name: a.pname || a.name,
-      sub: a.subtitle || a.description || '',
+      sub: a.pdesc || a.subtitle || a.description || '',
       price: a.pamount ? `₹${a.pamount}` : (a.price ? `₹${a.price}` : ''),
       rawPrice: a.pamount || a.price || 0,
       img: a.pimage || a.image,
@@ -635,8 +635,8 @@ const ChadhavaDetails = () => {
     'Protection from Shani Dosha & bad karma',
   ];
 
-  const FAQS = chadhava.faqs?.length
-    ? chadhava.faqs.map((f) => ({ q: f.question || f.q, a: f.answer || f.a }))
+  const FAQS = (chadhava.faq?.length || chadhava.faqs?.length)
+    ? (chadhava.faq || chadhava.faqs).map((f) => ({ q: f.question || f.q, a: f.answer || f.a }))
     : DEFAULT_FAQS;
 
   const REVIEWS = chadhava.reviews?.length

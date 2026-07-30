@@ -104,28 +104,26 @@ const ExpandableText = ({ text = "", maxChars = 300, className = "", clampLines 
     </span>
   );
 };
-
-const useCountdown = () => {
-  const [time, setTime] = useState({ d: 203, h: 0, m: 58, s: 15 });
+// ✅ REPLACE WITH THIS (calculates from actual target date):
+const useCountdown = (targetDate) => {
+  const calc = () => {
+    if (!targetDate) return { d: 0, h: 0, m: 0, s: 0 };
+    const diff = Math.max(0, new Date(targetDate).getTime() - Date.now());
+    return {
+      d: Math.floor(diff / (1000 * 60 * 60 * 24)),
+      h: Math.floor((diff / (1000 * 60 * 60)) % 24),
+      m: Math.floor((diff / (1000 * 60)) % 60),
+      s: Math.floor((diff / 1000) % 60),
+    };
+  };
+  const [t, setT] = useState(calc());
   useEffect(() => {
-    const t = setInterval(() => {
-      setTime((prev) => {
-        let { d, h, m, s } = prev;
-        s--;
-        if (s < 0) { s = 59; m--; }
-        if (m < 0) { m = 59; h--; }
-        if (h < 0) { h = 23; d--; }
-        return {
-          d: Math.max(0, d),
-          h: Math.max(0, h),
-          m: Math.max(0, m),
-          s: Math.max(0, s),
-        };
-      });
-    }, 1000);
-    return () => clearInterval(t);
-  }, []);
-  return time;
+    setT(calc()); // recalc immediately when targetDate becomes available
+    const tick = setInterval(() => setT(calc()), 1000);
+    return () => clearInterval(tick);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [targetDate]);
+  return t;
 };
 
 const pad = (n, len = 2) => String(n).padStart(len, "0");
@@ -332,7 +330,6 @@ const ReviewsSection = ({ reviews = [] }) => {
 
 const PujaDetails = () => {
   const { name, id } = useParams();
-  const timer = useCountdown();
   const { isLoggedIn } = useStorage();
 
   const [showSideMenu, setShowSideMenu] = useState(false);
@@ -340,6 +337,7 @@ const PujaDetails = () => {
   const [showSearch, setShowSearch] = useState(false);
   const [pujaDetails, setPujaDetails] = useState(null);
   const [loading, setLoading] = useState(true);
+  const timer = useCountdown(pujaDetails?.pujaDatetime || pujaDetails?.pujaDate);
 
   const [showUserModal, setShowUserModal] = useState(false);
   const [selectedPackageData, setSelectedPackageData] = useState(null);
@@ -1313,7 +1311,20 @@ const PujaDetails = () => {
                   {pkg.packageDescription?.length > 0 && (
                     <ul className="pd-pkg-desc-list-wrap" style={{ textAlign: "left", paddingLeft: 16, marginBottom: 12, fontSize: 11, color: "#888", width: "90%" }}>
                       {pkg.packageDescription.map((d, di) => (
-                        <li key={di} style={{ marginBottom: 3 }}>✔ {d}</li>
+                        <li
+                          key={di}
+                          style={{
+                            marginBottom: 3,
+                            display: "-webkit-box",
+                            WebkitLineClamp: 3,
+                            WebkitBoxOrient: "vertical",
+                            overflow: "hidden",
+                            maxHeight: "4.2em",
+                            lineHeight: "1.4em",
+                          }}
+                        >
+                          ✔ {d}
+                        </li>
                       ))}
                     </ul>
                   )}

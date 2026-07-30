@@ -218,8 +218,25 @@
 .pj-heart.on, .pj-heart:hover { color: #ef4444; background: #fff; }
 
 /* Image */
-.pj-img-wrap { position: relative; overflow: hidden; height: 230px; flex-shrink: 0; }
-.pj-img-wrap img { width: 100%; height: 100%; object-fit: cover; object-position: center; display: block; transition: transform .32s ease; }
+.pj-img-wrap {
+  position: relative;
+  overflow: hidden;
+  width: 100%;
+  height: 230px;
+  min-height: 230px;
+  max-height: 230px;
+  flex-shrink: 0;
+  flex-grow: 0;
+}
+.pj-img-wrap img {
+  width: 100% !important;
+  height: 100% !important;
+  max-width: 100% !important;
+  object-fit: cover;
+  object-position: center;
+  display: block;
+  transition: transform .32s ease;
+}
 .pj-img-placeholder {
   width: 100%; height: 100%;
   background: linear-gradient(135deg,#fdf4ec,#fde8d8);
@@ -233,9 +250,10 @@
 .pj-card-name { font-size: 14px; font-weight: 800; color: #111827; margin-bottom: 5px; line-height: 1.35; transition: color .2s; }
 .pj-card-purpose {
   font-size: 11px; color: #c0392b; font-weight: 600; margin-bottom: 6px;
-  display: flex; align-items: center; gap: 4px;
+  display: -webkit-box; -webkit-line-clamp: 4; -webkit-box-orient: vertical;
+  overflow: hidden;
 }
-.pj-card-purpose i { font-size: 10px; }
+.pj-card-purpose i { font-size: 10px; margin-right: 5px; }
 .pj-card-loc  { font-size: 11px; color: #888; margin-bottom: 7px; display: flex; align-items: center; gap: 4px; }
 .pj-card-loc i { color: #c0392b; font-size: 11px; flex-shrink: 0; }
 .pj-card-desc {

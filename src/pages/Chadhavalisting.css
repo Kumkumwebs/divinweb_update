@@ -240,8 +240,25 @@
 .ch-heart.on, .ch-heart:hover { color: #ef4444; background: #fff; }
 
 /* Image */
-.ch-img-wrap { position: relative; overflow: hidden; height: 185px; flex-shrink: 0; }
-.ch-img-wrap img { width: 100%; height: 100%; object-fit: cover; object-position: center; display: block; transition: transform .32s ease; }
+.ch-img-wrap {
+  position: relative;
+  overflow: hidden;
+  width: 100%;
+  height: 185px;
+  min-height: 185px;
+  max-height: 185px;
+  flex-shrink: 0;
+  flex-grow: 0;
+}
+.ch-img-wrap img {
+  width: 100% !important;
+  height: 100% !important;
+  max-width: 100% !important;
+  object-fit: cover;
+  object-position: center;
+  display: block;
+  transition: transform .32s ease;
+}
 .ch-img-placeholder {
   width: 100%; height: 100%;
   background: linear-gradient(135deg, #fdf0f0 0%, #fde8e8 50%, #fbd5d5 100%);

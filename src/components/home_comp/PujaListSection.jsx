@@ -61,6 +61,7 @@ const PujaListSection = ({ puja }) => {
 								alt={item.name}
 								loading="lazy"
 								onError={handleImgError}
+								style={{ width: "100%", height: 130, minHeight: 130, maxHeight: 130, objectFit: "cover", objectPosition: "center", display: "block" }}
 							/>
 							<div className="dq-puja-body">
 								<h4>{item.name}</h4>

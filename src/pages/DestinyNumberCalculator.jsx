@@ -102,7 +102,7 @@ const DestinyNumberCalculator = () => {
                     className="position-relative overflow-hidden rounded-25 d-flex align-items-center justify-content-center text-center"
                     style={{
                         minHeight: '300px',
-                        padding: '70px 30px',
+                        padding: '70px 0px',
                         backgroundImage:
                             "linear-gradient(100deg, #2c0a17 0%, #3d0f21 46%, rgba(61,15,33,.55) 68%, rgba(61,15,33,0) 100%), url('/assets/img/images/profile-hero-banner.jpeg')",
                         backgroundSize: 'cover',

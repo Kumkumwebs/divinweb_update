@@ -1,11 +1,14 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useCallback } from "react";
 
 const CountdownTimer = ({ pujaDate }) => {
-  const calculateTimeLeft = () => {
+  const calculateTimeLeft = useCallback(() => {
     const targetDate = new Date(pujaDate);
     const now = new Date();
-    const diff = targetDate - now;
 
+    // Guard against invalid/missing date
+    if (isNaN(targetDate.getTime())) return null;
+
+    const diff = targetDate - now;
     if (diff <= 0) return null;
 
     return {
@@ -14,17 +17,26 @@ const CountdownTimer = ({ pujaDate }) => {
       minutes: Math.floor((diff / (1000 * 60)) % 60),
       seconds: Math.floor((diff / 1000) % 60),
     };
-  };
+  }, [pujaDate]);
 
-  const [timeLeft, setTimeLeft] = useState(calculateTimeLeft());
+  const [timeLeft, setTimeLeft] = useState(calculateTimeLeft);
 
   useEffect(() => {
+    // Recalculate immediately when pujaDate changes
+    setTimeLeft(calculateTimeLeft());
+
     const timer = setInterval(() => {
-      setTimeLeft(calculateTimeLeft());
+      const updated = calculateTimeLeft();
+      setTimeLeft(updated);
+
+      // Stop the interval once the countdown reaches zero
+      if (!updated) {
+        clearInterval(timer);
+      }
     }, 1000);
 
     return () => clearInterval(timer);
-  }, [pujaDate]);
+  }, [calculateTimeLeft]);
 
   if (!timeLeft) {
     return <p className="countdown-ended">Booking Closed</p>;
@@ -32,8 +44,13 @@ const CountdownTimer = ({ pujaDate }) => {
 
   function shareOnWhatsAppBtnHandler() {
     const currentUrl = window.location.href;
-    const user = JSON.parse(sessionStorage.getItem("user"));
-    const phone = user?.number ? `91${user.number}` : "";
+    let phone = "";
+    try {
+      const user = JSON.parse(sessionStorage.getItem("user"));
+      phone = user?.number ? `91${user.number}` : "";
+    } catch (err) {
+      console.warn("Could not parse user from sessionStorage:", err);
+    }
     const message = encodeURIComponent(currentUrl);
     window.open(`https://wa.me/${phone}?text=${message}`, "_blank");
   }
