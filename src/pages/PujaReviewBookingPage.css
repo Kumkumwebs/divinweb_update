@@ -917,7 +917,7 @@
 /* ── Phones (≤600px) ── */
 @media (max-width: 600px) {
   .prb-puja-grid { flex-direction: column; }
-  .prb-puja-img { width: 100%; height: 200px; }
+  .prb-puja-img { width: 100%; height: 200px!important; }
   .prb-hero-title { font-size: 22px; }
   .prb-included-grid { grid-template-columns: repeat(3, 1fr); }
   .prb-trust-grid { grid-template-columns: repeat(2, 1fr); }
