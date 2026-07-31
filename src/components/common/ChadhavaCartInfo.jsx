@@ -412,8 +412,11 @@ const ChadhavaCartPage = () => {
 	const totalAmount = subtotal - appliedDiscount + 10;
 
 	return (
-		<div className="main-wrapper bg-white">
+			<div className="main-wrapper bg-white">
 			<ScrollToTop />
+			<SideMenu isOpen={showSideMenu} onClose={() => setShowSideMenu(false)} />
+			<PopupSearch isOpen={showSearch} onClose={() => setShowSearch(false)} />
+			<MobileMenu isOpen={showMobileMenu} onClose={() => setShowMobileMenu(false)} />
 			<Header
 				onMenuToggle={() => setShowMobileMenu(true)}
 				onSideMenuToggle={() => setShowSideMenu(true)}

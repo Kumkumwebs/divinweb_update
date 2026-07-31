@@ -4,7 +4,9 @@ import apiService from "../services/apiServices";
 import Header from "../components/layout/Header";
 import Footer from "../components/layout/Footer";
 import ScrollToTop from "../components/common/ScrollToTop";
-import { useStorage } from "../context/StorageContext";
+import SideMenu from "../components/layout/SideMenu";
+import PopupSearch from "../components/layout/PopupSearch";
+import MobileMenu from "../components/layout/MobileMenu"; import { useStorage } from "../context/StorageContext";
 import PujaUserDetailsModal from "./pujaUserDetailsModel";
 import "./PujaReviewBookingPage.css";
 
@@ -48,7 +50,9 @@ const PujaReviewBookingPage = () => {
   const navigate = useNavigate();
   const { devoteeDetails } = useStorage();
   const [showEditModal, setShowEditModal] = useState(false);
-
+  const [showSideMenu, setShowSideMenu] = useState(false);
+  const [showMobileMenu, setShowMobileMenu] = useState(false);
+  const [showSearch, setShowSearch] = useState(false);
   const puja = state?.pujaData;
   const selectedPackage = state?.selectedPackage;
 
@@ -317,7 +321,14 @@ const PujaReviewBookingPage = () => {
   return (
     <div className="prb-root">
       <ScrollToTop />
-      <Header />
+      <SideMenu isOpen={showSideMenu} onClose={() => setShowSideMenu(false)} />
+      <PopupSearch isOpen={showSearch} onClose={() => setShowSearch(false)} />
+      <MobileMenu isOpen={showMobileMenu} onClose={() => setShowMobileMenu(false)} />
+      <Header
+        onMenuToggle={() => setShowMobileMenu(true)}
+        onSideMenuToggle={() => setShowSideMenu(true)}
+        onSearchToggle={() => setShowSearch(true)}
+      />
 
       <PujaUserDetailsModal
         isOpen={showEditModal}
@@ -350,230 +361,239 @@ const PujaReviewBookingPage = () => {
       </div>
 
       {/* ── BODY ── */}
-      <div className="prb-page-wrap">
-        {/* ══ LEFT ══ */}
-        <div className="prb-left">
+      {/* <div className="container prb-page-wrap"> */}
+      <div className="container py-5">
+        <div className="row">
+          {/* ══ LEFT ══ */}
+          {/* <div className="prb-left"> */}
+          <div className="col-xxl-8 col-lg-7 mb-4">
 
-          {/* PUJA SUMMARY */}
-          <div className="prb-card">
-            <div className="prb-sec-header">
-              <i className="fa-solid fa-gopuram" /><span>Puja Summary</span>
-            </div>
-            <div className="prb-puja-grid">
-              <img
-                className="prb-puja-img"
-                src={puja?.pujaImage || "/assets/img/pooja/kalash.png"}
-                alt={puja?.title || "Puja"}
-                onError={(e) => { e.target.onerror = null; e.target.src = "/assets/img/pooja/kalash.png"; }}
-              />
-              <div className="prb-puja-info">
-                <div className="prb-puja-name">{puja.title}</div>
-                <div className="prb-puja-location"><i className="fa-solid fa-location-dot" /> {puja.mandirName}</div>
-                <div className="prb-purpose-label">// Purpose of Puja</div>
-                <div className="prb-purpose-box">"{puja.purposeOfPooja}"</div>
-                <div className="prb-meta-grid">
-                  <div className="prb-meta-item">
-                    <div className="prb-meta-label"><i className="fa-solid fa-calendar-days" /> Puja Date</div>
-                    <div className="prb-meta-val">{fmt(puja.pujaDatetime)}</div>
-                  </div>
-                  <div className="prb-meta-item">
-                    <div className="prb-meta-label"><i className="fa-regular fa-clock" /> Puja Time</div>
-                    <div className="prb-meta-val">{fmtTime(puja.pujaDatetime)}</div>
-                  </div>
-                  <div className="prb-meta-item">
-                    <div className="prb-meta-label"><i className="fa-solid fa-om" /> Puja Type</div>
-                    <div className="prb-meta-val">{puja.pujaType || "Vedic Ritual"}</div>
-                  </div>
-                  <div className="prb-meta-item">
-                    <div className="prb-meta-label"><i className="fa-regular fa-hourglass-half" /> Duration</div>
-                    <div className="prb-meta-val">{puja.duration || "45–60 Min"}</div>
-                  </div>
-                </div>
-                <div className="prb-pkg-row">
-                  <div>
-                    <div className="prb-pkg-label">Selected Package</div>
-                    <div className="prb-pkg-name">{selectedPackage?.packageName}</div>
-                  </div>
-                  <div className="prb-pkg-price">₹{selectedPackage?.packagePrice}</div>
-                </div>
-                <div className="prb-avail-badge">
-                  <i className="fa-solid fa-shield-halved" /> Limited Availability – Final Day to Participate!
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* DEVOTEE INFO */}
-          <div className="prb-card">
-            <div className="prb-sec-header">
-              <i className="fa-solid fa-user-circle" /><span>Devotee (Sankalp) Information</span>
-            </div>
-            <div className="prb-devotee-row">
-              <div className="prb-devotee-cell">
-                <div className="prb-dev-icon"><i className="fa-solid fa-user" /></div>
-                <div>
-                  <div className="prb-dev-label">Devotee Name</div>
-                  <div className="prb-dev-val">{devoteeDetails?.name || "Guest"}</div>
-                </div>
-              </div>
-              <div className="prb-devotee-cell">
-                <div className="prb-dev-icon prb-dev-icon--green"><i className="fa-brands fa-whatsapp" /></div>
-                <div>
-                  <div className="prb-dev-label">WhatsApp No.</div>
-                  <div className="prb-dev-val">+91 {devoteeDetails?.whatsapp || "N/A"}</div>
-                </div>
-              </div>
-              <button className="prb-edit-btn" onClick={() => setShowEditModal(true)}>
-                <i className="fa-solid fa-pen" /> Edit Details
-              </button>
-            </div>
-            <div className="prb-divider" />
-            <div className="prb-sankalp-row">
-              <i className="fa-solid fa-hands-praying" />
-              <div>
-                <div className="prb-dev-label">Sankalp (Prarthana)</div>
-                <div className="prb-dev-val">{devoteeDetails?.sankalp || "Health, Peace & Prosperity for Family"}</div>
-              </div>
-            </div>
-          </div>
-
-          {/* ══ SACRED ADD-ONS ══ */}
-          {addonsLoading ? (
-            <div className="prb-card" style={{ textAlign: "center", padding: "24px", color: "#c8952a" }}>
-              <i className="fa-solid fa-rotate fa-spin" /> Loading Sacred Add-ons…
-            </div>
-          ) : addons.length > 0 ? (
-            <div className="prb-card">
+            {/* PUJA SUMMARY */}
+            <div className="prb-card mb-4">
               <div className="prb-sec-header">
-                <i className="fa-solid fa-gift" /><span>Sacred Add-ons</span>
+                <i className="fa-solid fa-gopuram" /><span> Puja Summary</span>
               </div>
-              <div className="prb-addons-wrap">
-                <div className="prb-addons-row" ref={addonsScrollRef}>
-                  {addons.map((a) => renderAddonCard(a, "temple"))}
+              {/* <div className="row prb-puja-grid"> */}
+              <div className="row pt-3">
+                <div className="col-xxl-6 mb-4">
+                  <img
+                    className="prb-puja-img w-100"
+                    src={puja?.pujaImage || "/assets/img/pooja/kalash.png"}
+                    alt={puja?.title || "Puja"}
+                    onError={(e) => { e.target.onerror = null; e.target.src = "/assets/img/pooja/kalash.png"; }}
+                  />
                 </div>
-                {addons.length > 3 && (
-                  <button className="prb-scroll-arr" onClick={() => addonsScrollRef.current?.scrollBy({ left: 150, behavior: "smooth" })}>
-                    <i className="fa-solid fa-chevron-right" />
-                  </button>
-                )}
-              </div>
-            </div>
-          ) : null}
-
-          {/* ══ HOME DELIVERY ══ */}
-          {!addonsLoading && homeDeliveryAddons.length > 0 && (
-            <div className="prb-card">
-              <div className="prb-sec-header">
-                <i className="fa-solid fa-truck" /><span>Home Delivery Services</span>
-              </div>
-              <div className="prb-delivery-row">
-                {homeDeliveryAddons.map((item) => {
-                  const qty = homeAddonsQty[item._id] || 0;
-                  return (
-                    <div className="prb-delivery-card" key={item._id}>
-                      <div className="prb-del-icon prb-icon-orange"><i className="fa-solid fa-box-open" /></div>
-                      <div className="prb-del-info">
-                        <div className="prb-del-name">{item.pname}</div>
-                        <div className="prb-del-sub">{item.pdesc || item.pdescription || "Home delivery"}</div>
-                        <div className="prb-del-price">₹{item.pamount}</div>
-                      </div>
-                      {qty === 0 ? (
-                        <button className="prb-del-btn" onClick={() => handleQtyChange(item._id, 1, "home")}>+ Add</button>
-                      ) : (
-                        <div className="prb-qty-stepper prb-qty-stepper--sm">
-                          <button onClick={() => handleQtyChange(item._id, -1, "home")}>−</button>
-                          <span>{qty}</span>
-                          <button onClick={() => handleQtyChange(item._id, 1, "home")}>+</button>
-                        </div>
-                      )}
+                <div className="col-xxl-6 prb-puja-info">
+                  <div className="prb-puja-name">{puja.title}</div>
+                  <div className="prb-puja-location"><i className="fa-solid fa-location-dot" /> {puja.mandirName}</div>
+                  <div className="prb-purpose-label">// Purpose of Puja</div>
+                  <div className="prb-purpose-box">"{puja.purposeOfPooja}"</div>
+                  <div className="prb-meta-grid">
+                    <div className="prb-meta-item">
+                      <div className="prb-meta-label"><i className="fa-solid fa-calendar-days" /> Puja Date</div>
+                      <div className="prb-meta-val">{fmt(puja.pujaDatetime)}</div>
                     </div>
-                  );
-                })}
+                    <div className="prb-meta-item">
+                      <div className="prb-meta-label"><i className="fa-regular fa-clock" /> Puja Time</div>
+                      <div className="prb-meta-val">{fmtTime(puja.pujaDatetime)}</div>
+                    </div>
+                    <div className="prb-meta-item">
+                      <div className="prb-meta-label"><i className="fa-solid fa-om" /> Puja Type</div>
+                      <div className="prb-meta-val">{puja.pujaType || "Vedic Ritual"}</div>
+                    </div>
+                    <div className="prb-meta-item">
+                      <div className="prb-meta-label"><i className="fa-regular fa-hourglass-half" /> Duration</div>
+                      <div className="prb-meta-val">{puja.duration || "45–60 Min"}</div>
+                    </div>
+                  </div>
+                  <div className="prb-pkg-row">
+                    <div>
+                      <div className="prb-pkg-label">Selected Package</div>
+                      <div className="prb-pkg-name">{selectedPackage?.packageName}</div>
+                    </div>
+                    <div className="prb-pkg-price">₹{selectedPackage?.packagePrice}</div>
+                  </div>
+                  <div className="prb-avail-badge">
+                    <i className="fa-solid fa-shield-halved" /> Limited Availability – Final Day to Participate!
+                  </div>
+                </div>
               </div>
             </div>
-          )}
-        </div>
 
-        {/* ══ RIGHT ══ */}
-        <div className="prb-right">
-          <div className="prb-right-sticky" style={{ marginTop: "25px" }}>
-
-            {/* ORDER SUMMARY */}
-            <div className="prb-order-card">
-              <div className="prb-order-header"><i className="fa-solid fa-receipt" /><span>Order Summary</span></div>
-              <div className="prb-order-body">
-                <div className="prb-order-sublabel">Selected Package</div>
-                <div className="prb-order-line">
-                  <span className="prb-order-pkg">{selectedPackage?.packageName || "Individual"}</span>
-                  <span className="prb-order-val">₹{selectedPackage?.packagePrice ?? 0}</span>
+            {/* DEVOTEE INFO */}
+            <div className="prb-card mb-4">
+              <div className="prb-sec-header">
+                <i className="fa-solid fa-user-circle" /><span>Devotee (Sankalp) Information</span>
+              </div>
+              <div className="prb-devotee-row">
+                <div className="prb-devotee-cell">
+                  <div className="prb-dev-icon"><i className="fa-solid fa-user" /></div>
+                  <div>
+                    <div className="prb-dev-label">Devotee Name</div>
+                    <div className="prb-dev-val">{devoteeDetails?.name || "Guest"}</div>
+                  </div>
                 </div>
-                <div className="prb-order-divider" />
-                <div className="prb-order-line">
-                  <span className="prb-order-label">Sacred Add-ons</span>
-                  <span className="prb-order-val">
-                    {Object.keys(templeAddonsQty).length === 0
-                      ? <span className="prb-not-added">Not Added Yet</span>
-                      : `₹${addons.filter((a) => templeAddonsQty[a._id]).reduce((s, a) => s + a.pamount * templeAddonsQty[a._id], 0)}`}
-                  </span>
+                <div className="prb-devotee-cell">
+                  <div className="prb-dev-icon prb-dev-icon--green"><i className="fa-brands fa-whatsapp" /></div>
+                  <div>
+                    <div className="prb-dev-label">WhatsApp No.</div>
+                    <div className="prb-dev-val">+91 {devoteeDetails?.whatsapp || "N/A"}</div>
+                  </div>
                 </div>
-                <div className="prb-order-line" style={{ marginTop: 8 }}>
-                  <span className="prb-order-label">Home Delivery</span>
-                  <span className="prb-order-val">
-                    {Object.keys(homeAddonsQty).length === 0
-                      ? <span className="prb-not-added">Not Added Yet</span>
-                      : `₹${homeDeliveryAddons.filter((a) => homeAddonsQty[a._id]).reduce((s, a) => s + a.pamount * homeAddonsQty[a._id], 0)}`}
-                  </span>
-                </div>
-                <div className="prb-order-divider" />
-                <div className="prb-order-line">
-                  <span className="prb-order-label">Coupon Discount</span>
-                  <span className="prb-order-val prb-discount">{cartData?.discount ? `-₹${cartData.discount}` : "-₹0"}</span>
-                </div>
-                {!couponApplied && <div className="prb-apply-coupon">Apply Coupon</div>}
-                <div className="prb-order-line">
-                  <span className="prb-order-label">Taxes & Charges <i className="fa-solid fa-circle-info" style={{ fontSize: 10, opacity: 0.5 }} /></span>
-                  <span className="prb-order-val">₹{cartData?.tax_amount ?? 0}</span>
-                </div>
-                <div className="prb-order-divider" />
-                <div className="prb-total-row">
-                  <span className="prb-total-label">Total Payable</span>
-                  <span className="prb-total-val">{isSyncing ? <span className="prb-syncing">…</span> : `₹${grandTotal}`}</span>
-                </div>
-                <button className="prb-pay-btn" onClick={handleContinueToForm}>
-                  <i className="fa-solid fa-lock" /> Review &amp; Pay <i className="fa-solid fa-arrow-right" />
+                <button className="prb-edit-btn" onClick={() => setShowEditModal(true)}>
+                  <i className="fa-solid fa-pen" /> Edit Details
                 </button>
-                <div className="prb-secure-note">
-                  <i className="fa-solid fa-shield-halved" style={{ color: "#22c55e" }} /> 100% Secure Payment
+              </div>
+              <div className="prb-divider" />
+              <div className="prb-sankalp-row">
+                <i className="fa-solid fa-hands-praying" />
+                <div>
+                  <div className="prb-dev-label">Sankalp (Prarthana)</div>
+                  <div className="prb-dev-val">{devoteeDetails?.sankalp || "Health, Peace & Prosperity for Family"}</div>
                 </div>
               </div>
             </div>
 
-            {/* COUPON */}
-            <div className="prb-coupon-card">
-              <div className="prb-coupon-title"><i className="fa-solid fa-tag" /> Have a Coupon?</div>
-              <div className="prb-coupon-row">
-                <input className="prb-coupon-input" type="text" placeholder="Enter coupon code" value={couponCode} onChange={(e) => setCouponCode(e.target.value)} />
-                <button className="prb-coupon-btn" onClick={() => { if (couponCode.trim()) setCouponApplied(true); }}>Apply</button>
+            {/* ══ SACRED ADD-ONS ══ */}
+            {addonsLoading ? (
+              <div className="prb-card" style={{ textAlign: "center", padding: "24px", color: "#c8952a" }}>
+                <i className="fa-solid fa-rotate fa-spin" /> Loading Sacred Add-ons…
               </div>
-              {couponApplied && <div className="prb-coupon-success"><i className="fa-solid fa-circle-check" /> Coupon applied!</div>}
-              <div className="prb-coupon-sub">Save extra on your puja booking</div>
-            </div>
+            ) : addons.length > 0 ? (
+              <div className="prb-card">
+                <div className="prb-sec-header">
+                  <i className="fa-solid fa-gift" /><span> Sacred Add-ons</span>
+                </div>
+                <div className="prb-addons-wrap">
+                  <div className="prb-addons-row" ref={addonsScrollRef}>
+                    {addons.map((a) => renderAddonCard(a, "temple"))}
+                  </div>
+                  {addons.length > 3 && (
+                    <button className="prb-scroll-arr" onClick={() => addonsScrollRef.current?.scrollBy({ left: 150, behavior: "smooth" })}>
+                      <i className="fa-solid fa-chevron-right" />
+                    </button>
+                  )}
+                </div>
+              </div>
+            ) : null}
 
-            {/* WHY DIVINIQ */}
-            <div className="prb-why-card">
-              <div className="prb-why-title"><i className="fa-solid fa-user-circle" /> Why Choose DivinIQ?</div>
-              <ul className="prb-why-list">
-                {WHY.map((w) => <li key={w}><i className="fa-solid fa-circle-check prb-why-check" /> {w}</li>)}
-              </ul>
-              <img className="prb-why-temple" src="/assets/img/pooja/temple.png" alt="Temple" />
-            </div>
+            {/* ══ HOME DELIVERY ══ */}
+            {!addonsLoading && homeDeliveryAddons.length > 0 && (
+              <div className="prb-card mt-3">
+                <div className="prb-sec-header">
+                  <i className="fa-solid fa-truck mb-3" /><span> Home Delivery Services</span>
+                </div>
+                <div className="prb-delivery-row">
+                  {homeDeliveryAddons.map((item) => {
+                    const qty = homeAddonsQty[item._id] || 0;
+                    return (
+                      <div className="prb-delivery-card" key={item._id}>
+                        <div className="prb-del-icon prb-icon-orange"><i className="fa-solid fa-box-open" /></div>
+                        <div className="prb-del-info">
+                          <div className="prb-del-name">{item.pname}</div>
+                          <div className="prb-del-sub">{item.pdesc || item.pdescription || "Home delivery"}</div>
+                          <div className="prb-del-price">₹{item.pamount}</div>
+                        </div>
+                        {qty === 0 ? (
+                          <button className="prb-del-btn" onClick={() => handleQtyChange(item._id, 1, "home")}>+ Add</button>
+                        ) : (
+                          <div className="prb-qty-stepper prb-qty-stepper--sm">
+                            <button onClick={() => handleQtyChange(item._id, -1, "home")}>−</button>
+                            <span>{qty}</span>
+                            <button onClick={() => handleQtyChange(item._id, 1, "home")}>+</button>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
           </div>
+
+          {/* ══ RIGHT ══ */}
+          {/* <div className="prb-right"> */}
+          <div className="col-xxl-4 col-lg-5 mb-4">
+            <div className="prb-right-sticky">
+
+              {/* ORDER SUMMARY */}
+              <div className="prb-order-card">
+                <div className="prb-order-header"><i className="fa-solid fa-receipt" /><span>Order Summary</span></div>
+                <div className="prb-order-body">
+                  <div className="prb-order-sublabel">Selected Package</div>
+                  <div className="prb-order-line">
+                    <span className="prb-order-pkg">{selectedPackage?.packageName || "Individual"}</span>
+                    <span className="prb-order-val">₹{selectedPackage?.packagePrice ?? 0}</span>
+                  </div>
+                  <div className="prb-order-divider" />
+                  <div className="prb-order-line">
+                    <span className="prb-order-label"> Sacred Add-ons</span>
+                    <span className="prb-order-val">
+                      {Object.keys(templeAddonsQty).length === 0
+                        ? <span className="prb-not-added">Not Added Yet</span>
+                        : `₹${addons.filter((a) => templeAddonsQty[a._id]).reduce((s, a) => s + a.pamount * templeAddonsQty[a._id], 0)}`}
+                    </span>
+                  </div>
+                  <div className="prb-order-line" style={{ marginTop: 8 }}>
+                    <span className="prb-order-label">Home Delivery</span>
+                    <span className="prb-order-val">
+                      {Object.keys(homeAddonsQty).length === 0
+                        ? <span className="prb-not-added">Not Added Yet</span>
+                        : `₹${homeDeliveryAddons.filter((a) => homeAddonsQty[a._id]).reduce((s, a) => s + a.pamount * homeAddonsQty[a._id], 0)}`}
+                    </span>
+                  </div>
+                  <div className="prb-order-divider" />
+                  <div className="prb-order-line">
+                    <span className="prb-order-label">Coupon Discount</span>
+                    <span className="prb-order-val prb-discount">{cartData?.discount ? `-₹${cartData.discount}` : "-₹0"}</span>
+                  </div>
+                  {!couponApplied && <div className="prb-apply-coupon">Apply Coupon</div>}
+                  <div className="prb-order-line">
+                    <span className="prb-order-label">Taxes & Charges <i className="fa-solid fa-circle-info" style={{ fontSize: 10, opacity: 0.5 }} /></span>
+                    <span className="prb-order-val">₹{cartData?.tax_amount ?? 0}</span>
+                  </div>
+                  <div className="prb-order-divider" />
+                  <div className="prb-total-row">
+                    <span className="prb-total-label">Total Payable</span>
+                    <span className="prb-total-val">{isSyncing ? <span className="prb-syncing">…</span> : `₹${grandTotal}`}</span>
+                  </div>
+                  <button className="prb-pay-btn" onClick={handleContinueToForm}>
+                    <i className="fa-solid fa-lock" /> Review &amp; Pay <i className="fa-solid fa-arrow-right" />
+                  </button>
+                  <div className="prb-secure-note">
+                    <i className="fa-solid fa-shield-halved" style={{ color: "#22c55e" }} /> 100% Secure Payment
+                  </div>
+                </div>
+              </div>
+
+              {/* COUPON */}
+              <div className="prb-coupon-card mx-0">
+                <div className="prb-coupon-title"><i className="fa-solid fa-tag" /> Have a Coupon?</div>
+                <div className="prb-coupon-row">
+                  <input className="prb-coupon-input" type="text" placeholder="Enter coupon code" value={couponCode} onChange={(e) => setCouponCode(e.target.value)} />
+                  <button className="prb-coupon-btn" onClick={() => { if (couponCode.trim()) setCouponApplied(true); }}>Apply</button>
+                </div>
+                {couponApplied && <div className="prb-coupon-success"><i className="fa-solid fa-circle-check" /> Coupon applied!</div>}
+                <div className="prb-coupon-sub">Save extra on your puja booking</div>
+              </div>
+
+              {/* WHY DIVINIQ */}
+              <div className="prb-why-card mx-0">
+                <div className="prb-why-title"><i className="fa-solid fa-user-circle" /> Why Choose DivinIQ?</div>
+                <ul className="prb-why-list">
+                  {WHY.map((w) => <li key={w}><i className="fa-solid fa-circle-check prb-why-check" /> {w}</li>)}
+                </ul>
+                <img className="prb-why-temple" src="/assets/img/pooja/temple.png" alt="Temple" />
+              </div>
+            </div>
+          </div>Online Payment (UPI / Card)
+
         </div>
       </div>
 
       {/* WHAT'S INCLUDED */}
-      <div className="prb-card" style={{ margin: "20px" }}>
-        <div className="prb-sec-header"><i className="fa-solid fa-list-check" /><span>What's Included in This Puja</span></div>
+      <div className="prb-card py-4" style={{ margin: "20px" }}>
+        <div className="prb-sec-header"><i className="fa-solid fa-list-check" /><span>   What's Included in This Puja</span></div>
         <div className="prb-included-grid">
           {INCLUDED.map(({ icon, label }) => (
             <div className="prb-inc-item" key={label}>
@@ -597,7 +617,7 @@ const PujaReviewBookingPage = () => {
       </div>
 
       {/* NEED HELP */}
-      <div className="prb-help-section">
+      <div className="prb-help-section mx-4">
         <div className="prb-help-left">
           <div className="prb-help-main-icon"><i className="fa-solid fa-headset"></i></div>
           <div><h5>Need Help?</h5><p>We are here to help you at every step</p></div>
@@ -633,17 +653,31 @@ const PujaReviewBookingPage = () => {
             <span className="prb-pi prb-pi-mc"><span style={{ color: "#eb001b" }}>●</span><span style={{ color: "#f79e1b" }}>●</span> mastercard</span>
             <span className="prb-pi prb-pi-rupay">RuPay</span>
             <span className="prb-pi prb-pi-paytm">Paytm</span>
-            <span className="prb-pi-shield"><i className="fa-solid fa-shield-halved" style={{ color: "#22c55e" }} /></span>
+            {/* <span className="prb-pi-shield"><i className="fa-solid fa-shield-halved" style={{ color: "#22c55e" }} /></span> */}
           </div>
         </div>
       </div>
 
-      {/* SYNCING TOAST */}
+         {/* SYNCING TOAST */}
       {isSyncing && (
         <div className="prb-sync-toast">
           <i className="fa-solid fa-rotate fa-spin" /> Syncing Selection…
         </div>
       )}
+
+      {/* Mobile-only fixed bottom CTA — desktop keeps the "Review & Pay"
+          button inside the order summary card as-is */}
+      <div className="prb-mobile-cta-wrap">
+        <div>
+          <div className="prb-mobile-cta-total-label">Total Payable</div>
+          <div className="prb-mobile-cta-total-val">
+            {isSyncing ? "…" : `₹${grandTotal}`}
+          </div>
+        </div>
+        <button className="prb-mobile-cta-btn" onClick={handleContinueToForm}>
+          <i className="fa-solid fa-lock" /> Review &amp; Pay <i className="fa-solid fa-arrow-right" />
+        </button>
+      </div>
 
       <Footer />
     </div>

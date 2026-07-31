@@ -1132,7 +1132,7 @@
 
 @media (max-width: 576px) {
   .abh-hero {
-    min-height: 220px;
+    min-height: 150px;
     margin-left: 3%;
     margin-right: 3%;
   }

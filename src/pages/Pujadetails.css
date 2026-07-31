@@ -1249,7 +1249,7 @@
 
   .pd-how-step { flex: 0 0 80px; }
   .pd-inc-kalash { width: 100px; }
-  .pd-inc-card-inner { flex-direction: column; align-items: flex-start; }
+  /* .pd-inc-card-inner { flex-direction: column; align-items: flex-start; } */
 
   .pd-rev-card { width: 260px; padding: 16px; }
   .pd-rev-name { font-size: 14px; }
@@ -1282,5 +1282,5 @@
 .pd-pkg-select-btn {
     width: auto !important;
     padding: 8px 14px !important;
-    font-size: 11px !important;
+    font-size: 10px !important;
   }

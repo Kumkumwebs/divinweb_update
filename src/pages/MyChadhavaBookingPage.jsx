@@ -4,6 +4,9 @@ import apiService from "../services/apiServices";
 import Header from "../components/layout/Header";
 import Footer from "../components/layout/Footer";
 import ScrollToTop from "../components/common/ScrollToTop";
+import SideMenu from "../components/layout/SideMenu";
+import PopupSearch from "../components/layout/PopupSearch";
+import MobileMenu from "../components/layout/MobileMenu";
 import { motion } from "framer-motion";
 import "./ChadhavaBookingListPage.css";
 
@@ -12,6 +15,9 @@ const ChadhavaBookingListPage = () => {
   const [loading, setLoading] = useState(true);
   const [statusFilter, setStatusFilter] = useState("all");
   const [timeFilter, setTimeFilter] = useState("all");
+  const [showSideMenu, setShowSideMenu] = useState(false);
+  const [showMobileMenu, setShowMobileMenu] = useState(false);
+  const [showSearch, setShowSearch] = useState(false);
   const navigate = useNavigate();
 
   // ----------------------------------------------------
@@ -86,9 +92,16 @@ const ChadhavaBookingListPage = () => {
   }, [bookings]);
 
   return (
-    <div className="main-wrapper bg-light">
+       <div className="main-wrapper bg-light">
       <ScrollToTop />
-      <Header />
+      <SideMenu isOpen={showSideMenu} onClose={() => setShowSideMenu(false)} />
+      <PopupSearch isOpen={showSearch} onClose={() => setShowSearch(false)} />
+      <MobileMenu isOpen={showMobileMenu} onClose={() => setShowMobileMenu(false)} />
+      <Header
+        onMenuToggle={() => setShowMobileMenu(true)}
+        onSideMenuToggle={() => setShowSideMenu(true)}
+        onSearchToggle={() => setShowSearch(true)}
+      />
 
       {/* ---------- Hero Banner ---------- */}
       <div className="cb-hero">

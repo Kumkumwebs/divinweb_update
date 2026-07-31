@@ -1056,42 +1056,47 @@ const PujaDetails = () => {
       </div>
 
       {/* ══ INCLUDED + HOW ══ */}
-      <div className="pd-inc-how-wrap">
-        <div className="pd-inc-card">
-          <div className="pd-sub-title">
-            <i className="fas fa-list-check" /> What's Included in This Puja?
+      <div className="container px-md-0 px-4">
+        {/* <div className="pd-inc-how-wrap"> */}
+        <div className="row border mb-4 py-3 rounded-4 justify-content-center text-center">
+          {/* <div className="pd-inc-card"> */}
+          <div className="col-lg-6 mb-5">
+            <div className="pd-sub-title">
+              <i className="fas fa-list-check" /> What's Included in This Puja?
+            </div>
+            <div className="pd-inc-card-inner">
+              <div className="pd-inc-list">
+                {INCLUDED.map((item, i) => (
+                  <div key={i} className="pd-inc-item">
+                    <i className={item.icon} /> {item.text}
+                  </div>
+                ))}
+              </div>
+              <img
+                src="/assets/img/about/kalash-icon2.png"
+                alt="Kalash"
+                className="pd-inc-kalash"
+                onError={(e) => (e.target.style.display = "none")}
+              />
+            </div>
           </div>
-          <div className="pd-inc-card-inner">
-            <div className="pd-inc-list">
-              {INCLUDED.map((item, i) => (
-                <div key={i} className="pd-inc-item">
-                  <i className={item.icon} /> {item.text}
+          {/* <div className="pd-how-card"> */}
+          <div className="col-lg-6 mb-4">
+            <div className="pd-sub-title">
+              <i className="fas fa-route" /> How Your Puja Happens at DiviniQ
+            </div>
+            <div className="pd-how-steps justify-content-between">
+              {HOW_STEPS.map((s, i) => (
+                <div key={i} className="pd-how-step">
+                  <div className="pd-step-num">{s.num}</div>
+                  <div className="pd-step-ico-wrap">
+                    <i className={s.icon} />
+                  </div>
+                  <div className="pd-step-title">{s.title}</div>
+                  <div className="pd-step-desc">{s.desc}</div>
                 </div>
               ))}
             </div>
-            <img
-              src="/assets/img/about/kalash-icon2.png"
-              alt="Kalash"
-              className="pd-inc-kalash"
-              onError={(e) => (e.target.style.display = "none")}
-            />
-          </div>
-        </div>
-        <div className="pd-how-card">
-          <div className="pd-sub-title">
-            <i className="fas fa-route" /> How Your Puja Happens at DiviniQ
-          </div>
-          <div className="pd-how-steps">
-            {HOW_STEPS.map((s, i) => (
-              <div key={i} className="pd-how-step">
-                <div className="pd-step-num">{s.num}</div>
-                <div className="pd-step-ico-wrap">
-                  <i className={s.icon} />
-                </div>
-                <div className="pd-step-title">{s.title}</div>
-                <div className="pd-step-desc">{s.desc}</div>
-              </div>
-            ))}
           </div>
         </div>
       </div>
@@ -1129,13 +1134,13 @@ const PujaDetails = () => {
                 key={pkg._id || i}
                 className={`pd-pkg-card-inner${isActive ? " pd-pkg-active" : ""}`}
                 onClick={() => {
-  setSelectedPkgId(pkg._id);
-  handleSelectPackage(
-    pkg.packageType?.toLowerCase() === "individual"
-      ? "individual"
-      : "family"
-  );
-}}
+                  setSelectedPkgId(pkg._id);
+                  handleSelectPackage(
+                    pkg.packageType?.toLowerCase() === "individual"
+                      ? "individual"
+                      : "family"
+                  );
+                }}
                 style={{
                   background: "#fff",
                   borderRadius: "20px",
@@ -1396,11 +1401,11 @@ const PujaDetails = () => {
         className="pd-cta-banner"
         style={{ backgroundImage: "url('/assets/img/about/last_bg.png')" }}
       >
-        <div className="pd-cta-text">
-          <div className="pd-cta-title">
+        <div className="pd-cta-text m-auto text-center">
+          <div className="pd-cta-title m-0">
             Perform this sacred puja and invite
           </div>
-          <div className="pd-cta-sub">Divine blessings into your life.</div>
+          <div className="pd-cta-sub m-0">Divine blessings into your life.</div>
         </div>
         <button
           className="pd-bc-btn-botom"

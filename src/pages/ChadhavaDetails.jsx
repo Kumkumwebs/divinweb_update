@@ -7,6 +7,9 @@ import Header from '../components/layout/Header';
 import LoginOTPModal from '../components/accounts/LoginOTPModel';
 import { useStorage } from '../context/StorageContext';
 import Footer from "../components/layout/Footer";
+import SideMenu from '../components/layout/SideMenu';
+import PopupSearch from '../components/layout/PopupSearch';
+import MobileMenu from '../components/layout/MobileMenu';
 
 
 const useCountdown = (targetDate) => {
@@ -539,9 +542,12 @@ const ChadhavaDetails = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isLoggedIn]);
 
-  if (loading) {
+   if (loading) {
     return (
       <div className="pd-page">
+        <SideMenu isOpen={showSideMenu} onClose={() => setShowSideMenu(false)} />
+        <PopupSearch isOpen={showSearch} onClose={() => setShowSearch(false)} />
+        <MobileMenu isOpen={showMobileMenu} onClose={() => setShowMobileMenu(false)} />
         <Header
           onMenuToggle={() => setShowMobileMenu(true)}
           onSideMenuToggle={() => setShowSideMenu(true)}
@@ -554,15 +560,17 @@ const ChadhavaDetails = () => {
     );
   }
 
-  if (error || !chadhava) {
+ if (error || !chadhava) {
     return (
       <div className="pd-page">
+        <SideMenu isOpen={showSideMenu} onClose={() => setShowSideMenu(false)} />
+        <PopupSearch isOpen={showSearch} onClose={() => setShowSearch(false)} />
+        <MobileMenu isOpen={showMobileMenu} onClose={() => setShowMobileMenu(false)} />
         <Header
           onMenuToggle={() => setShowMobileMenu(true)}
           onSideMenuToggle={() => setShowSideMenu(true)}
           onSearchToggle={() => setShowSearch(true)}
-        />
-        <div style={{ textAlign: 'center', padding: '120px 20px' }}>
+        />        <div style={{ textAlign: 'center', padding: '120px 20px' }}>
           <h3>Chadhava Not Found</h3>
           <p>We couldn't load this offering. It may have been removed.</p>
           <Link to="/chadhava" className="th-btn rounded-pill mt-3 d-inline-block">
@@ -668,14 +676,16 @@ const ADDONS = chadhava.addons?.length
 
   const simMax = Math.max(0, SIMILAR.length - SIM_VISIBLE);
 
-  return (
+return (
     <div className="pd-page" style={{ paddingBottom: totalItemsCount > 0 ? '100px' : undefined }}>
+      <SideMenu isOpen={showSideMenu} onClose={() => setShowSideMenu(false)} />
+      <PopupSearch isOpen={showSearch} onClose={() => setShowSearch(false)} />
+      <MobileMenu isOpen={showMobileMenu} onClose={() => setShowMobileMenu(false)} />
       <Header
         onMenuToggle={() => setShowMobileMenu(true)}
         onSideMenuToggle={() => setShowSideMenu(true)}
         onSearchToggle={() => setShowSearch(true)}
       />
-
       <LoginOTPModal
         isOpen={showLoginModal}
         onClose={() => { setShowLoginModal(false); setPendingAction(null); }}

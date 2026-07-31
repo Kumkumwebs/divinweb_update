@@ -115,6 +115,7 @@ const PujaUserDetailsModal = ({
         justifyContent: "center",
         zIndex: 9999,
         padding: "16px",
+        boxSizing: "border-box",
       }}
       onClick={onClose}
     >
@@ -158,7 +159,7 @@ const PujaUserDetailsModal = ({
         <div
           style={{
             background: "linear-gradient(160deg, #f8f0ff 0%, #fdf6ee 60%, #fff 100%)",
-            padding: "16px 24px 10px",
+            padding: "10px 20px 6px",
             textAlign: "center",
             position: "relative",
           }}
@@ -173,8 +174,8 @@ const PujaUserDetailsModal = ({
               position: "absolute",
               left: 0,
               top: 0,
-              width: 120,
-              height: 120,
+              width: 70,
+              height: 70,
               objectFit: "contain",
               pointerEvents: "none",
             }}
@@ -183,11 +184,11 @@ const PujaUserDetailsModal = ({
           {/* Avatar circle with edit badge */}
           <div
             style={{
-              width: 62,
-              height: 62,
+              width: 44,
+              height: 44,
               borderRadius: "50%",
               background: "#ede9fe",
-              margin: "0 auto 8px",
+              margin: "0 auto 6px",
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
@@ -195,9 +196,9 @@ const PujaUserDetailsModal = ({
             }}
           >
             {/* Person SVG icon */}
-            <svg
-              width="32"
-              height="32"
+          <svg
+              width="22"
+              height="22"
               viewBox="0 0 40 40"
               fill="none"
               xmlns="http://www.w3.org/2000/svg"
@@ -213,8 +214,8 @@ const PujaUserDetailsModal = ({
                 position: "absolute",
                 bottom: 1,
                 right: 1,
-                width: 19,
-                height: 19,
+                width: 14,
+                height: 14,
                 background: "#f59e0b",
                 borderRadius: "50%",
                 display: "flex",
@@ -244,7 +245,7 @@ const PujaUserDetailsModal = ({
           {/* Title */}
           <h3
             style={{
-              fontSize: 20,
+              fontSize: 17,
               fontWeight: 700,
               color: "#1a1a2e",
               margin: "0 0 2px",
@@ -253,7 +254,7 @@ const PujaUserDetailsModal = ({
             Update{" "}
             <span style={{ color: "#7c2d8e" }}>Details</span>
           </h3>
-          <p style={{ fontSize: 12.5, color: "#888", margin: 0 }}>
+          <p style={{ fontSize: 11, color: "#888", margin: 0 }}>
             Ensure your details are correct for the Sankalp
           </p>
 
@@ -264,9 +265,9 @@ const PujaUserDetailsModal = ({
               alignItems: "center",
               justifyContent: "center",
               gap: 10,
-              margin: "10px 0 2px",
+              margin: "6px 0 0",
               color: "#c97a2c",
-              fontSize: 18,
+              fontSize: 14,
             }}
           >
             <span
@@ -275,7 +276,7 @@ const PujaUserDetailsModal = ({
                 height: 1.5,
                 background:
                   "linear-gradient(to right, transparent, #e0b97a, transparent)",
-                maxWidth: 90,
+                maxWidth: 60,
                 display: "block",
               }}
             />
@@ -286,7 +287,7 @@ const PujaUserDetailsModal = ({
                 height: 1.5,
                 background:
                   "linear-gradient(to right, transparent, #e0b97a, transparent)",
-                maxWidth: 90,
+                maxWidth: 60,
                 display: "block",
               }}
             />
@@ -294,17 +295,17 @@ const PujaUserDetailsModal = ({
         </div>
 
         {/* ── Body ── */}
-        <div style={{ padding: "12px 18px 16px" }}>
+        <div style={{ padding: "8px 16px 8px" }}>
           <form onSubmit={handleSubmit} style={{ textAlign: "left" }}>
 
             {/* ── Full Name ── */}
-            <div style={{ marginBottom: 10 }}>
+            <div style={{ marginBottom: 6 }}>
               <div
                 style={{
                   display: "flex",
                   justifyContent: "space-between",
                   alignItems: "center",
-                  marginBottom: 8,
+                  marginBottom: 4,
                 }}
               >
                 {/* Left Side */}
@@ -320,8 +321,8 @@ const PujaUserDetailsModal = ({
                 >
                   <div
                     style={{
-                      width: 26,
-                      height: 26,
+                      width: 22,
+                      height: 22,
                       borderRadius: "50%",
                       background: "#ede9fe",
                       display: "flex",
@@ -330,8 +331,8 @@ const PujaUserDetailsModal = ({
                     }}
                   >
                     <svg
-                      width="13"
-                      height="13"
+                      width="11"
+                      height="11"
                       viewBox="0 0 24 24"
                       fill="none"
                       stroke="#7c3aed"
@@ -351,8 +352,8 @@ const PujaUserDetailsModal = ({
                     type="button"
                     onClick={handleEditClick}
                     style={{
-                      width: 36,
-                      height: 36,
+                      width: 30,
+                      height: 30,
                       borderRadius: "50%",
                       border: "1px solid #ddd6fe",
                       background: showUserList ? "#ede9fe" : "#f5f3ff",
@@ -399,7 +400,7 @@ const PujaUserDetailsModal = ({
                     }
                     style={{
                       flex: 1,
-                      padding: "10px 12px",
+                      padding: "8px 10px",
                       fontSize: 14,
                       color: "#1a1a2e",
                       border: "none",
@@ -422,7 +423,7 @@ const PujaUserDetailsModal = ({
                       borderRadius: 12,
                       boxShadow: "0 12px 30px rgba(0,0,0,0.14)",
                       zIndex: 20,
-                      maxHeight: 220,
+                      maxHeight: 160,
                       overflowY: "auto",
                     }}
                   >
@@ -519,12 +520,12 @@ const PujaUserDetailsModal = ({
             <div
               style={{
                 borderTop: "1.5px dashed #e9e2fb",
-                margin: "2px 0 10px",
+                margin: "2px 0 6px",
               }}
             />
 
             {/* ── Phone Number ── */}
-            <div style={{ marginBottom: 10 }}>
+            <div style={{ marginBottom: 6 }}>
               <div
                 style={{
                   display: "flex",
@@ -533,13 +534,13 @@ const PujaUserDetailsModal = ({
                   fontSize: 12,
                   fontWeight: 700,
                   color: "#1a1a2e",
-                  marginBottom: 6,
+                  marginBottom: 4,
                 }}
               >
                 <div
                   style={{
-                    width: 26,
-                    height: 26,
+                    width: 22,
+                    height: 22,
                     borderRadius: "50%",
                     background: "#ede9fe",
                     display: "flex",
@@ -549,8 +550,8 @@ const PujaUserDetailsModal = ({
                   aria-hidden="true"
                 >
                   <svg
-                    width="13"
-                    height="13"
+                    width="11"
+                    height="11"
                     viewBox="0 0 24 24"
                     fill="none"
                     stroke="#7c3aed"
@@ -579,7 +580,7 @@ const PujaUserDetailsModal = ({
                   style={{
                     background: "#fff",
                     borderRight: "1.5px solid #e5e7eb",
-                    padding: "10px 10px",
+                    padding: "8px 10px",
                     fontSize: 13,
                     fontWeight: 600,
                     color: "#6d28d9",
@@ -617,7 +618,7 @@ const PujaUserDetailsModal = ({
                   }
                   style={{
                     flex: 1,
-                    padding: "10px 12px",
+                    padding: "8px 10px",
                     fontSize: 14,
                     color: "#1a1a2e",
                     border: "none",
@@ -633,19 +634,19 @@ const PujaUserDetailsModal = ({
               style={{
                 display: "flex",
                 alignItems: "center",
-                gap: 10,
+                gap: 8,
                 background: "#f4f1ff",
                 borderRadius: 10,
                 border: "1.5px solid #ddd6fe",
-                padding: "9px 12px",
-                marginBottom: 12,
+                padding: "7px 10px",
+                marginBottom: 8,
                 marginTop: 2,
               }}
             >
               <div
                 style={{
-                  width: 28,
-                  height: 28,
+                  width: 22,
+                  height: 22,
                   background: "#6d28d9",
                   borderRadius: "50%",
                   display: "flex",
@@ -656,8 +657,8 @@ const PujaUserDetailsModal = ({
                 aria-hidden="true"
               >
                 <svg
-                  width="13"
-                  height="13"
+                  width="11"
+                  height="11"
                   viewBox="0 0 24 24"
                   fill="none"
                   stroke="#fff"
@@ -669,13 +670,13 @@ const PujaUserDetailsModal = ({
                   <path d="M7 11V7a5 5 0 0110 0v4" />
                 </svg>
               </div>
-              <p style={{ margin: 0, color: "#444", fontSize: 12, lineHeight: 1.4 }}>
+              <p style={{ margin: 0, color: "#444", fontSize: 11, lineHeight: 1.3 }}>
                 We will use this number to contact you on WhatsApp
               </p>
             </div>
 
             {/* ── Submit row with diya + button + lotus ── */}
-            <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
               {/* Diya image — left side */}
               <img
                 src="/assets/img/pooja_fill/diyaform.png"
@@ -683,8 +684,8 @@ const PujaUserDetailsModal = ({
                 aria-hidden="true"
                 onError={(e) => (e.currentTarget.style.display = "none")}
                 style={{
-                  width: 42,
-                  height: 42,
+                  width: 30,
+                  height: 30,
                   objectFit: "contain",
                   flexShrink: 0,
                 }}
@@ -695,12 +696,12 @@ const PujaUserDetailsModal = ({
                 type="submit"
                 style={{
                   flex: 1,
-                  padding: "12px",
+                  padding: "10px",
                   background: "linear-gradient(90deg, #5b21b6 0%, #7c3aed 100%)",
                   color: "#fff",
                   border: "none",
                   borderRadius: 12,
-                  fontSize: 15,
+                  fontSize: 14,
                   fontWeight: 700,
                   cursor: "pointer",
                   display: "flex",
@@ -735,8 +736,8 @@ const PujaUserDetailsModal = ({
                 aria-hidden="true"
                 onError={(e) => (e.currentTarget.style.display = "none")}
                 style={{
-                  width: 79,
-                  height: 52,
+                  width: 56,
+                  height: 36,
                   objectFit: "contain",
                   flexShrink: 0,
                   borderRadius: "50%",

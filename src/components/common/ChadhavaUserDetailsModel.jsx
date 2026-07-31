@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useStorage } from "../../context/StorageContext";
-import "../sections/Userdetailsmodal.css";
+import "./ChadhavaUserDetailsModal.css";
 
 const UserDetailsModal = ({
   isOpen,
@@ -75,43 +75,43 @@ const UserDetailsModal = ({
   };
 
   return (
-    <div className="udm-overlay" onClick={onClose}>
-      <div className="udm-card" onClick={(e) => e.stopPropagation()}>
+    <div className="cudm-overlay" onClick={onClose}>
+      <div className="cudm-card" onClick={(e) => e.stopPropagation()}>
         {/* Header art strip */}
-        <div className="udm-header">
+        <div className="cudm-header">
           <img
-            className="udm-header-img"
+            className="cudm-header-img"
             src="/assets/img/chadawa_detail/kalashchadawa.png"
             alt=""
             onError={(e) => { e.target.style.display = "none"; }}
           />
-          <div className="udm-header-pattern" />
-          <div className="udm-handle" />
-          <button className="udm-close" onClick={onClose} aria-label="Close">
+          <div className="cudm-header-pattern" />
+          <div className="cudm-handle" />
+          <button className="cudm-close" onClick={onClose} aria-label="Close">
             &times;
           </button>
         </div>
 
         {/* Floating avatar straddling the header */}
-        <div className="udm-avatar">
+        <div className="cudm-avatar">
           <i className="fas fa-user"></i>
         </div>
 
-        <div className="udm-body">
-          <h3 className="udm-title">Update Details</h3>
-          <div className="udm-subtitle-row">
-            <span className="udm-line" />
+        <div className="cudm-body">
+          <h3 className="cudm-title">Update Details</h3>
+          <div className="cudm-subtitle-row">
+            <span className="cudm-line" />
             <i className="fas fa-spa"></i>
-            <span className="udm-line" />
+            <span className="cudm-line" />
           </div>
-          <p className="udm-subtitle">
+          <p className="cudm-subtitle">
             Ensure your details are correct for the Sankalp
           </p>
 
-          <form onSubmit={handleSubmit} className="udm-form">
-            <div className="udm-field">
+          <form onSubmit={handleSubmit} className="cudm-form">
+            <div className="cudm-field">
               <label>
-                <span className="udm-field-icon">
+                <span className="cudm-field-icon">
                   <i className="fas fa-user"></i>
                 </span>
                 Full Name
@@ -127,15 +127,15 @@ const UserDetailsModal = ({
               />
             </div>
 
-            <div className="udm-field">
+            <div className="cudm-field">
               <label>
-                <span className="udm-field-icon">
+                <span className="cudm-field-icon">
                   <i className="fab fa-whatsapp"></i>
                 </span>
                 WhatsApp Number
               </label>
-              <div className="udm-phone-row">
-                <span className="udm-country-code">
+              <div className="cudm-phone-row">
+                <span className="cudm-country-code">
                   +91 <i className="fas fa-chevron-down"></i>
                 </span>
                 <input
@@ -151,14 +151,14 @@ const UserDetailsModal = ({
               </div>
             </div>
 
-            <div className="udm-secure-note">
-              <span className="udm-secure-icon">
+            <div className="cudm-secure-note">
+              <span className="cudm-secure-icon">
                 <i className="fas fa-check"></i>
               </span>
               Your information is secure with us and will never be shared.
             </div>
 
-            <button type="submit" className="udm-submit-btn">
+            <button type="submit" className="cudm-submit-btn">
               Save & Continue <i className="fas fa-arrow-right"></i>
             </button>
           </form>

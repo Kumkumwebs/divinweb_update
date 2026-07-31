@@ -5,6 +5,27 @@
   color: #222;
   font-size: 14px;
   min-height: 100vh;
+  /* Guard against any single unconstrained element (an <img> with no
+     max-width, a fixed-width box, etc.) forcing the whole page to
+     scroll sideways on mobile. This doesn't fix the source element,
+     it just stops it from dragging the page along with it. */
+  overflow-x: hidden;
+  width: 100%;
+}
+
+/* Any <img> anywhere in this page defaults to respecting its
+   container's width unless a rule further down explicitly overrides
+   it (all your sized icons/avatars already do, via width/height). */
+.prb-root img {
+  max-width: 100%;
+  height: auto;
+}
+
+/* Padding/border should never add to an element's declared width —
+   this is what usually causes a box to silently overflow its parent
+   by a few extra pixels on narrow screens. */
+.prb-root, .prb-root *, .prb-root *::before, .prb-root *::after {
+  box-sizing: border-box;
 }
 
 /* ── NAVBAR ── */
@@ -155,7 +176,7 @@
   border: none;
   padding: 14px 28px;
   border-radius: 50px;
-  font-size: 15px;
+  font-size: 14px;
   font-weight: 700;
   cursor: pointer;
   display: flex;
@@ -328,8 +349,8 @@
   gap: 20px;
 }
 .prb-puja-img {
-  width: 350px;
-  height: 165px;
+  /* width: 350px; */
+  /* height: 165px; */
   border-radius: 12px;
   object-fit: cover;
   flex-shrink: 0;
@@ -546,6 +567,12 @@
   justify-content: center;
   font-size: 18px;
   flex-shrink: 0;
+}
+
+@media screen and (max-width:768px) {
+  .prb-delivery-card{
+    display: grid ;
+  }
 }
 .prb-icon-orange { background: #fff3e0; color: #f5a623; }
 .prb-icon-purple { background: #f3e8ff; color: #7c2d8e; }
@@ -867,14 +894,27 @@
   justify-content: center;
 }
 
-/* ── RESPONSIVE ── */
+/* ══════════════════════════════════════════════════
+   RESPONSIVE
+   ══════════════════════════════════════════════════ */
+
+/* ── Tablet / small laptop (≤960px) ── */
 @media (max-width: 960px) {
   .prb-page-wrap { grid-template-columns: 1fr; }
   .prb-included-grid { grid-template-columns: repeat(4, 1fr); }
   .prb-trust-grid { grid-template-columns: repeat(3, 1fr); }
   .prb-hero-deco { display: none; }
   .prb-nav-links { display: none; }
+
+  /* was previously unhandled at this width: hero + card padding start
+     shrinking early so nothing feels cramped before the 600px step */
+  .prb-hero-inner { flex-wrap: wrap; gap: 16px; }
+  .prb-card { padding: 26px; }
+  .prb-help-section { padding: 20px 22px; }
+  .prb-order-card { margin: 0; }
 }
+
+/* ── Phones (≤600px) ── */
 @media (max-width: 600px) {
   .prb-puja-grid { flex-direction: column; }
   .prb-puja-img { width: 100%; height: 200px; }
@@ -882,4 +922,166 @@
   .prb-included-grid { grid-template-columns: repeat(3, 1fr); }
   .prb-trust-grid { grid-template-columns: repeat(2, 1fr); }
   .prb-delivery-row { flex-direction: column; }
+
+  /* nav */
+  .prb-nav-inner { padding: 0 14px; gap: 12px; }
+  .prb-logo { font-size: 18px; }
+  .prb-nav-right { gap: 10px; }
+  .prb-avatar { width: 30px; height: 30px; }
+
+  /* hero — stack breadcrumb/title above the proceed button */
+  .prb-hero { padding: 18px 0; }
+  .prb-hero-inner { flex-direction: column; align-items: flex-start; padding: 0 16px; }
+  .prb-hero-sub { font-size: 12px; }
+  .prb-proceed-btn { width: 100%; justify-content: center; padding: 12px 20px; }
+
+  /* page layout */
+  .prb-page-wrap { padding: 0 12px; margin: 16px auto; gap: 14px; }
+  .prb-left, .prb-right { gap: 14px; }
+
+  /* cards */
+  .prb-card { padding: 16px; border-radius: 16px; }
+  .prb-help-section { padding: 16px; border-radius: 14px; }
+  .prb-help-left { min-width: 0; width: 100%; }
+  .prb-help-main-icon { width: 46px; height: 46px; font-size: 20px; }
+  .prb-help-right { width: 100%; gap: 16px; }
+  .prb-help-item { min-width: 0; flex: 1 1 45%; }
+
+  /* devotee row — edit button drops to its own full-width row */
+  .prb-devotee-cell { min-width: 100%; }
+  .prb-edit-btn { margin-left: 0; width: 100%; justify-content: center; }
+
+  /* order / coupon / why cards */
+  .prb-order-body { padding: 16px; }
+  .prb-coupon-card, .prb-why-card { margin: 14px; padding: 16px; }
+  .prb-total-val { font-size: 20px; }
+  .prb-pay-btn { padding: 13px; font-size: 15px; }
+
+  /* payment footer — stack and center on narrow screens */
+  .prb-pay-footer-inner { flex-direction: column; align-items: flex-start; padding: 0 16px; }
+  .prb-pay-icons { width: 100%; }
+}
+
+/* ── Small / narrow phones (≤400px) ── */
+@media (max-width: 400px) {
+  .prb-hero-title { font-size: 18px; }
+  .prb-meta-grid { grid-template-columns: 1fr; }
+  .prb-included-grid { grid-template-columns: repeat(2, 1fr); }
+  .prb-trust-grid { grid-template-columns: repeat(2, 1fr); }
+  .prb-help-item { flex: 1 1 100%; }
+  .prb-card { padding: 12px; }
+  .prb-total-val { font-size: 18px; }
+
+  /* payment icon row wraps tightly at this width — shrink the pills
+     so 4-5 of them don't force horizontal scroll */
+  .prb-pi { padding: 5px 9px; font-size: 10.5px; }
+  .prb-pi-shield { width: 30px; height: 30px; }
+}
+@media (max-width: 600px) {
+  /* ── prb-puja-info: tighten typography + spacing for mobile ── */
+  .prb-puja-info {
+    width: 100%;
+  }
+  .prb-puja-name {
+    font-size: 12px;
+    margin-bottom: 3px;
+  }
+  .prb-puja-location {
+    font-size: 9px;
+    margin-bottom: 8px;
+  }
+  .prb-purpose-label {
+    font-size: 9.5px;
+  }
+  .prb-purpose-box {
+    padding: 7px 7px 6px 6px;
+    font-size: 8px;
+    margin-bottom: 8px;
+    margin-right: 8px;
+  }
+  .prb-meta-grid {
+    gap: 6px 10px;
+    margin-bottom: 10px;
+  }
+  .prb-meta-label {
+    font-size: 10px;
+  }
+  .prb-meta-val {
+    font-size: 12px;
+  }
+  .prb-avail-badge {
+    font-size: 11px;
+    padding: 5px 12px;
+    white-space: normal;   /* lets "Limited Availability – Final Day..." wrap instead of overflowing */
+  }
+}
+
+@media (max-width: 960px) {
+  /* .prb-page-wrap already switches to a single column here, so
+     .prb-right just needs to behave like a normal full-width block
+     stacked below .prb-left instead of a fixed 360px sidebar */
+  .prb-right {
+    width: 100%;
+    gap: 16px;
+  }
+}
+
+@media (max-width: 600px) {
+  .prb-right {
+    gap: 14px;
+  }
+}
+
+/* Narrowest phones — meta grid drops to a single column */
+@media (max-width: 400px) {
+  .prb-meta-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.prb-mobile-cta-wrap { display: none; }
+
+@media (max-width: 767px) {
+  /* hero's inline button gets replaced by the fixed bottom bar below —
+     it would just scroll out of reach otherwise */
+  .prb-proceed-btn { display: none; }
+
+  .prb-mobile-cta-wrap {
+    display: flex;
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 998;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 12px 16px calc(12px + env(safe-area-inset-bottom, 0px));
+    background: #fff;
+    box-shadow: 0 -4px 20px rgba(0,0,0,0.1);
+  }
+  .prb-mobile-cta-total-label { font-size: 11px; color: #888; }
+  .prb-mobile-cta-total-val { font-size: 18px; font-weight: 800; color: #1a1a2e; }
+  .prb-mobile-cta-btn {
+    flex-shrink: 0;
+    background: linear-gradient(135deg, #f5a623, #e08a00);
+    color: #fff;
+    border: none;
+    border-radius: 999px;
+    padding: 12px 22px;
+    font-weight: 700;
+    font-size: 14px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    cursor: pointer;
+  }
+
+  /* keeps the fixed bar from covering the footer/help section content */
+  .prb-root { padding-bottom: 78px; }
+} 
+@media (max-width: 767px) {
+  /* the order-summary card's own button is now redundant — the fixed
+     bottom bar covers this same action everywhere on mobile */
+  .prb-pay-btn { display: none; }
 }

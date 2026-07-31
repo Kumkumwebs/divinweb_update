@@ -7,6 +7,9 @@ import Footer from "../components/layout/Footer";
 import ScrollToTop from "../components/common/ScrollToTop";
 import OrderConfirmationModal from "../components/common/pujaCnfirmDetailsModel";
 import { useStorage } from "../context/StorageContext";
+import SideMenu from "../components/layout/SideMenu";
+import PopupSearch from "../components/layout/PopupSearch";
+import MobileMenu from "../components/layout/MobileMenu";
 
 /* ── Razorpay loader ── */
 const loadRazorpay = () =>
@@ -213,8 +216,10 @@ const pujaMasterData = state?.pujaData;
 	const [isConfirmModalOpen, setIsConfirmModalOpen] = useState(false);
 	const [bookingStatus, setBookingStatus] = useState(null);
 	const [walletBalance, setWalletBalance] = useState(0);
-	const [aashirwadOption, setAashirwadOption] = useState("Yes");
-
+const [aashirwadOption, setAashirwadOption] = useState("Yes");
+	const [showSideMenu, setShowSideMenu] = useState(false);
+	const [showMobileMenu, setShowMobileMenu] = useState(false);
+	const [showSearch, setShowSearch] = useState(false);
 	const [formData, setFormData] = useState({
 		whatsapp: "",
 		participantName: "",
@@ -404,7 +409,14 @@ const pujaMasterData = state?.pujaData;
 	if (cart === null && cartError) {
 		return (
 			<div className="main-wrapper bg-light">
-				<Header />
+				<SideMenu isOpen={showSideMenu} onClose={() => setShowSideMenu(false)} />
+				<PopupSearch isOpen={showSearch} onClose={() => setShowSearch(false)} />
+				<MobileMenu isOpen={showMobileMenu} onClose={() => setShowMobileMenu(false)} />
+				<Header
+					onMenuToggle={() => setShowMobileMenu(true)}
+					onSideMenuToggle={() => setShowSideMenu(true)}
+					onSearchToggle={() => setShowSearch(true)}
+				/>
 				<div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", minHeight: "60vh", gap: 16, textAlign: "center", padding: 24 }}>
 					<i className="fas fa-shopping-cart" style={{ fontSize: 48, color: "#d1d5db" }} />
 					<h4 style={{ color: "#111827" }}>Your cart is empty</h4>
@@ -421,7 +433,14 @@ const pujaMasterData = state?.pujaData;
 	if (cartError) {
 		return (
 			<div className="main-wrapper bg-light">
-				<Header />
+				<SideMenu isOpen={showSideMenu} onClose={() => setShowSideMenu(false)} />
+				<PopupSearch isOpen={showSearch} onClose={() => setShowSearch(false)} />
+				<MobileMenu isOpen={showMobileMenu} onClose={() => setShowMobileMenu(false)} />
+				<Header
+					onMenuToggle={() => setShowMobileMenu(true)}
+					onSideMenuToggle={() => setShowSideMenu(true)}
+					onSearchToggle={() => setShowSearch(true)}
+				/>
 				<div style={{
 					display: "flex", flexDirection: "column",
 					alignItems: "center", justifyContent: "center",
@@ -841,9 +860,16 @@ const pujaMasterData = state?.pujaData;
         }
       `}</style>
 
-			<div className="pff-root">
+				<div className="pff-root">
 				<ScrollToTop />
-				<Header />
+				<SideMenu isOpen={showSideMenu} onClose={() => setShowSideMenu(false)} />
+				<PopupSearch isOpen={showSearch} onClose={() => setShowSearch(false)} />
+				<MobileMenu isOpen={showMobileMenu} onClose={() => setShowMobileMenu(false)} />
+				<Header
+					onMenuToggle={() => setShowMobileMenu(true)}
+					onSideMenuToggle={() => setShowSideMenu(true)}
+					onSearchToggle={() => setShowSearch(true)}
+				/>
 
 				{/* ══ HERO BANNER ══ */}
 				<div className="pff-hero">
