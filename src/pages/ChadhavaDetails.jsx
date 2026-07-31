@@ -720,6 +720,30 @@ return (
             gap: 8px;
             cursor: pointer;
           }
+          .cd-addon-sub {
+            display: -webkit-box !important;
+            -webkit-line-clamp: 3 !important;
+            -webkit-box-orient: vertical !important;
+            overflow: hidden !important;
+            text-overflow: ellipsis !important;
+          }
+          .cd-rev-card {
+            display: flex !important;
+            flex-direction: row !important;
+            align-items: stretch !important;
+            gap: 12px !important;
+          }
+          .cd-rev-card-body {
+            flex: 1 1 auto !important;
+            min-width: 0 !important;
+          }
+          .cd-rev-img {
+            width: 100px !important;
+            height: 130px !important;
+            flex-shrink: 0 !important;
+            object-fit: cover !important;
+            border-radius: 12px !important;
+          }
         }
       `}</style>
 

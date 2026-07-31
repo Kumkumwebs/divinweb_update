@@ -379,7 +379,7 @@ const [aashirwadOption, setAashirwadOption] = useState("Yes");
 					const razorpayLoaded = await loadRazorpay();
 					if (!razorpayLoaded) { alert("Razorpay SDK failed to load. Please try again."); setBookingStatus(null); return; }
 					const options = {
-						key: "rzp_live_S1mko1CFcilo1s", amount: response.amount, currency: "INR", name: "DivinIQ",
+						key: "rzp_test_TJfZRU2xcY3vGX", amount: response.amount, currency: "INR", name: "DivinIQ",
 						description: "Puja Booking Payment", order_id: response.orderId,
 						handler: function () { startPolling(response.orderId); },
 						prefill: { name: formData.participantName, contact: formData.whatsapp },
@@ -816,7 +816,7 @@ const [aashirwadOption, setAashirwadOption] = useState("Yes");
         }
         /* ── Aashirwad grid ── */
         @media (max-width: 640px) {
-          .pff-aashirwad-grid { grid-template-columns: 1fr; }
+          .pff-aashirwad-grid { grid-template-columns: 1fr 1fr; gap: 8px; }
         }
         @media (max-width: 600px) {
           .pff-aashirwad-img-area { height: 110px; }
@@ -835,8 +835,21 @@ const [aashirwadOption, setAashirwadOption] = useState("Yes");
         @media (max-width: 600px) {
           .pff-submit-btn { padding: 15px; font-size: 15px; }
         }
-
-        /* ── Trust strip ── */
+        @media (max-width: 640px) {
+          .pff-submit-wrap {
+            position: fixed;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: #fff;
+            padding: 12px 16px calc(12px + env(safe-area-inset-bottom));
+            box-shadow: 0 -6px 20px rgba(0,0,0,0.1);
+            z-index: 999;
+          }
+          .pff-submit-wrap .pff-secure-note { display: none; }
+          .pff-body { padding-bottom: 90px; }
+        }
+   
        /* ── Trust strip ── */
         @media (max-width: 420px) {
           .pff-trust-strip { gap: 14px; }
@@ -1145,14 +1158,16 @@ const [aashirwadOption, setAashirwadOption] = useState("Yes");
 							</div>
 
 							{/* ── SUBMIT ── */}
-							<button type="submit" disabled={isLoading} className="pff-submit-btn">
-								<i className="fas fa-lock" style={{ fontSize: 16 }} />
-								{isLoading ? "Updating Sankalp..." : "Confirm & Proceed To Payment"}
-								{!isLoading && <i className="fas fa-arrow-right" style={{ fontSize: 14 }} />}
-							</button>
-							<div className="pff-secure-note">
-								<i className="fas fa-shield-alt" />
-								100% Secure &amp; Safe Payments
+							<div className="pff-submit-wrap">
+								<button type="submit" disabled={isLoading} className="pff-submit-btn">
+									<i className="fas fa-lock" style={{ fontSize: 16 }} />
+									{isLoading ? "Updating Sankalp..." : "Confirm & Proceed To Payment"}
+									{!isLoading && <i className="fas fa-arrow-right" style={{ fontSize: 14 }} />}
+								</button>
+								<div className="pff-secure-note">
+									<i className="fas fa-shield-alt" />
+									100% Secure &amp; Safe Payments
+								</div>
 							</div>
 						</form>
 					</div>

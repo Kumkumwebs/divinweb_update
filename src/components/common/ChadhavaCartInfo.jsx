@@ -194,7 +194,7 @@ const ChadhavaCartPage = () => {
 						return;
 					}
 					const options = {
-						key: "rzp_live_S1mko1CFcilo1s", // replace with your Razorpay Key
+						key: "rzp_test_TJfZRU2xcY3vGX", // Razorpay test key
 						amount: res.amount,
 						currency: "INR",
 						name: "DivinIQ",
