@@ -552,9 +552,27 @@
 }
 
 .dq-chadhava-grid {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 18px;
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+    gap: 18px;
+    align-items: start;
+}
+
+.dq-chadhava-item {
+    width: 100%;
+}
+
+.dq-chadhava-img-wrap {
+    width: 100%;
+    overflow: hidden;
+    border-radius: 10px;
+}
+
+.dq-chadhava-img-wrap img {
+    width: 70%;
+    height: 220px;
+    object-fit: cover;
+    display: block;
 }
 
 @media (max-width: 900px) {
@@ -578,7 +596,9 @@
 
 .dq-chadhava-item img {
   width: 100% !important;
-  height: auto !important;
+  height: 130px !important;
+  max-width: 100% !important;
+  max-height: 100% !important;
   aspect-ratio: 1/1;
   object-fit: cover;
   object-position: center;
