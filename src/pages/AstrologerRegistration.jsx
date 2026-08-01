@@ -1151,7 +1151,7 @@ const AstrologerRegistration = () => {
 
         @media (max-width: 860px) {
           .pp-app-overlay { position: static; background: linear-gradient(135deg, #6E2A22, #2A0C10); }
-          .pp-app-overlay-inner { padding: 24px; flex-wrap: wrap; justify-content: center; text-align: center; }
+          .pp-app-overlay-inner { padding: 24px; flex-wrap: wrap; justify-content: center; text-align: center; margin: auto;}
         }
 
         /* ── Wizard container ── */

@@ -229,7 +229,7 @@ button{cursor:pointer;font-family:inherit}
 @media(max-width:480px){
   .cd-hero-mobile-slide{
     height:260px;
-    min-height:260px;
+    min-height:155px;
     max-height:260px;
   }
 }

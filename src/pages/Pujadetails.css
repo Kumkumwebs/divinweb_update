@@ -37,9 +37,10 @@
     display:none;
 }
 @media(max-width:860px){
-  .pd-hero-mobile-carousel{
+   .pd-hero-mobile-carousel{
     display:block;
     position:relative;
+    margin-bottom:16px;   /* ← added: gap between carousel and hero content below */
   }
   .pd-hero-mobile-track{
     display:flex;
@@ -52,7 +53,7 @@
   .pd-hero-mobile-slide{
     width:100%;
     flex:0 0 100%;
-    height:240px;
+    height:190px!important;
     object-fit:cover;
     scroll-snap-align:start;
     background:#f5ede0;
@@ -391,7 +392,6 @@
   display: flex;
   align-items: center;
   gap: 10px;
-  flex-wrap: wrap;
   justify-content: center;
 }
 
