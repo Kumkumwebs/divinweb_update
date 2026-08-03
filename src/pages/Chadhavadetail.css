@@ -54,7 +54,7 @@ button{cursor:pointer;font-family:inherit}
 .cd-hero-body{
     position:relative;
     z-index:5;
-    padding:60px 1px 103px 482px;
+    padding:60px 40px 40px 400px;
     display:flex;
     flex-direction:column;
     align-items:flex-start;
@@ -109,7 +109,7 @@ button{cursor:pointer;font-family:inherit}
     justify-content:flex-start;
     align-items:flex-start;
     width:100%;
-    margin-left:0;
+    margin-left:-250px;
     padding-left:0;
     position:relative;
     z-index:6;

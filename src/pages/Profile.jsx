@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { useStorage } from "../context/StorageContext";
 import apiService from "../services/apiServices";
@@ -15,6 +15,24 @@ const HERO_BANNER_IMAGE = "/assets/img/images/profile-hero-banner.jpeg";
 // on the server, so those fields were dropped from this page.
 const GET_PROFILE_URL = "https://admin.diviniq.in/user_api/get_profile";
 const UPDATE_PROFILE_URL = "https://admin.diviniq.in/user_api/profile_update";
+
+// Generic file-upload endpoint used elsewhere in the app (chat images, etc.)
+// — used here for the profile photo. It returns a hosted URL string in
+// `results`. This URL is NOT sent to profile_update (the backend rejects
+// the whole update when it contains a field outside its accepted set) —
+// it's only cached locally, see AVATAR_CACHE_KEY below.
+const UPLOAD_IMAGE_URL = "https://admin.diviniq.in/user_api/upload_a_file";
+
+// The backend has no real support for storing a profile photo, so the
+// uploaded photo URL is cached in localStorage, purely so it survives a
+// page refresh in this browser. It will NOT sync across devices/browsers
+// until the backend adds real support for this field.
+// Fixed, unconditional key — deliberately NOT derived from any field that
+// could differ slightly between when the photo is cached and when it's
+// read back (which was silently breaking the lookup). This page only
+// ever shows one logged-in user's own profile in this browser, so a
+// single constant key is safe.
+const AVATAR_CACHE_KEY = "pp_profile_photo";
 
 // Read-only fields — not part of profile_update, just displayed.
 const PHONE_FIELD = { key: "number", label: "Phone Number", icon: "phone" };
@@ -56,6 +74,7 @@ const EMPTY_PROFILE = {
   number: "",
   country_code: "91",
   referral_code: "",
+  profile_img: "",
 };
 
 const ICONS = {
@@ -168,6 +187,12 @@ const ICONS = {
       <line x1="21" y1="12" x2="9" y2="12" />
     </svg>
   ),
+  camera: (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z" />
+      <circle cx="12" cy="13" r="4" />
+    </svg>
+  ),
 };
 
 export default function ProfilePage() {
@@ -184,6 +209,11 @@ export default function ProfilePage() {
   const [errorMsg, setErrorMsg] = useState("");
   const [successMsg, setSuccessMsg] = useState("");
 
+  // ── profile photo upload state ─────────────────────────────────────
+  const avatarInputRef = useRef(null);
+  const [avatarPreview, setAvatarPreview] = useState(null);
+  const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
+
   // Fetch profile — calls GET /user_api/get_profile directly. Token comes
   // from sessionStorage via apiService.getBearer (same as the rest of the
   // project's services). Reusable so we can re-sync after every save too.
@@ -199,6 +229,13 @@ export default function ProfilePage() {
         // that's actually compatible with <input type="time">.
         const tob24 = (response.tob || "").slice(0, 5);
 
+        let cachedPhoto = "";
+        try {
+          cachedPhoto = localStorage.getItem(AVATAR_CACHE_KEY) || "";
+        } catch (e) {
+          /* localStorage unavailable — ignore */
+        }
+
         setValues({
           name: web.name || "",
           email: web.email || "",
@@ -210,6 +247,7 @@ export default function ProfilePage() {
           number: web.number || "",
           country_code: web.country_code || "91",
           referral_code: web.referral_code || "",
+          profile_img: web.profile_img || cachedPhoto,
         });
         return true;
       }
@@ -245,6 +283,11 @@ export default function ProfilePage() {
   // tob is sent as the raw 24h "HH:MM" value from the time input — the
   // backend's convertTime12to24() passes 24h strings through unchanged
   // when there's no AM/PM modifier, so no extra conversion is needed.
+  // IMPORTANT: do NOT add extra keys (e.g. profile_img) to this body —
+  // the backend rejects/ignores the whole request when it contains a
+  // field outside this exact set, which silently breaks saving of every
+  // field, not just the unknown one. The profile photo is handled
+  // separately (client-side cache), never sent here.
   const persistProfile = async (profileData) => {
     setIsSaving(true);
     setErrorMsg("");
@@ -275,10 +318,12 @@ export default function ProfilePage() {
         return true;
       }
 
+      console.error("profile_update rejected:", response);
       setErrorMsg(response?.message || "Failed to update profile");
       return false;
     } catch (err) {
-      setErrorMsg("Failed to update profile");
+      console.error("profile_update error:", err?.response?.data || err);
+      setErrorMsg(err?.response?.data?.message || "Failed to update profile");
       return false;
     } finally {
       setIsSaving(false);
@@ -328,7 +373,12 @@ export default function ProfilePage() {
     let updated;
 
     if (isBulkEditing) {
-      updated = bulkDraft;
+      // profile_img is never an editable field in bulkDraft (it's only
+      // ever changed via the avatar uploader) — always carry forward the
+      // CURRENT value.profile_img rather than whatever bulkDraft was
+      // snapshotted with, otherwise uploading a photo while the bulk edit
+      // panel is open gets silently overwritten/erased on Save.
+      updated = { ...bulkDraft, profile_img: values.profile_img };
       setIsBulkEditing(false);
     } else {
       updated = { ...values, [editingKey]: fieldDraft };
@@ -338,6 +388,60 @@ export default function ProfilePage() {
 
     setValues(updated);
     await persistProfile(updated);
+  };
+
+  // ── profile photo upload ─────────────────────────────────────────
+  const openAvatarPicker = () => {
+    if (isUploadingAvatar) return;
+    avatarInputRef.current?.click();
+  };
+
+  const handleAvatarFileChange = async (e) => {
+    const file = e.target.files?.[0];
+    e.target.value = ""; // allow re-selecting the same file later
+
+    if (!file) return;
+
+    if (!file.type || !file.type.startsWith("image/")) {
+      setErrorMsg("Please select an image file");
+      return;
+    }
+
+    const localPreviewUrl = URL.createObjectURL(file);
+    setAvatarPreview(localPreviewUrl);
+    setIsUploadingAvatar(true);
+    setErrorMsg("");
+    setSuccessMsg("");
+
+    try {
+      const formData = new FormData();
+      formData.append("image", file);
+
+      const response = await apiService.postMultipart(UPLOAD_IMAGE_URL, formData);
+
+      if (response?.status && response?.results) {
+        const uploadedUrl =
+          typeof response.results === "string" ? response.results : response.results.url || "";
+
+        setValues((prev) => ({ ...prev, profile_img: uploadedUrl }));
+        try {
+          localStorage.setItem(AVATAR_CACHE_KEY, uploadedUrl);
+        } catch (e) {
+          /* localStorage unavailable — photo still shows for this session */
+        }
+        setSuccessMsg("Profile photo updated");
+      } else {
+        console.error("upload_a_file rejected:", response);
+        setErrorMsg(response?.message || "Failed to upload photo");
+      }
+    } catch (err) {
+      console.error("upload_a_file error:", err?.response?.data || err);
+      setErrorMsg(err?.response?.data?.message || "Failed to upload photo");
+    } finally {
+      setIsUploadingAvatar(false);
+      URL.revokeObjectURL(localPreviewUrl);
+      setAvatarPreview(null);
+    }
   };
 
   const displayValue = (f) => {
@@ -351,6 +455,7 @@ export default function ProfilePage() {
   };
 
   const initial = values.name ? values.name.trim().charAt(0).toUpperCase() : "U";
+  const avatarImageSrc = avatarPreview || values.profile_img;
 
   return (
     <div style={styles.page}>
@@ -408,6 +513,13 @@ export default function ProfilePage() {
           .pp-field-grid {
             grid-template-columns: 1fr;
           }
+        }
+        .pp-avatar-edit-btn {
+          transition: transform 0.18s ease, box-shadow 0.18s ease;
+        }
+        .pp-avatar-edit-btn:hover {
+          transform: scale(1.08);
+          box-shadow: 0 6px 16px rgba(194,24,91,0.3);
         }
       `}</style>
       <section style={styles.heroBanner}>
@@ -479,7 +591,34 @@ export default function ProfilePage() {
           )}
 
           <div style={styles.profileHead}>
-            <div style={styles.avatarCircle}>{initial}</div>
+            <div style={styles.avatarWrap}>
+              <div style={styles.avatarCircle}>
+                {avatarImageSrc ? (
+                  <img src={avatarImageSrc} alt="Profile" style={styles.avatarImg} />
+                ) : (
+                  initial
+                )}
+                {isUploadingAvatar && <div style={styles.avatarUploadOverlay}>...</div>}
+              </div>
+              <button
+                type="button"
+                className="pp-avatar-edit-btn"
+                style={styles.avatarEditBtn}
+                onClick={openAvatarPicker}
+                disabled={isUploadingAvatar}
+                aria-label="Upload profile photo"
+                title="Upload profile photo"
+              >
+                <span style={styles.iconXs2}>{ICONS.camera}</span>
+              </button>
+              <input
+                ref={avatarInputRef}
+                type="file"
+                accept="image/*"
+                style={{ display: "none" }}
+                onChange={handleAvatarFileChange}
+              />
+            </div>
             <div style={styles.profileName}>My Profile</div>
             <div style={styles.profileSub}>Your personal details and account information</div>
             <div style={styles.smallDivider} />
@@ -928,11 +1067,15 @@ const styles = {
     textAlign: "center",
   },
   profileHead: { textAlign: "center", paddingBottom: 14 },
+  avatarWrap: {
+    position: "relative",
+    width: 64,
+    margin: "0 auto 10px",
+  },
   avatarCircle: {
     width: 64,
     height: 64,
     borderRadius: "50%",
-    margin: "0 auto 10px",
     background: "linear-gradient(135deg,#f0a93b,#c2185b)",
     color: "#fff",
     fontSize: 26,
@@ -941,6 +1084,42 @@ const styles = {
     alignItems: "center",
     justifyContent: "center",
     boxShadow: "0 8px 20px rgba(194,24,91,0.25)",
+    overflow: "hidden",
+    position: "relative",
+  },
+  avatarImg: {
+    width: "100%",
+    height: "100%",
+    objectFit: "cover",
+    borderRadius: "50%",
+    display: "block",
+  },
+  avatarUploadOverlay: {
+    position: "absolute",
+    inset: 0,
+    background: "rgba(0,0,0,0.35)",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    color: "#fff",
+    fontSize: 12,
+    fontWeight: 600,
+  },
+  avatarEditBtn: {
+    position: "absolute",
+    bottom: -2,
+    right: -2,
+    width: 24,
+    height: 24,
+    borderRadius: "50%",
+    border: "2px solid #fff",
+    background: colors.pinkAccent,
+    color: "#fff",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    cursor: "pointer",
+    boxShadow: "0 2px 6px rgba(194,24,91,0.4)",
   },
   profileName: { fontSize: 20, fontWeight: 700, color: colors.ink },
   profileSub: { fontSize: 12.5, color: colors.muted, marginTop: 3 },
@@ -1097,4 +1276,5 @@ const styles = {
   iconSm: { width: 16, height: 16, display: "inline-flex" },
   iconSmall: { width: 13, height: 13, display: "inline-flex" },
   iconXs: { width: 13, height: 13, display: "inline-flex", color: "#b8aab1" },
+  iconXs2: { width: 12, height: 12, display: "inline-flex" },
 };

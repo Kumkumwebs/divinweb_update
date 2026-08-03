@@ -93,7 +93,7 @@ const ChadhavaSection = ({ chadhava }) => {
 							className="dq-chadhava-item"
 							key={item.id || item.name}
 						>
-							<div className="dq-chadhava-img-wrap">
+							<div className="dq-chadhava-img-wrap" style={{ position: "relative" }}>
 								<img
 									src={item.image}
 									alt={item.name}
@@ -101,6 +101,34 @@ const ChadhavaSection = ({ chadhava }) => {
 									onError={handleImgError}
 									style={{ width: "100%", aspectRatio: "1 / 1", objectFit: "cover", objectPosition: "center", display: "block" }}
 								/>
+								{/* Title overlaid on the banner's blank space (right side of
+								    the artwork) — mirrors the empty area every banner image
+								    already leaves for this. */}
+								<div
+									style={{
+										position: "absolute",
+										inset: 0,
+										display: "flex",
+										alignItems: "center",
+										justifyContent: "flex-end",
+										padding: "10px 14px",
+										pointerEvents: "none",
+									}}
+								>
+									<span
+										style={{
+											maxWidth: "58%",
+											textAlign: "right",
+											fontSize: 13.5,
+											fontWeight: 700,
+											lineHeight: 1.3,
+											color: "#5e1730",
+											textShadow: "0 1px 3px rgba(255,255,255,0.55)",
+										}}
+									>
+										{item.name}
+									</span>
+								</div>
 								<span className="dq-chadhava-price">
 									{item.price > 0 ? `₹${item.price}` : 'Free Seva'}
 								</span>
@@ -110,6 +138,9 @@ const ChadhavaSection = ({ chadhava }) => {
 								{item.temple && (
 									<small className="dq-chadhava-temple">{item.temple}</small>
 								)}
+								<div className="dq-chadhava-footer">
+									<a href={`/chadhava/${item.id}`} className="dq-btn dq-btn-sm">Book Now</a>
+								</div>
 							</div>
 						</a>
 					))}
