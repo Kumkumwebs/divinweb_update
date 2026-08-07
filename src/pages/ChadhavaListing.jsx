@@ -81,7 +81,7 @@ const ChadhavaCard = ({ item, index, onView }) => {
    {/* Image */}
       <div className="ch-img-wrap">
         {(() => {
-          const imgSrc = item.chadhavaImage || item.image || item.pimage;
+          const imgSrc = item.webImage || item.chadhavaImage || item.image || item.pimage;
           return imgSrc && !imgErr
             ? <img src={imgSrc} alt={item.title || item.name} onError={()=>setImgErr(true)} />
             : <div className="ch-img-placeholder"><i className="fas fa-om" /></div>;

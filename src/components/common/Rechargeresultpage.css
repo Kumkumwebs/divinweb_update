@@ -1,0 +1,218 @@
+/* ─────────────────────────────────────
+   RechargeResultPage.css
+   Styles for the DivinIQ payment result page (success / failure / checking)
+   Namespaced as rchg-* — distinct from recharge-card / recharge-pay-card
+   etc. in RechargeCheckoutPage.css, so nothing here can collide with or
+   shadow rules other pages depend on.
+───────────────────────────────────── */
+
+.rchg-hero {
+  position: relative;
+  padding: 48px 0 32px;
+  overflow: hidden;
+}
+
+/* ── Diyas hanging from the top of the hero, directly under the page Header ── */
+.rchg-diya-wrap {
+  position: absolute;
+  top: -104px;
+  z-index: 2;
+  transform-origin: top center;
+  animation: rchg-diya-sway 4.6s ease-in-out infinite;
+  pointer-events: none;
+}
+
+.rchg-diya-wrap--left { left: 6%; }
+.rchg-diya-wrap--right { right: 6%; animation-delay: 0.4s; scale: -1 1; }
+
+@media (max-width: 767px) {
+  .rchg-diya-wrap--left { left: 3%; }
+  .rchg-diya-wrap--right { right: 3%; }
+}
+
+@keyframes rchg-diya-sway {
+  0%, 100% { rotate: -3deg; }
+  50% { rotate: 3deg; }
+}
+
+/* Beaded chain the diya hangs from — a thin gold line with a repeating
+   bead texture, drawn in CSS so any chain length works. */
+.rchg-diya-chain {
+  width: 2px;
+  margin: 0 auto;
+  background: repeating-linear-gradient(
+    to bottom,
+    #c8952f 0,
+    #c8952f 2px,
+    transparent 2px,
+    transparent 6px,
+    #e9c069 6px,
+    #e9c069 8px,
+    transparent 8px,
+    transparent 16px
+  );
+}
+
+.rchg-diya-img {
+  display: block;
+  width: 120px;
+  height: auto!important;
+  margin: -6px auto 0; /* pulls the lamp up slightly so it reads as attached to the chain */
+  animation: rchg-diya-glow 3s ease-in-out infinite;
+}
+
+@keyframes rchg-diya-glow {
+  0%, 100% { filter: drop-shadow(0 0 5px rgba(255, 190, 80, 0.45)); }
+  50% { filter: drop-shadow(0 0 12px rgba(255, 190, 80, 0.8)); }
+}
+
+/* ── Card shell: soft mandala "reflection" underneath the card ── */
+.rchg-card-shell {
+  position: relative;
+}
+
+.rchg-result-card {
+  position: relative;
+  z-index: 2;
+  background: #fffdf9;
+  border: 1px solid #f0e2cf;
+  border-radius: 28px;
+}
+
+.rchg-mandala {
+  pointer-events: none;
+}
+
+.rchg-mandala--reflection {
+  position: absolute;
+  left: 50%;
+  bottom: -70px;
+  transform: translateX(-50%);
+  opacity: 0.07;
+  filter: blur(1px);
+  z-index: 0;
+}
+
+/* ── Icon halo: faint mandala behind the status circle, clipped to the
+   circle itself so no petals poke out past its edge ── */
+.rchg-icon-halo {
+  position: relative;
+  width: 92px;
+  height: 92px;
+  margin: 0 auto 18px;
+  border-radius: 50%;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.rchg-mandala--icon {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  opacity: 0.35;
+}
+
+.rchg-result-icon {
+  position: relative;
+  z-index: 1;
+  width: 84px;
+  height: 84px;
+  border: 1.5px solid;
+}
+
+.rchg-result-icon--checking {
+  background: #fdf1de;
+  border-color: #f0cd8f;
+  color: #c9852e;
+}
+.rchg-result-icon--checking svg {
+  animation: rchg-spin-slow 6s linear infinite;
+}
+
+.rchg-result-icon--success {
+  background: #e8f8ee;
+  border-color: #b3e2c4;
+  color: #1a9d4c;
+}
+
+.rchg-result-icon--failure {
+  background: #fbe6ea;
+  border-color: #f0b8c4;
+  color: #d64545;
+}
+
+@keyframes rchg-spin-slow {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+/* ── Title + ornate divider ── */
+.rchg-title {
+  font-family: "Playfair Display", Georgia, serif;
+  font-weight: 700;
+  font-size: 26px;
+  color: #7a1f3d;
+}
+
+.rchg-divider {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 200px;
+  margin: 14px auto 18px;
+}
+
+.rchg-divider-line {
+  flex: 1;
+  height: 1px;
+  background: linear-gradient(to right, transparent, #e9a93b);
+}
+
+.rchg-divider-line:last-child {
+  background: linear-gradient(to left, transparent, #e9a93b);
+}
+
+.rchg-divider-dot {
+  color: #e9a93b;
+  font-size: 12px;
+  line-height: 1;
+}
+
+.rchg-result-message {
+  color: #6b7280;
+  max-width: 340px;
+}
+
+/* ── Buttons — same gradient language as .recharge-pay-btn ── */
+.rchg-result-btn {
+  border: none;
+  color: #ffffff;
+  background: linear-gradient(90deg, #4a1024, #7a1f3d 40%, #e9711c);
+  box-shadow: 0 6px 16px rgba(233, 113, 28, 0.3);
+  transition: opacity 0.2s ease, transform 0.2s ease;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.rchg-result-btn:hover {
+  opacity: 0.92;
+  transform: translateY(-1px);
+  color: #ffffff;
+}
+
+.rchg-result-btn--failure {
+  background: linear-gradient(90deg, #4a1024, #b23b3b 45%, #d64545);
+  box-shadow: 0 6px 16px rgba(214, 69, 69, 0.3);
+}
+
+.rchg-btn-icon {
+  animation: rchg-spin-slow 3.5s linear infinite;
+}
+
+.rchg-countdown-label {
+  color: #6b7280;
+}

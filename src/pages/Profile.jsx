@@ -2,12 +2,18 @@ import React, { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { useStorage } from "../context/StorageContext";
 import apiService from "../services/apiServices";
+import Header from "../components/layout/Header";
+import Footer from "../components/layout/Footer";
+import SideMenu from "../components/layout/SideMenu";
+import MobileMenu from "../components/layout/MobileMenu";
+import PopupSearch from "../components/layout/PopupSearch";
+import ScrollTop from "../components/common/ScrollTop";
 
 // Served from the public folder — not bundled via import.
 // Actual file lives at: public/assets/img/images/profile-hero-banner.jpeg
 const HERO_BANNER_IMAGE = "/assets/img/images/profile-hero-banner.jpeg";
 
-// NOTE: matches the real backend routes exactly —
+// ── diviniq API — UNCHANGED from your original file ────────────────────
 //   GET  /user_api/get_profile     (router.get("/get_profile", ...))
 //   PUT  /user_api/profile_update  (router.put("/profile_update", ...))
 // The backend ONLY persists name, email, gender, dob, tob, pob, rashi.
@@ -27,11 +33,6 @@ const UPLOAD_IMAGE_URL = "https://admin.diviniq.in/user_api/upload_a_file";
 // uploaded photo URL is cached in localStorage, purely so it survives a
 // page refresh in this browser. It will NOT sync across devices/browsers
 // until the backend adds real support for this field.
-// Fixed, unconditional key — deliberately NOT derived from any field that
-// could differ slightly between when the photo is cached and when it's
-// read back (which was silently breaking the lookup). This page only
-// ever shows one logged-in user's own profile in this browser, so a
-// single constant key is safe.
 const AVATAR_CACHE_KEY = "pp_profile_photo";
 
 // Read-only fields — not part of profile_update, just displayed.
@@ -76,6 +77,15 @@ const EMPTY_PROFILE = {
   referral_code: "",
   profile_img: "",
 };
+
+// The backend doesn't actually have a profile_img column, but get_profile
+// can still echo back a non-empty but useless value for it (e.g. the
+// literal string "null", an empty object stringified, etc). Only accept
+// a value as a real photo if it actually looks like a URL/path; otherwise
+// always fall back to the local cache. Without this, junk from the server
+// silently wins over the real cached photo on every refresh.
+const isUsableImageUrl = (v) =>
+  typeof v === "string" && /^(https?:\/\/|\/)/i.test(v.trim());
 
 const ICONS = {
   user: (
@@ -199,7 +209,18 @@ export default function ProfilePage() {
   const navigate = useNavigate();
   const { user, setUser, logout } = useStorage();
 
-  const [values, setValues] = useState(EMPTY_PROFILE);
+  const [values, setValues] = useState(() => {
+    // Hydrate the cached photo synchronously at mount, before the
+    // get_profile round trip even starts — avoids a flash where the
+    // avatar briefly shows initials before loadProfile resolves.
+    let cachedPhoto = "";
+    try {
+      cachedPhoto = localStorage.getItem(AVATAR_CACHE_KEY) || "";
+    } catch (e) {
+      /* localStorage unavailable — ignore */
+    }
+    return { ...EMPTY_PROFILE, profile_img: cachedPhoto };
+  });
   const [editingKey, setEditingKey] = useState(null);
   const [fieldDraft, setFieldDraft] = useState("");
   const [isBulkEditing, setIsBulkEditing] = useState(false);
@@ -209,25 +230,57 @@ export default function ProfilePage() {
   const [errorMsg, setErrorMsg] = useState("");
   const [successMsg, setSuccessMsg] = useState("");
 
+  // Shared layout chrome state — same pattern as Home.jsx / BlogDetail.jsx / etc.
+  const [showSideMenu, setShowSideMenu] = useState(false);
+  const [showMobileMenu, setShowMobileMenu] = useState(false);
+  const [showSearch, setShowSearch] = useState(false);
+
   // ── profile photo upload state ─────────────────────────────────────
   const avatarInputRef = useRef(null);
   const [avatarPreview, setAvatarPreview] = useState(null);
   const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
 
+  // Maps a raw API payload (response.results_web, plus the top-level tob
+  // that get_profile returns) into our flat `values` shape. Falls back to
+  // `prev` for any field that's missing so we never blow away good local
+  // state with undefined. `cachedPhoto` is the localStorage fallback for
+  // profile_img, since diviniq's backend doesn't persist that field —
+  // isUsableImageUrl guards against the server echoing back junk (e.g.
+  // literal "null") that would otherwise clobber the real cached photo.
+  const mapProfilePayload = (payload, prev, cachedPhoto) => {
+    const web = payload || {};
+    const rawTob = payload?.tob ?? web.tob ?? prev.tob ?? "";
+    return {
+      name: web.name ?? prev.name,
+      email: web.email ?? prev.email,
+      gender: web.gender ?? prev.gender,
+      dob: web.dob ?? prev.dob,
+      tob: (rawTob || "").slice(0, 5),
+      pob: web.pob ?? prev.pob,
+      rashi: web.rashi ?? prev.rashi,
+      number: web.number ?? prev.number,
+      country_code: web.country_code ?? prev.country_code,
+      referral_code: web.referral_code ?? prev.referral_code,
+      profile_img: cachedPhoto || (isUsableImageUrl(web.profile_img) ? web.profile_img : prev.profile_img),
+    };
+  };
+
   // Fetch profile — calls GET /user_api/get_profile directly. Token comes
   // from sessionStorage via apiService.getBearer (same as the rest of the
   // project's services). Reusable so we can re-sync after every save too.
+  //
+  // Cache-busting `_t` query param: without it some browsers / intermediary
+  // proxies were serving a cached response for this exact GET URL right
+  // after a PUT, which could make edited fields look like they "reverted".
   const loadProfile = async () => {
     setErrorMsg("");
     try {
-      const response = await apiService.getBearer(GET_PROFILE_URL);
+      const response = await apiService.getBearer(GET_PROFILE_URL, {
+        _t: Date.now(),
+      });
 
       if (response?.status) {
         const web = response.results_web || {};
-        // The route converts tob to 24h "HH:MM:SS" at the TOP level
-        // (response.tob), not inside results_web — that's the value
-        // that's actually compatible with <input type="time">.
-        const tob24 = (response.tob || "").slice(0, 5);
 
         let cachedPhoto = "";
         try {
@@ -236,19 +289,27 @@ export default function ProfilePage() {
           /* localStorage unavailable — ignore */
         }
 
-        setValues({
-          name: web.name || "",
-          email: web.email || "",
-          gender: web.gender || "",
-          dob: web.dob || "",
-          tob: tob24,
-          pob: web.pob || "",
-          rashi: web.rashi || "",
-          number: web.number || "",
-          country_code: web.country_code || "91",
-          referral_code: web.referral_code || "",
-          profile_img: web.profile_img || cachedPhoto,
+        let resolvedProfile = null;
+        setValues((prev) => {
+          const next = mapProfilePayload({ ...web, tob: response.tob }, prev, cachedPhoto);
+          resolvedProfile = next;
+          return next;
         });
+
+        // Sync StorageContext's user (name + photo) AFTER the setValues
+        // call above, not inside its updater — calling a different
+        // component's setState from within a state updater function is
+        // unsafe (React may invoke that function during render), which is
+        // exactly what was triggering the "Cannot update a component
+        // while rendering a different component" warning.
+        if (resolvedProfile) {
+          setUser((prevUser) => ({
+            ...prevUser,
+            name: resolvedProfile.name || prevUser?.name,
+            profile_img: resolvedProfile.profile_img || prevUser?.profile_img,
+          }));
+        }
+
         return true;
       }
 
@@ -276,18 +337,88 @@ export default function ProfilePage() {
     };
   }, []);
 
-  // Shared save call — calls PUT /user_api/profile_update directly, then
-  // re-fetches the profile so the whole page reflects exactly what the
-  // server persisted (instead of relying only on the local optimistic state).
+  // ── Avatar upload ─────────────────────────────────────────────────
+  // API UNCHANGED from diviniq: the photo goes through the generic
+  // upload_a_file endpoint (NOT profile_update — that PUT rejects any
+  // field outside its fixed set) and the resulting URL is cached
+  // client-side, since the backend has no real column for it.
+  const openAvatarPicker = () => {
+    if (isUploadingAvatar) return;
+    avatarInputRef.current?.click();
+  };
+
+  const handleAvatarSelect = async (e) => {
+    const file = e.target.files?.[0];
+    e.target.value = ""; // allow re-selecting the same file later
+    if (!file) return;
+
+    if (!file.type || !file.type.startsWith("image/")) {
+      setErrorMsg("Please select an image file");
+      return;
+    }
+
+    // Instant local preview while the upload is in flight.
+    const localUrl = URL.createObjectURL(file);
+    setAvatarPreview(localUrl);
+    setIsUploadingAvatar(true);
+    setErrorMsg("");
+    setSuccessMsg("");
+
+    try {
+      const formData = new FormData();
+      formData.append("image", file);
+
+      const response = await apiService.postMultipart(UPLOAD_IMAGE_URL, formData);
+
+      if (response?.status && response?.results) {
+        const uploadedUrl =
+          typeof response.results === "string" ? response.results : response.results.url || "";
+
+        if (!isUsableImageUrl(uploadedUrl)) {
+          console.error("upload_a_file returned an unusable URL:", response);
+          setErrorMsg("Photo uploaded but the server didn't return a valid image URL");
+        } else {
+          setValues((prev) => ({ ...prev, profile_img: uploadedUrl }));
+
+          try {
+            localStorage.setItem(AVATAR_CACHE_KEY, uploadedUrl);
+          } catch (e) {
+            /* localStorage unavailable — photo still shows for this session */
+          }
+
+          // Propagate to the global user immediately so the Header avatar
+          // updates without waiting for a page reload.
+          setUser((prevUser) => ({ ...prevUser, profile_img: uploadedUrl }));
+
+          setSuccessMsg("Profile photo updated");
+        }
+      } else {
+        console.error("upload_a_file rejected:", response);
+        setErrorMsg(response?.message || "Failed to upload photo");
+      }
+    } catch (err) {
+      console.error("upload_a_file error:", err?.response?.data || err);
+      setErrorMsg(err?.response?.data?.message || "Failed to upload photo");
+    } finally {
+      setIsUploadingAvatar(false);
+      URL.revokeObjectURL(localUrl);
+      setAvatarPreview(null);
+    }
+  };
+
+  // Shared save call — calls PUT /user_api/profile_update directly.
   // The backend only accepts/persists: name, email, gender, dob, tob, pob, rashi.
   // tob is sent as the raw 24h "HH:MM" value from the time input — the
   // backend's convertTime12to24() passes 24h strings through unchanged
   // when there's no AM/PM modifier, so no extra conversion is needed.
   // IMPORTANT: do NOT add extra keys (e.g. profile_img) to this body —
   // the backend rejects/ignores the whole request when it contains a
-  // field outside this exact set, which silently breaks saving of every
-  // field, not just the unknown one. The profile photo is handled
-  // separately (client-side cache), never sent here.
+  // field outside this exact set.
+  //
+  // We apply the PUT body locally first (optimistic update) so the UI
+  // reflects the edit immediately, then use loadProfile() as a background
+  // re-sync. Since `body` never contains profile_img, this optimistic
+  // merge can never clobber the photo either.
   const persistProfile = async (profileData) => {
     setIsSaving(true);
     setErrorMsg("");
@@ -307,13 +438,13 @@ export default function ProfilePage() {
 
       if (response?.status) {
         setSuccessMsg(response.message || "Successfully !");
-        // Keep the StorageContext user name in sync.
-        if (profileData.name && profileData.name !== user?.name) {
-          setUser({ ...user, name: profileData.name });
-        }
-        // Re-fetch so every field — including anything the server computes
-        // or normalizes — reflects the latest saved state, not just the
-        // one field we optimistically updated locally.
+
+        // Trust what we just sent as the source of truth immediately.
+        setValues((prev) => ({ ...prev, ...body }));
+
+        // Background re-sync with the server (cache-busted GET) — this
+        // also keeps StorageContext's user (name + profile_img) in sync,
+        // so no separate setUser call is needed here.
         await loadProfile();
         return true;
       }
@@ -353,10 +484,6 @@ export default function ProfilePage() {
   };
 
   // ── handleEditChange ──────────────────────────────────────────────
-  // Single onChange handler for every editable input/select, whichever
-  // mode is active. In bulk mode it updates bulkDraft[key]; in per-field
-  // mode it just updates fieldDraft (there's only one key being edited
-  // at a time, so the key isn't needed there).
   const handleEditChange = (key, value) => {
     if (isBulkEditing) {
       setBulkDraft((prev) => ({ ...prev, [key]: value }));
@@ -366,19 +493,16 @@ export default function ProfilePage() {
   };
 
   // ── handleEditSave ────────────────────────────────────────────────
-  // Single save handler for both per-field and bulk edit. Figures out
-  // which mode is active, builds the right payload, applies it locally,
-  // exits edit mode, then persists to the API.
+  // Single save handler for both per-field and bulk edit. We no longer
+  // setValues(updated) here before persisting — persistProfile() owns
+  // updating `values` once it knows what the server accepted, and since
+  // its body never includes profile_img, the current photo is preserved
+  // automatically without any special-casing.
   const handleEditSave = async () => {
     let updated;
 
     if (isBulkEditing) {
-      // profile_img is never an editable field in bulkDraft (it's only
-      // ever changed via the avatar uploader) — always carry forward the
-      // CURRENT value.profile_img rather than whatever bulkDraft was
-      // snapshotted with, otherwise uploading a photo while the bulk edit
-      // panel is open gets silently overwritten/erased on Save.
-      updated = { ...bulkDraft, profile_img: values.profile_img };
+      updated = bulkDraft;
       setIsBulkEditing(false);
     } else {
       updated = { ...values, [editingKey]: fieldDraft };
@@ -386,62 +510,7 @@ export default function ProfilePage() {
       setFieldDraft("");
     }
 
-    setValues(updated);
     await persistProfile(updated);
-  };
-
-  // ── profile photo upload ─────────────────────────────────────────
-  const openAvatarPicker = () => {
-    if (isUploadingAvatar) return;
-    avatarInputRef.current?.click();
-  };
-
-  const handleAvatarFileChange = async (e) => {
-    const file = e.target.files?.[0];
-    e.target.value = ""; // allow re-selecting the same file later
-
-    if (!file) return;
-
-    if (!file.type || !file.type.startsWith("image/")) {
-      setErrorMsg("Please select an image file");
-      return;
-    }
-
-    const localPreviewUrl = URL.createObjectURL(file);
-    setAvatarPreview(localPreviewUrl);
-    setIsUploadingAvatar(true);
-    setErrorMsg("");
-    setSuccessMsg("");
-
-    try {
-      const formData = new FormData();
-      formData.append("image", file);
-
-      const response = await apiService.postMultipart(UPLOAD_IMAGE_URL, formData);
-
-      if (response?.status && response?.results) {
-        const uploadedUrl =
-          typeof response.results === "string" ? response.results : response.results.url || "";
-
-        setValues((prev) => ({ ...prev, profile_img: uploadedUrl }));
-        try {
-          localStorage.setItem(AVATAR_CACHE_KEY, uploadedUrl);
-        } catch (e) {
-          /* localStorage unavailable — photo still shows for this session */
-        }
-        setSuccessMsg("Profile photo updated");
-      } else {
-        console.error("upload_a_file rejected:", response);
-        setErrorMsg(response?.message || "Failed to upload photo");
-      }
-    } catch (err) {
-      console.error("upload_a_file error:", err?.response?.data || err);
-      setErrorMsg(err?.response?.data?.message || "Failed to upload photo");
-    } finally {
-      setIsUploadingAvatar(false);
-      URL.revokeObjectURL(localPreviewUrl);
-      setAvatarPreview(null);
-    }
   };
 
   const displayValue = (f) => {
@@ -459,6 +528,16 @@ export default function ProfilePage() {
 
   return (
     <div style={styles.page}>
+      <SideMenu isOpen={showSideMenu} onClose={() => setShowSideMenu(false)} />
+      <PopupSearch isOpen={showSearch} onClose={() => setShowSearch(false)} />
+      <MobileMenu isOpen={showMobileMenu} onClose={() => setShowMobileMenu(false)} />
+
+      <Header
+        onMenuToggle={() => setShowMobileMenu(true)}
+        onSideMenuToggle={() => setShowSideMenu(true)}
+        onSearchToggle={() => setShowSearch(true)}
+      />
+
       <style>{`
         .pp-field-card {
           transition: border-color 0.18s ease, box-shadow 0.18s ease, transform 0.18s ease;
@@ -498,22 +577,6 @@ export default function ProfilePage() {
           border-color: #c2185b !important;
           box-shadow: 0 0 0 3px rgba(194,24,91,0.1);
         }
-        .pp-field-grid {
-          display: grid;
-          grid-template-columns: repeat(3, minmax(0, 1fr));
-          gap: 10px;
-          margin-top: 10px;
-        }
-        @media (max-width: 900px) {
-          .pp-field-grid {
-            grid-template-columns: repeat(2, minmax(0, 1fr));
-          }
-        }
-        @media (max-width: 560px) {
-          .pp-field-grid {
-            grid-template-columns: 1fr;
-          }
-        }
         .pp-avatar-edit-btn {
           transition: transform 0.18s ease, box-shadow 0.18s ease;
         }
@@ -522,6 +585,7 @@ export default function ProfilePage() {
           box-shadow: 0 6px 16px rgba(194,24,91,0.3);
         }
       `}</style>
+
       <section style={styles.heroBanner}>
         <div style={styles.heroContent}>
           <div style={styles.heroEyebrow}>Welcome Back</div>
@@ -543,279 +607,298 @@ export default function ProfilePage() {
         </div>
       </section>
 
-      <div style={styles.pageWrap}>
-        <aside style={styles.sidebar}>
-          {SIDEBAR_ITEMS.map((item, i) => (
-            <div key={item.title} style={{ ...styles.navItem, ...(i === 0 ? styles.navItemActive : {}) }}>
-              <div style={{ ...styles.navIcon, ...(i === 0 ? styles.navIconActive : {}) }}>
-                <span style={{ ...styles.iconBase, color: i === 0 ? "#c2185b" : "#8a7f86" }}>{ICONS[item.icon]}</span>
-              </div>
-              <div>
-                <div style={{ ...styles.navTitle, ...(i === 0 ? { color: "#c2185b" } : {}) }}>{item.title}</div>
-                <div style={styles.navSub}>{item.sub}</div>
-              </div>
-            </div>
-          ))}
-
-          <div style={styles.helpBox}>
-            <div style={styles.helpTop}>
-              <div style={styles.helpAvatar}>🙏</div>
-              <div>
-                <div style={styles.helpTitle}>Need Help?</div>
-                <div style={styles.helpSub}>We are here to assist you</div>
-              </div>
-            </div>
-            <button style={styles.btnContact} type="button">
-              Contact Support
-            </button>
-          </div>
-        </aside>
-
-        <main style={styles.profileCard}>
-          {!isBulkEditing ? (
-            <button style={styles.editPill} type="button" onClick={startBulkEdit} disabled={isLoading}>
-              <span style={styles.iconSm}>{ICONS.pencil}</span>
-              Edit Profile
-            </button>
-          ) : (
-            <div style={styles.editPillGroup}>
-              <button style={styles.cancelPill} type="button" onClick={cancelBulkEdit} disabled={isSaving}>
-                <span style={styles.iconSm}>{ICONS.x}</span>
-                Cancel
-              </button>
-              <button style={styles.savePill} type="button" onClick={handleEditSave} disabled={isSaving}>
-                <span style={styles.iconSm}>{ICONS.check}</span>
-                {isSaving ? "Saving..." : "Save All"}
-              </button>
-            </div>
-          )}
-
-          <div style={styles.profileHead}>
-            <div style={styles.avatarWrap}>
-              <div style={styles.avatarCircle}>
-                {avatarImageSrc ? (
-                  <img src={avatarImageSrc} alt="Profile" style={styles.avatarImg} />
-                ) : (
-                  initial
-                )}
-                {isUploadingAvatar && <div style={styles.avatarUploadOverlay}>...</div>}
-              </div>
-              <button
-                type="button"
-                className="pp-avatar-edit-btn"
-                style={styles.avatarEditBtn}
-                onClick={openAvatarPicker}
-                disabled={isUploadingAvatar}
-                aria-label="Upload profile photo"
-                title="Upload profile photo"
-              >
-                <span style={styles.iconXs2}>{ICONS.camera}</span>
-              </button>
-              <input
-                ref={avatarInputRef}
-                type="file"
-                accept="image/*"
-                style={{ display: "none" }}
-                onChange={handleAvatarFileChange}
-              />
-            </div>
-            <div style={styles.profileName}>My Profile</div>
-            <div style={styles.profileSub}>Your personal details and account information</div>
-            <div style={styles.smallDivider} />
-          </div>
-
-          {isLoading && <div style={styles.statusBanner}>Loading your profile...</div>}
-          {errorMsg && <div style={styles.errorBanner}>{errorMsg}</div>}
-          {successMsg && <div style={styles.successBanner}>{successMsg}</div>}
-
-          <div className="pp-field-grid" style={styles.fieldGrid}>
-            <div style={styles.fieldCard}>
-              <div style={styles.fieldCardTop}>
-                <div style={styles.fieldIcon}>
-                  <span style={styles.iconSmall}>{ICONS[PHONE_FIELD.icon]}</span>
-                </div>
-                <div style={styles.fieldLabel}>{PHONE_FIELD.label}</div>
-              </div>
-              <div style={styles.fieldCardBottom}>
-                <div style={{ ...styles.fieldValue, ...styles.fieldValueSet }}>
-                  +{values.country_code || "91"} {values.number || "Not available"}
-                </div>
-              </div>
-            </div>
-
-            <div style={styles.fieldCard}>
-              <div style={styles.fieldCardTop}>
-                <div style={styles.fieldIcon}>
-                  <span style={styles.iconSmall}>{ICONS[REFERRAL_FIELD.icon]}</span>
-                </div>
-                <div style={styles.fieldLabel}>{REFERRAL_FIELD.label}</div>
-              </div>
-              <div style={styles.fieldCardBottom}>
-                <div
-                  style={{
-                    ...styles.fieldValue,
-                    ...(values.referral_code ? styles.fieldValueSet : styles.fieldValueEmpty),
-                  }}
-                >
-                  {values.referral_code || "Not set"}
-                </div>
-              </div>
-            </div>
-
-            {FIELD_DEFS.map((f) => {
-              const hasValue = Boolean(values[f.key]);
-              const isThisEditing = !isBulkEditing && editingKey === f.key;
-              return (
-                <div
-                  key={f.key}
-                  className={`pp-field-card${isThisEditing || isBulkEditing ? " pp-field-card-editing" : ""}`}
-                  style={styles.fieldCard}
-                >
-                  <div style={styles.fieldCardTop}>
-                    <div className="pp-field-icon" style={styles.fieldIcon}>
-                      <span style={styles.iconSmall}>{ICONS[f.icon]}</span>
+      <section className="container">
+        <div className="row">
+          <div className="col-lg-4 col-12 mb-4 mb-lg-0 order-lg-1 order-2">
+            <aside style={styles.sidebar}>
+              <div className="row">
+                {SIDEBAR_ITEMS.map((item, i) => (
+                  <div
+                    className="col-lg-12 col-md-4 col-6 mb-lg-0 mb-3"
+                    key={item.title}
+                    style={{ ...styles.navItem, ...(i === 0 ? styles.navItemActive : {}) }}
+                  >
+                    <div style={{ ...styles.navIcon, ...(i === 0 ? styles.navIconActive : {}) }}>
+                      <span style={{ ...styles.iconBase, color: i === 0 ? "#c2185b" : "#8a7f86" }}>{ICONS[item.icon]}</span>
                     </div>
-                    <div style={styles.fieldLabel}>{f.label}</div>
+                    <div>
+                      <div style={{ ...styles.navTitle, ...(i === 0 ? { color: "#c2185b" } : {}) }}>{item.title}</div>
+                      <div style={styles.navSub}>{item.sub}</div>
+                    </div>
                   </div>
+                ))}
+              </div>
 
-                  {isBulkEditing ? (
-                    <div style={styles.fieldEditRow}>
-                      {f.prefix && <span style={styles.fieldPrefix}>{f.prefix}</span>}
-                      {f.type === "select" ? (
-                        <select
-                          className="pp-select"
-                          style={styles.input}
-                          value={bulkDraft[f.key] || ""}
-                          onChange={(e) => handleEditChange(f.key, e.target.value)}
-                        >
-                          <option value="">Select {f.label.toLowerCase()}</option>
-                          {f.options.map((opt) => (
-                            <option key={opt} value={opt}>
-                              {opt}
-                            </option>
-                          ))}
-                        </select>
-                      ) : (
-                        <input
-                          className="pp-input"
-                          style={styles.input}
-                          type={f.type}
-                          placeholder={f.placeholder}
-                          value={bulkDraft[f.key] || ""}
-                          onChange={(e) => handleEditChange(f.key, e.target.value)}
-                        />
-                      )}
+              <div style={styles.helpBox}>
+                <div style={styles.helpTop}>
+                  <div style={styles.helpAvatar}>🙏</div>
+                  <div>
+                    <div style={styles.helpTitle}>Need Help?</div>
+                    <div style={styles.helpSub}>We are here to assist you</div>
+                  </div>
+                </div>
+                <button style={styles.btnContact} type="button">
+                  Contact Support
+                </button>
+              </div>
+            </aside>
+          </div>
+
+          <div className="col-lg-8 col-12 mb-4 mb-lg-0 order-lg-2 order-1">
+            <main style={styles.profileCard}>
+              {!isBulkEditing ? (
+                <button style={styles.editPill} type="button" onClick={startBulkEdit} disabled={isLoading}>
+                  <span style={styles.iconSm}>{ICONS.pencil}</span>
+                  Edit Profile
+                </button>
+              ) : (
+                <div style={styles.editPillGroup}>
+                  <button style={styles.cancelPill} type="button" onClick={cancelBulkEdit} disabled={isSaving}>
+                    <span style={styles.iconSm}>{ICONS.x}</span>
+                    Cancel
+                  </button>
+                  <button style={styles.savePill} type="button" onClick={handleEditSave} disabled={isSaving}>
+                    <span style={styles.iconSm}>{ICONS.check}</span>
+                    {isSaving ? "Saving..." : "Save All"}
+                  </button>
+                </div>
+              )}
+
+              <div style={styles.profileHead}>
+                <div style={{ position: "relative", width: "fit-content", margin: "0 auto" }}>
+                  <div style={styles.avatarCircle}>
+                    {avatarImageSrc ? (
+                      <img src={avatarImageSrc} alt="Profile" style={styles.avatarImg} />
+                    ) : (
+                      initial
+                    )}
+                    {isUploadingAvatar && <div style={styles.avatarUploadOverlay}>...</div>}
+                  </div>
+                  <button
+                    type="button"
+                    className="pp-avatar-edit-btn"
+                    style={styles.avatarUploadBtn}
+                    onClick={openAvatarPicker}
+                    disabled={isUploadingAvatar}
+                    aria-label="Upload profile photo"
+                    title="Upload profile photo"
+                  >
+                    <span style={styles.iconXs}>{ICONS.camera}</span>
+                  </button>
+                  <input
+                    ref={avatarInputRef}
+                    type="file"
+                    accept="image/*"
+                    onChange={handleAvatarSelect}
+                    disabled={isUploadingAvatar}
+                    style={{ display: "none" }}
+                  />
+                </div>
+                <div style={styles.profileName}>My Profile</div>
+                <div style={styles.profileSub}>Your personal details and account information</div>
+                <div style={styles.smallDivider} />
+              </div>
+
+              {isLoading && <div style={styles.statusBanner}>Loading your profile...</div>}
+              {errorMsg && <div style={styles.errorBanner}>{errorMsg}</div>}
+              {successMsg && <div style={styles.successBanner}>{successMsg}</div>}
+
+              <div className="row g-3">
+                <div className="col-lg-3 col-md-3 col-6">
+                  <div className="border p-3 rounded mb-3 bg-light">
+                    <div style={styles.fieldCardTop}>
+                      <div style={styles.fieldIcon}>
+                        <span style={styles.iconSmall}>{ICONS[PHONE_FIELD.icon]}</span>
+                      </div>
+                      <div style={styles.fieldLabel}>{PHONE_FIELD.label}</div>
                     </div>
-                  ) : !isThisEditing ? (
+                    <div style={styles.fieldCardBottom}>
+                      <div style={{ ...styles.fieldValue, ...styles.fieldValueSet }}>
+                        +{values.country_code || "91"} {values.number || "Not available"}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="col-lg-3 col-md-3 col-6">
+                  <div className="border p-3 rounded mb-3 bg-light">
+                    <div style={styles.fieldCardTop}>
+                      <div style={styles.fieldIcon}>
+                        <span style={styles.iconSmall}>{ICONS[REFERRAL_FIELD.icon]}</span>
+                      </div>
+                      <div style={styles.fieldLabel}>{REFERRAL_FIELD.label}</div>
+                    </div>
                     <div style={styles.fieldCardBottom}>
                       <div
                         style={{
                           ...styles.fieldValue,
-                          ...(hasValue ? styles.fieldValueSet : styles.fieldValueEmpty),
+                          ...(values.referral_code ? styles.fieldValueSet : styles.fieldValueEmpty),
                         }}
                       >
-                        {displayValue(f)}
+                        {values.referral_code || "Not set"}
                       </div>
-                      <button
-                        className="pp-field-edit"
-                        style={styles.fieldEdit}
-                        type="button"
-                        onClick={() => startFieldEdit(f.key)}
-                        aria-label={`Edit ${f.label}`}
-                      >
-                        <span style={styles.iconXs}>{ICONS.pencil}</span>
-                      </button>
                     </div>
-                  ) : (
-                    <div style={styles.fieldEditRow}>
-                      {f.prefix && <span style={styles.fieldPrefix}>{f.prefix}</span>}
-                      {f.type === "select" ? (
-                        <select
-                          className="pp-select"
-                          style={styles.input}
-                          value={fieldDraft}
-                          autoFocus
-                          onChange={(e) => handleEditChange(f.key, e.target.value)}
-                        >
-                          <option value="">Select {f.label.toLowerCase()}</option>
-                          {f.options.map((opt) => (
-                            <option key={opt} value={opt}>
-                              {opt}
-                            </option>
-                          ))}
-                        </select>
-                      ) : (
-                        <input
-                          className="pp-input"
-                          style={styles.input}
-                          type={f.type}
-                          placeholder={f.placeholder}
-                          value={fieldDraft}
-                          autoFocus
-                          onChange={(e) => handleEditChange(f.key, e.target.value)}
-                          onKeyDown={(e) => {
-                            if (e.key === "Enter") handleEditSave();
-                            if (e.key === "Escape") cancelFieldEdit();
-                          }}
-                        />
-                      )}
-                      <button
-                        style={styles.fieldSaveBtn}
-                        type="button"
-                        onClick={handleEditSave}
-                        disabled={isSaving}
-                        aria-label={`Save ${f.label}`}
-                      >
-                        <span style={styles.iconXs}>{ICONS.check}</span>
-                      </button>
-                      <button
-                        style={styles.fieldCancelBtn}
-                        type="button"
-                        onClick={cancelFieldEdit}
-                        disabled={isSaving}
-                        aria-label={`Cancel editing ${f.label}`}
-                      >
-                        <span style={styles.iconXs}>{ICONS.x}</span>
-                      </button>
-                    </div>
-                  )}
+                  </div>
                 </div>
-              );
-            })}
-          </div>
 
+                {FIELD_DEFS.map((f) => {
+                  const hasValue = Boolean(values[f.key]);
+                  const isThisEditing = !isBulkEditing && editingKey === f.key;
+                  return (
+                    <div
+                      key={f.key}
+                      className={`col-lg-3 col-md-3 col-6 pp-field-card${isThisEditing || isBulkEditing ? " pp-field-card-editing" : ""}`}
+                    >
+                      <div className="border p-3 rounded mb-3 bg-light">
+                        <div style={styles.fieldCardTop}>
+                          <div className="pp-field-icon" style={styles.fieldIcon}>
+                            <span style={styles.iconSmall}>{ICONS[f.icon]}</span>
+                          </div>
+                          <div style={styles.fieldLabel}>{f.label}</div>
+                        </div>
 
-          <div style={styles.profileActions}>
-            {isBulkEditing ? (
-              <>
-                <button style={styles.btnEditMain} type="button" onClick={handleEditSave} disabled={isSaving}>
-                  <span style={styles.iconSm}>{ICONS.check}</span>
-                  {isSaving ? "Saving..." : "Save Changes"}
-                </button>
-                <button style={styles.btnLogout} type="button" onClick={cancelBulkEdit} disabled={isSaving}>
-                  <span style={styles.iconSm}>{ICONS.x}</span>
-                  Cancel
-                </button>
-              </>
-            ) : (
-              <>
-                <button style={styles.btnEditMain} type="button" onClick={startBulkEdit} disabled={isLoading}>
-                  <span style={styles.iconSm}>{ICONS.pencil}</span>
-                  Edit Profile
-                </button>
-                <button style={styles.btnLogout} type="button" onClick={handleLogout}>
-                  <span style={styles.iconSm}>{ICONS.logout}</span>
-                  Logout
-                </button>
-              </>
-            )}
+                        {isBulkEditing ? (
+                          <div style={styles.fieldEditRow}>
+                            {f.prefix && <span style={styles.fieldPrefix}>{f.prefix}</span>}
+                            {f.type === "select" ? (
+                              <select
+                                className="pp-select"
+                                style={styles.input}
+                                value={bulkDraft[f.key] || ""}
+                                onChange={(e) => handleEditChange(f.key, e.target.value)}
+                              >
+                                <option value="">Select {f.label.toLowerCase()}</option>
+                                {f.options.map((opt) => (
+                                  <option key={opt} value={opt}>
+                                    {opt}
+                                  </option>
+                                ))}
+                              </select>
+                            ) : (
+                              <input
+                                className="pp-input"
+                                style={styles.input}
+                                type={f.type}
+                                placeholder={f.placeholder}
+                                value={bulkDraft[f.key] || ""}
+                                onChange={(e) => handleEditChange(f.key, e.target.value)}
+                              />
+                            )}
+                          </div>
+                        ) : !isThisEditing ? (
+                          <div style={styles.fieldCardBottom}>
+                            <div
+                              style={{
+                                ...styles.fieldValue,
+                                ...(hasValue ? styles.fieldValueSet : styles.fieldValueEmpty),
+                              }}
+                            >
+                              {displayValue(f)}
+                            </div>
+                            <button
+                              className="pp-field-edit"
+                              style={styles.fieldEdit}
+                              type="button"
+                              onClick={() => startFieldEdit(f.key)}
+                              aria-label={`Edit ${f.label}`}
+                            >
+                              <span style={styles.iconXs}>{ICONS.pencil}</span>
+                            </button>
+                          </div>
+                        ) : (
+                          <div style={styles.fieldEditRow}>
+                            {f.prefix && <span style={styles.fieldPrefix}>{f.prefix}</span>}
+                            {f.type === "select" ? (
+                              <select
+                                className="pp-select"
+                                style={styles.input}
+                                value={fieldDraft}
+                                autoFocus
+                                onChange={(e) => handleEditChange(f.key, e.target.value)}
+                              >
+                                <option value="">Select {f.label.toLowerCase()}</option>
+                                {f.options.map((opt) => (
+                                  <option key={opt} value={opt}>
+                                    {opt}
+                                  </option>
+                                ))}
+                              </select>
+                            ) : (
+                              <input
+                                className="pp-input"
+                                style={styles.input}
+                                type={f.type}
+                                placeholder={f.placeholder}
+                                value={fieldDraft}
+                                autoFocus
+                                onChange={(e) => handleEditChange(f.key, e.target.value)}
+                                onKeyDown={(e) => {
+                                  if (e.key === "Enter") handleEditSave();
+                                  if (e.key === "Escape") cancelFieldEdit();
+                                }}
+                              />
+                            )}
+                            <button
+                              style={styles.fieldSaveBtn}
+                              type="button"
+                              onClick={handleEditSave}
+                              disabled={isSaving}
+                              aria-label={`Save ${f.label}`}
+                            >
+                              <span style={styles.iconXs}>{ICONS.check}</span>
+                            </button>
+                            <button
+                              style={styles.fieldCancelBtn}
+                              type="button"
+                              onClick={cancelFieldEdit}
+                              disabled={isSaving}
+                              aria-label={`Cancel editing ${f.label}`}
+                            >
+                              <span style={styles.iconXs}>{ICONS.x}</span>
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+
+              <div style={styles.profileActions}>
+                {isBulkEditing ? (
+                  <>
+                    <button style={styles.btnEditMain} type="button" onClick={handleEditSave} disabled={isSaving}>
+                      <span style={styles.iconSm}>{ICONS.check}</span>
+                      {isSaving ? "Saving..." : "Save Changes"}
+                    </button>
+                    <button style={styles.btnLogout} type="button" onClick={cancelBulkEdit} disabled={isSaving}>
+                      <span style={styles.iconSm}>{ICONS.x}</span>
+                      Cancel
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    <button style={styles.btnEditMain} type="button" onClick={startBulkEdit} disabled={isLoading}>
+                      <span style={styles.iconSm}>{ICONS.pencil}</span>
+                      Edit Profile
+                    </button>
+                    <button style={styles.btnLogout} type="button" onClick={handleLogout}>
+                      <span style={styles.iconSm}>{ICONS.logout}</span>
+                      Logout
+                    </button>
+                  </>
+                )}
+              </div>
+            </main>
           </div>
-        </main>
-      </div>
+        </div>
+      </section>
+
+      <Footer />
+      <ScrollTop />
     </div>
   );
 }
-
 
 const SIDEBAR_ITEMS = [
   { title: "My Profile", sub: "Personal Information", icon: "user" },
@@ -867,7 +950,7 @@ const styles = {
     fontSize: 28,
     marginBottom: 6,
   },
-  heroTitle: { fontSize: 48, fontWeight: 700, color: "#ffffff" },
+  heroTitle: { fontSize: 24, fontWeight: 700, color: "#ffffff" },
   heroDividerWrap: {
     position: "relative",
     width: 70,
@@ -892,15 +975,6 @@ const styles = {
   },
   heroSub: { color: "#e9d9e2", fontSize: 15, marginTop: 4 },
   heroWave: { position: "absolute", left: 0, right: 0, bottom: -1, lineHeight: 0 },
-  pageWrap: {
-    maxWidth: 1180,
-    margin: "0 auto",
-    padding: "24px 20px 50px",
-    display: "grid",
-    gridTemplateColumns: "240px 1fr",
-    gap: 18,
-    alignItems: "start",
-  },
   sidebar: {
     background: colors.card,
     borderRadius: 18,
@@ -1067,15 +1141,11 @@ const styles = {
     textAlign: "center",
   },
   profileHead: { textAlign: "center", paddingBottom: 14 },
-  avatarWrap: {
-    position: "relative",
-    width: 64,
-    margin: "0 auto 10px",
-  },
   avatarCircle: {
     width: 64,
     height: 64,
     borderRadius: "50%",
+    margin: "0 auto 10px",
     background: "linear-gradient(135deg,#f0a93b,#c2185b)",
     color: "#fff",
     fontSize: 26,
@@ -1097,17 +1167,16 @@ const styles = {
   avatarUploadOverlay: {
     position: "absolute",
     inset: 0,
-    background: "rgba(0,0,0,0.35)",
+    background: "rgba(0,0,0,0.45)",
+    color: "#fff",
+    fontSize: 11,
     display: "flex",
     alignItems: "center",
     justifyContent: "center",
-    color: "#fff",
-    fontSize: 12,
-    fontWeight: 600,
   },
-  avatarEditBtn: {
+  avatarUploadBtn: {
     position: "absolute",
-    bottom: -2,
+    bottom: 6,
     right: -2,
     width: 24,
     height: 24,
@@ -1119,7 +1188,7 @@ const styles = {
     alignItems: "center",
     justifyContent: "center",
     cursor: "pointer",
-    boxShadow: "0 2px 6px rgba(194,24,91,0.4)",
+    boxShadow: "0 2px 6px rgba(0,0,0,0.25)",
   },
   profileName: { fontSize: 20, fontWeight: 700, color: colors.ink },
   profileSub: { fontSize: 12.5, color: colors.muted, marginTop: 3 },
@@ -1128,18 +1197,6 @@ const styles = {
     height: 1.5,
     background: colors.gold,
     margin: "10px auto 0",
-  },
-  fieldGrid: {
-    marginTop: 10,
-    display: "grid",
-    gridTemplateColumns: "repeat(3, minmax(0, 1fr))",
-    gap: 10,
-  },
-  fieldCard: {
-    border: "1px solid " + colors.line,
-    borderRadius: 12,
-    padding: "11px 12px 10px",
-    background: "#fffdfc",
   },
   fieldCardTop: {
     display: "flex",
@@ -1164,7 +1221,6 @@ const styles = {
     justifyContent: "space-between",
     gap: 6,
   },
-  statusDot: { width: 6, height: 6, borderRadius: "50%", flexShrink: 0 },
   fieldValue: {
     fontSize: 12.5,
     padding: "4px 10px",
@@ -1276,5 +1332,4 @@ const styles = {
   iconSm: { width: 16, height: 16, display: "inline-flex" },
   iconSmall: { width: 13, height: 13, display: "inline-flex" },
   iconXs: { width: 13, height: 13, display: "inline-flex", color: "#b8aab1" },
-  iconXs2: { width: 12, height: 12, display: "inline-flex" },
 };

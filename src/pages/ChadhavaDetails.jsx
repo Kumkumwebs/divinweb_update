@@ -411,6 +411,7 @@ const ChadhavaDetails = () => {
 
   const galleryImages = useMemo(() => {
     const raw = [
+      chadhava?.webImage,
       chadhava?.chadhavaImage,
       ...(chadhava?.bannerImages || []),
       ...(chadhava?.galleryImages || []),
@@ -669,7 +670,7 @@ const ADDONS = chadhava.addons?.length
       name: s.title || s.name,
       price: s.price ? `₹${s.price}` : '',
       rating: s.rating || 4.8,
-      img: s.chadhavaImage || s.image || IMAGE_PLACEHOLDER,
+      img: s.webImage || s.chadhavaImage || s.image || IMAGE_PLACEHOLDER,
       id: s._id || s.id,
     }))
     : [];

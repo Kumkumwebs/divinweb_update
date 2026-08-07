@@ -46,6 +46,24 @@ const PujaListSection = ({ puja }) => {
 
 	return (
 		<section className="dq-section">
+			<style>{`
+				.dq-btn-gradient {
+					display: block;
+					width: 100%;
+					box-sizing: border-box;
+					background: linear-gradient(135deg, #c0392b, #4a1024);
+					color: #fff;
+					border: none;
+					padding: 10px 24px;
+					text-align: center;
+					transition: opacity 0.2s ease, transform 0.2s ease;
+				}
+				.dq-btn-gradient:hover {
+					opacity: 0.9;
+					transform: translateY(-1px);
+					color: #fff;
+				}
+			`}</style>
 			<div className="dq-container">
 				<div className="dq-section-head-row">
 					<h2>Most Booked Pujas</h2>
@@ -69,7 +87,12 @@ const PujaListSection = ({ puja }) => {
 								<div className="dq-puja-sub">{item.mandir}</div>
 								{/* {item.purpose && <p className="dq-puja-purpose">{item.purpose}</p>} */}
 								<div className="dq-puja-footer">
-									<a href={`/puja/${item.name}/${item.id}`} className="dq-btn dq-btn-sm">Book Now</a>
+									<a
+										href={`/puja/${item.name}/${item.id}`}
+										className="dq-btn dq-btn-sm dq-btn-gradient"
+									>
+										Book Now
+									</a>
 								</div>
 							</div>
 						</a>
