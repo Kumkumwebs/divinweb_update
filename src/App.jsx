@@ -59,6 +59,7 @@ import Notification from './pages/Notification';
 import { useEffect } from "react";
 import { initNotifications } from "./services/notification";
 import PujaLiveViewPage from './pages/PujaLiveViewPage';
+import RechargeResultPage from './components/common/Rechargeresultpage';
 
 function NotFound() {
 	return (
@@ -107,6 +108,7 @@ function NotFound() {
 				<Route path="/recharge-checkout" element={<RechargeCheckoutPage />} />
 				<Route path="/mangal_dosh_calculator" element={<MangalDoshaCalculator />}
 				/>
+				<Route path="/recharge-result" element={<RechargeResultPage />} />
 				<Route path="/love_calculator" element={<LoveCalculator />} />
 				<Route path="/horoscope" element={<Horoscope />} />
 				<Route path="/send_gift/:id" element={<SendGiftModal />} />

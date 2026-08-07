@@ -10,6 +10,27 @@ import "./RechargeCheckoutPage.css";
 
 const GST_RATE = 0.18;
 
+// Builds a hidden form and submits it — this is how PayU's hosted
+// checkout is triggered from a browser: a real full-page POST to
+// their payment page, not an API call. The browser will navigate
+// away entirely, so nothing after form.submit() needs to run.
+function submitToPayU(payuUrl, params) {
+  const form = document.createElement("form");
+  form.method = "POST";
+  form.action = payuUrl;
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+    const input = document.createElement("input");
+    input.type = "hidden";
+    input.name = key;
+    input.value = value ?? "";
+    form.appendChild(input);
+  });
+
+  document.body.appendChild(form);
+  form.submit();
+}
+
 export default function RechargeCheckoutPage() {
   const navigate = useNavigate();
   const location = useLocation();
@@ -35,87 +56,60 @@ export default function RechargeCheckoutPage() {
   // ─── Apply Coupon ───
   const handleApplyCoupon = async () => {
     if (!couponCode.trim()) return;
-
+  
     try {
       setApplyingCoupon(true);
       setCouponStatus(null);
-
-      // NOTE: adjust endpoint/payload to match your actual coupon API
-      const res = await apiService.post("/user_api/apply_coupon", {
+  
+      const res = await apiService.postBearer("/user_api/apply_coupon", {
         code: couponCode.trim(),
         amount: baseAmount,
       });
-
-      if (res.data.status && res.data.discount) {
-        setDiscount(res.data.discount);
+  
+      if (res.status && res.discount) {
+        setDiscount(res.discount);
         setCouponStatus("applied");
       } else {
         setDiscount(0);
         setCouponStatus("invalid");
       }
     } catch (e) {
+      console.error("apply_coupon failed:", e.response?.data || e);
       setDiscount(0);
       setCouponStatus("invalid");
     } finally {
       setApplyingCoupon(false);
     }
   };
-
-  // ─── Pay (Razorpay) ───
+  // ─── Pay (PayU hosted checkout) ───
   const handlePay = async () => {
     try {
       setPaying(true);
-
-      // NOTE: adjust endpoint/payload to match your actual order-creation API
-      const orderRes = await apiService.post("/user_api/create_wallet_order", {
-        amount: totalPayable,
-        coupon_code: couponStatus === "applied" ? couponCode.trim() : undefined,
+  
+      const initRes = await apiService.postBearer("/user_api/payu_initiate", {
+        amount: totalPayable.toFixed(2),
+        wallet_amount: discountedBase.toFixed(2),
+        coupan_code: couponStatus === "applied" ? couponCode.trim() : "",
+        offer_id: "",
+        profit_amount: "0",
+        platform: "web",   // <-- add this line
       });
-
-      if (!orderRes.data.status) {
+  
+      if (!initRes.status || !initRes.results) {
         alert("Unable to start payment. Please try again.");
         setPaying(false);
         return;
       }
-
-      const { order_id, key, currency = "INR" } = orderRes.data.results || {};
-
-      const options = {
-        key,
-        amount: Math.round(totalPayable * 100), // paise
-        currency,
-        name: "DivinIQ",
-        description: "Wallet Recharge",
-        order_id,
-        handler: async function (response) {
-          // NOTE: adjust endpoint/payload to match your actual verification API
-          try {
-            await apiService.post("/user_api/verify_wallet_payment", {
-              razorpay_payment_id: response.razorpay_payment_id,
-              razorpay_order_id: response.razorpay_order_id,
-              razorpay_signature: response.razorpay_signature,
-            });
-            navigate("/wallet");
-          } catch (e) {
-            alert("Payment verification failed. Please contact support.");
-          } finally {
-            setPaying(false);
-          }
-        },
-        modal: {
-          ondismiss: () => setPaying(false),
-        },
-        theme: { color: "#7a1f3d" },
-      };
-
-      const rzp = new window.Razorpay(options);
-      rzp.open();
+  
+      const { payu_url, params } = initRes.results;
+  
+      submitToPayU(payu_url, params);
     } catch (e) {
+      console.error("payu_initiate failed:", e.response?.data || e);
       alert("Something went wrong while starting payment.");
       setPaying(false);
     }
   };
-
   return (
     <div className="recharge-page">
       <ScrollToTop />
@@ -219,12 +213,12 @@ export default function RechargeCheckoutPage() {
               disabled={paying}
             >
               <span className="recharge-pay-btn__icon">🔒</span>
-              {paying ? "Processing..." : `Pay ₹${totalPayable.toFixed(2)}`}
+              {paying ? "Redirecting..." : `Pay ₹${totalPayable.toFixed(2)}`}
             </button>
 
             <p className="recharge-secure-note">
               <span className="recharge-secure-note__check">✓</span>
-              Secured by Razorpay • 100% Safe &amp; Encrypted
+              Secured by PayU • 100% Safe &amp; Encrypted
             </p>
           </div>
         </div>

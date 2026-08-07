@@ -92,7 +92,7 @@ export default function EndCallFlow({
           onSubmit={async (payload) => {
             setRatingScore(payload?.rating ?? 5);
             await onSubmitRating?.(payload);
-            setStep('thankYou');
+            onFinish?.();
           }}
         />
       )}

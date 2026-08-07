@@ -12,7 +12,7 @@ const formatWhatsApp = (num) => {
 };
 
 const OrderConfirmationModal = ({ isOpen, onClose, formData, cart, onConfirm, walletBalance = 0 }) => {
-  const [paymentMode, setPaymentMode] = useState("razorpay");
+  const [paymentMode, setPaymentMode] = useState("payu");
 
   if (!isOpen) return null;
 
@@ -399,9 +399,9 @@ const OrderConfirmationModal = ({ isOpen, onClose, formData, cart, onConfirm, wa
               {/* Razorpay / UPI */}
               <div
                 className="ocm-pay-opt"
-                onClick={() => setPaymentMode("razorpay")}
+                onClick={() => setPaymentMode("payu")}
               >
-                <div className={`ocm-radio ${paymentMode === "razorpay" ? "active" : ""}`} />
+                <div className={`ocm-radio ${paymentMode === "payu" ? "active" : ""}`} />
                 <div className="ocm-pay-logo">
                   <img
                     src="https://razorpay.com/assets/razorpay-logo-white-bg.svg"

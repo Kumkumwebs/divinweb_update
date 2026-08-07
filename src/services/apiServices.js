@@ -3,9 +3,26 @@ import axios from 'axios';
 const api = axios.create({
 	baseURL: import.meta.env.VITE_API_BASE_URL,
 	timeout: 30000, // Increased timeout for large image uploads
+	headers: {
+		// axios has no `cache` option (that's a fetch()-only concept) —
+		// this header combo is the equivalent for axios: tells browsers,
+		// proxies, and CDNs along the way not to serve or store a cached
+		// copy of these requests/responses.
+		'Cache-Control': 'no-cache, no-store, must-revalidate',
+		Pragma: 'no-cache',
+	},
 });
 console.log("API base URL:", import.meta.env.VITE_API_BASE_URL);
 
+api.interceptors.request.use((config) => {
+	if (config.method === 'get') {
+		config.params = {
+			...(config.params || {}),
+			_ts: Date.now(),
+		};
+	}
+	return config;
+});
 api.interceptors.response.use(
 	response => response.data,
 	error => Promise.reject(error)

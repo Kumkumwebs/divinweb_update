@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from "react";
-import { useNavigate, Link } from "react-router-dom";
+import { useNavigate, Link,useSearchParams } from "react-router-dom";
 import { motion, AnimatePresence } from 'framer-motion';
 import UserDetailsModal from "../common/ChadhavaUserDetailsModel";
 import ScrollToTop from "./ScrollToTop";
@@ -36,9 +36,26 @@ const handleImgError = (e) => {
   img.src = IMAGE_PLACEHOLDER;
 };
 
+const submitToPayU = (payuUrl, params) => {
+	const form = document.createElement("form");
+	form.method = "POST";
+	form.action = payuUrl;
+   
+	Object.entries(params || {}).forEach(([key, value]) => {
+	  const input = document.createElement("input");
+	  input.type = "hidden";
+	  input.name = key;
+	  input.value = value ?? "";
+	  form.appendChild(input);
+	});
+   
+	document.body.appendChild(form);
+	form.submit();
+  };
 const ChadhavaCartPage = () => {
 	const navigate = useNavigate();
-	const [paymentMode, setPaymentMode] = useState("razorpay");
+	const [searchParams, setSearchParams] = useSearchParams();
+	const [paymentMode, setPaymentMode] = useState("payu");
 	const [errorMessage, seterrorMessage] = useState("");
 	const {
 		devoteeDetails: contextDevoteeDetails,
@@ -167,10 +184,61 @@ const ChadhavaCartPage = () => {
 		}
 	};
 
+	const verifyPayuPayment = async (txnid) => {
+		try {
+			const res = await apiService.postBearer(
+				'https://admin.diviniq.in/puja/payu_verify_chadhava_booking',
+				{ txnid }
+			);
+			if (res && res.status === true) return 'Success';
+			if (res && res.status === false && res.message === 'Payment not successful') return 'Failed';
+			return 'Pending';
+		} catch (e) {
+			return 'Pending';
+		}
+	};
+	useEffect(() => {
+		const status = searchParams.get('status');
+		const txnid = searchParams.get('txnid');
+		if (!status || !txnid) return;
+ 
+		setBookingStatus('pending');
+ 
+		(async () => {
+			const result = await verifyPayuPayment(txnid);
+			if (result === 'Success') {
+				setBookingStatus('success');
+				fetchWalletBalance();
+			} else if (result === 'Failed') {
+				setBookingStatus('failed');
+			} else {
+				// backend hasn't confirmed yet — retry a few times before giving up
+				let attempts = 0;
+				const retryInterval = setInterval(async () => {
+					attempts += 1;
+					const retryResult = await verifyPayuPayment(txnid);
+					if (retryResult === 'Success') {
+						clearInterval(retryInterval);
+						setBookingStatus('success');
+						fetchWalletBalance();
+					} else if (retryResult === 'Failed' || attempts >= 5) {
+						clearInterval(retryInterval);
+						setBookingStatus(retryResult === 'Failed' ? 'failed' : 'failed');
+					}
+				}, 3000);
+			}
+		})();
+ 
+		// clean the query params out of the URL so a refresh doesn't re-trigger this
+		setSearchParams({}, { replace: true });
+		// eslint-disable-next-line react-hooks/exhaustive-deps
+	}, []);
+ 
 	const handlePayNow = async () => {
 		if (!userDetails.name) return setIsEditModalOpen(true);
 		setBookingStatus('pending');
 		try {
+			const isPayu = paymentMode === 'payu';
 			const payload = {
 				chadhava_id: contextActiveChadhavaId,
 				addons_selected: mergedCart
@@ -181,45 +249,28 @@ const ChadhavaCartPage = () => {
 					.map(i => ({ prasad_id: i.prasad_id, qty: i.qty })),
 				payment_mode: paymentMode,
 				userDetails: { name: userDetails.name, whatsapp: userDetails.whatsapp },
+				...(isPayu ? { platform: 'web' } : {}),
 			};
-			const res = await apiService.postBearer(
-				'https://admin.diviniq.in/puja/createChadhavaBooking',
-				payload
-			);
+			const endpoint = isPayu
+				? 'https://admin.diviniq.in/puja/createChadhavaBooking_payu'
+				: 'https://admin.diviniq.in/puja/createChadhavaBooking';
+ 
+			const res = await apiService.postBearer(endpoint, payload);
+ 
 			if (res && res.status === true) {
-				if (paymentMode === 'razorpay') {
-					const razorpayLoaded = await loadRazorpay();
-					if (!razorpayLoaded) {
-						alert("Razorpay SDK failed to load");
+				if (isPayu) {
+					const { payu_url, params } = res.results || {};
+					if (!payu_url || !params) {
+						setBookingStatus('failed');
 						return;
 					}
-					const options = {
-						key: "rzp_test_TJfZRU2xcY3vGX", // Razorpay test key
-						amount: res.amount,
-						currency: "INR",
-						name: "DivinIQ",
-						description: "Puja Booking Payment",
-						order_id: res.orderId,
-						handler: function (response1) {
-							const interval = setInterval(() => verifyPayment(res.orderId), 3000);
-							verifyPayment(res.orderId).then((status) => {
-								if (status === "Success") clearInterval(interval);
-							});
-						},
-						prefill: {
-							name: userDetails.name,
-							contact: userDetails.whatsapp,
-						},
-						theme: {
-							color: "#7B1F3A",
-						},
-					};
-
-					const rzp = new window.Razorpay(options);
-					rzp.open();
+					// Navigates this tab away to PayU entirely — nothing after
+					// this line runs; the modal state resumes on page reload
+					// via the useEffect above once PayU redirects back.
+					submitToPayU(payu_url, params);
 					return;
 				}
-				// For other payment modes, directly show success
+				// For other payment modes (wallet), directly show success
 				else {
 					setBookingStatus('success');
 					fetchWalletBalance();
@@ -231,27 +282,7 @@ const ChadhavaCartPage = () => {
 			setBookingStatus('failed');
 		}
 	};
-	const verifyPayment = async (paymentResponse) => {
-		try {
-			const res = await fetch(`https://admin.diviniq.in/puja/chadhava_payment_status/${paymentResponse}`, {
-				method: 'GET',
-			});
-			const data = await res.json();
-
-			if (data.payment_status === "Success") {
-				setBookingStatus('success');
-			}
-
-			if (data.payment_status === "Failed") {
-				setBookingStatus('failed');
-			}
-			return data.payment_status;
-		} catch (e) {
-			return null;
-		}
-	};
-
-
+ 
 	const applyCoupon = () => {
 		if (couponCode.toUpperCase() === 'FIRST100') {
 			setAppliedDiscount(100);
@@ -293,7 +324,7 @@ const ChadhavaCartPage = () => {
 			},
 		};
 		const current = config[status];
-
+ 
 		return (
 			<div className="diviniq-modal-overlay">
 				<motion.div
@@ -309,12 +340,12 @@ const ChadhavaCartPage = () => {
 							<img src="/assets/img/chadawa_detail/diya_chadhawa.png" alt="" className="diviniq-diya diviniq-diya-2" />
 						</div>
 					)}
-
+ 
 					{/* Close button */}
 					<button className="diviniq-close-btn" onClick={onClose} aria-label="Close">
 						<i className="fas fa-times"></i>
 					</button>
-
+ 
 					{/* Badge with mandala ring */}
 					<div className="diviniq-badge-wrap">
 						<div className="diviniq-mandala" />
@@ -332,17 +363,17 @@ const ChadhavaCartPage = () => {
 							<i className={current.icon} style={{ fontSize: '30px' }}></i>
 						</div>
 					</div>
-
+ 
 					<h3 className="diviniq-title">{current.title}</h3>
-
+ 
 					<div className="diviniq-lotus-divider">
 						<span className="line" />
 						<i className="fas fa-spa"></i>
 						<span className="line" />
 					</div>
-
+ 
 					<p className="diviniq-desc">{current.desc}</p>
-
+ 
 					{(status === 'success' || status === 'failed' || status === 'pending') && (
 						<img
 							src="/assets/img/chadawa_detail/kalashchadawa.png"
@@ -351,7 +382,7 @@ const ChadhavaCartPage = () => {
 							onError={(e) => { e.target.style.display = 'none'; }}
 						/>
 					)}
-
+ 
 					{current.btn && (
 						<button
 							className="diviniq-btn"
@@ -559,12 +590,12 @@ const ChadhavaCartPage = () => {
 												<span className="line" /> Select Payment Mode
 											</div>
 
-											<label className={`cc-payment-opt${paymentMode === 'razorpay' ? ' active' : ''}`}>
+											<label className={`cc-payment-opt${paymentMode === 'payu' ? ' active' : ''}`}>
 												<span className="cc-radio" />
 												<input
 													type="radio" name="paymentMode" hidden
-													checked={paymentMode === "razorpay"}
-													onChange={() => setPaymentMode("razorpay")}
+													checked={paymentMode === "payu"}
+													onChange={() => setPaymentMode("payu")}
 												/>
 												Online Payment (UPI / Card)
 											</label>

@@ -12,22 +12,32 @@ import PopupSearch from "../components/layout/PopupSearch";
 import MobileMenu from "../components/layout/MobileMenu";
 
 /* ── Razorpay loader ── */
-const loadRazorpay = () =>
-	new Promise((resolve) => {
-		if (window.Razorpay) { resolve(true); return; }
-		const script = document.createElement("script");
-		script.src = "https://checkout.razorpay.com/v1/checkout.js";
-		script.onload = () => resolve(true);
-		script.onerror = () => resolve(false);
-		document.body.appendChild(script);
-	});
+
+
+
+	const submitToPayU = (payuUrl, params) => {
+		const form = document.createElement("form");
+		form.method = "POST";
+		form.action = payuUrl;
+	 
+		Object.entries(params || {}).forEach(([key, value]) => {
+			const input = document.createElement("input");
+			input.type = "hidden";
+			input.name = key;
+			input.value = value ?? "";
+			form.appendChild(input);
+		});
+	 
+		document.body.appendChild(form);
+		form.submit();
+	};
 
 /* ══════════════════════════════════════════════
    STATUS MODAL
 ══════════════════════════════════════════════ */
 const StatusModal = ({ status, onClose }) => {
 	if (!status) return null;
-
+ 
 	const config = {
 		pending: {
 			title: "Confirming Sankalp",
@@ -51,9 +61,9 @@ const StatusModal = ({ status, onClose }) => {
 			iconRing: "#f9c5d5",
 		},
 	};
-
+ 
 	const c = config[status];
-
+ 
 	return (
 		<AnimatePresence>
 			<div
@@ -89,23 +99,23 @@ const StatusModal = ({ status, onClose }) => {
 						<path d="M60 10 L55 25 L65 25 Z" fill="#9B1C1C" opacity="0.6" />
 						<rect x="55" y="25" width="10" height="8" fill="#9B1C1C" opacity="0.4" />
 					</svg>
-
+ 
 					{/* ── Temple watermark right ── */}
 					<svg style={{ position: "absolute", right: -10, top: 20, width: 130, opacity: 0.12, pointerEvents: "none", transform: "scaleX(-1)" }} viewBox="0 0 120 180" fill="none">
 						<path d="M60 10 L60 170 M40 170 L80 170 M50 40 L70 40 M45 60 Q60 30 75 60 M35 80 Q60 45 85 80 M30 100 Q60 60 90 100 M25 120 Q60 75 95 120 M20 140 Q60 90 100 140 M15 160 Q60 110 105 160" stroke="#9B1C1C" strokeWidth="1.2" strokeLinecap="round" />
 						<path d="M60 10 L55 25 L65 25 Z" fill="#9B1C1C" opacity="0.6" />
 						<rect x="55" y="25" width="10" height="8" fill="#9B1C1C" opacity="0.4" />
 					</svg>
-
+ 
 					{/* ── Sand dune bottom decoration ── */}
 					<svg style={{ position: "absolute", bottom: 0, left: 0, right: 0, width: "100%", pointerEvents: "none" }} viewBox="0 0 400 70" preserveAspectRatio="none">
 						<path d="M0 70 Q100 30 200 50 Q300 70 400 40 L400 70 Z" fill="#f5c4a0" opacity="0.25" />
 						<path d="M0 70 Q80 45 180 60 Q280 75 400 55 L400 70 Z" fill="#f0b48a" opacity="0.2" />
 					</svg>
-
+ 
 					{/* ── Om symbol bottom-left ── */}
 					<div style={{ position: "absolute", left: 20, bottom: 18, fontSize: 32, color: "#d4956a", opacity: 0.45, fontFamily: "serif", lineHeight: 1 }}>ॐ</div>
-
+ 
 					{/* ── Diya bottom-right ── */}
 					<svg style={{ position: "absolute", right: 16, bottom: 10, width: 56, opacity: 0.9, pointerEvents: "none" }} viewBox="0 0 60 60">
 						<ellipse cx="30" cy="14" rx="4" ry="7" fill="#f97316" opacity="0.9" />
@@ -118,7 +128,7 @@ const StatusModal = ({ status, onClose }) => {
 						<ellipse cx="28" cy="48" rx="2.5" ry="1.2" fill="#f9a8d4" opacity="0.7" />
 						<ellipse cx="35" cy="47" rx="3" ry="1.5" fill="#fca5a5" opacity="0.6" transform="rotate(15 35 47)" />
 					</svg>
-
+ 
 					{/* ── Sparkle dots ── */}
 					{status === "failed" && <>
 						<div style={{ position: "absolute", top: 28, left: "38%", width: 6, height: 6, borderRadius: "50%", background: "#f9c5d5" }} />
@@ -126,7 +136,7 @@ const StatusModal = ({ status, onClose }) => {
 						<div style={{ position: "absolute", top: 20, right: "32%", width: 5, height: 5, borderRadius: "50%", background: "#f87171", opacity: 0.6 }} />
 						<div style={{ position: "absolute", top: 60, left: "20%", color: "#f5a623", fontSize: 10, lineHeight: 1 }}>✦</div>
 					</>}
-
+ 
 					{/* ── Icon ── */}
 					<div style={{ position: "relative", marginBottom: 24, display: "flex", justifyContent: "center" }}>
 						<div style={{ width: 90, height: 90, borderRadius: "50%", background: c.iconRing, display: "flex", alignItems: "center", justifyContent: "center" }}>
@@ -141,12 +151,12 @@ const StatusModal = ({ status, onClose }) => {
 							</div>
 						</div>
 					</div>
-
+ 
 					{/* ── Title ── */}
 					<div style={{ fontSize: 26, fontWeight: 800, color: "#3d1520", marginBottom: 14, lineHeight: 1.2, letterSpacing: "-0.3px" }}>
 						{c.title}
 					</div>
-
+ 
 					{/* ── Golden divider with flower ── */}
 					<div style={{ display: "flex", alignItems: "center", gap: 10, margin: "0 auto 16px", maxWidth: 220 }}>
 						<div style={{ flex: 1, height: 1.5, background: "linear-gradient(to right, transparent, #f5a623)" }} />
@@ -159,12 +169,12 @@ const StatusModal = ({ status, onClose }) => {
 						</svg>
 						<div style={{ flex: 1, height: 1.5, background: "linear-gradient(to left, transparent, #f5a623)" }} />
 					</div>
-
+ 
 					{/* ── Description ── */}
 					<p style={{ fontSize: 15, color: "#4b2030", lineHeight: 1.75, margin: "0 0 28px", whiteSpace: "pre-line" }}>
 						{c.desc}
 					</p>
-
+ 
 					{/* ── Button ── */}
 					{c.btn && (
 						<button
@@ -369,27 +379,90 @@ const [aashirwadOption, setAashirwadOption] = useState("Yes");
 		}, 3000);
 	};
 
+
+	const verifyPayuPayment = async (txnid) => {
+		try {
+			const res = await apiService.postBearer(
+				"https://admin.diviniq.in/puja/payu_verify_puja_booking",
+				{ txnid }
+			);
+			if (res && res.status === true) return "Success";
+			if (res && res.status === false && res.message === "Payment not successful") return "Failed";
+			return "Pending";
+		} catch (e) {
+			return "Pending";
+		}
+	};
+ 
+	// ── Picks up the PayU redirect result on page load ──
+	// After submitToPayU() navigates away, the backend's webhook sends
+	// the browser back to this exact page URL with ?status=...&txnid=...
+	useEffect(() => {
+		const params = new URLSearchParams(window.location.search);
+		const status = params.get("status");
+		const txnid = params.get("txnid");
+		if (!status || !txnid) return;
+ 
+		setBookingStatus("pending");
+ 
+		(async () => {
+			const result = await verifyPayuPayment(txnid);
+			if (result === "Success") {
+				setBookingStatus("success");
+			} else if (result === "Failed") {
+				setBookingStatus("failed");
+			} else {
+				let attempts = 0;
+				const retryInterval = setInterval(async () => {
+					attempts += 1;
+					const retryResult = await verifyPayuPayment(txnid);
+					if (retryResult === "Success") {
+						clearInterval(retryInterval);
+						setBookingStatus("success");
+					} else if (retryResult === "Failed" || attempts >= 5) {
+						clearInterval(retryInterval);
+						setBookingStatus("failed");
+					}
+				}, 3000);
+			}
+		})();
+ 
+		// clear the query params so a refresh doesn't re-trigger this,
+		// keeping the original route state (pujaData/selectedPackage) intact
+		navigate(location.pathname, { replace: true, state });
+		// eslint-disable-next-line react-hooks/exhaustive-deps
+	}, []);
+ 
 	const handleFinalSubmit = async (paymentMode) => {
 		setIsConfirmModalOpen(false);
 		setBookingStatus("pending");
 		try {
-			const response = await apiService.postBearer("https://admin.diviniq.in/puja/bookpuja", { payment_mode: paymentMode });
+			const isPayu = paymentMode === "payu";
+			const endpoint = isPayu
+				? "https://admin.diviniq.in/puja/bookpuja_payu"
+				: "https://admin.diviniq.in/puja/bookpuja";
+			const payload = isPayu ? { platform: "web" } : { payment_mode: paymentMode };
+ 
+			const response = await apiService.postBearer(endpoint, payload);
+ 
 			if (response?.status === true) {
-				if (paymentMode === "razorpay") {
-					const razorpayLoaded = await loadRazorpay();
-					if (!razorpayLoaded) { alert("Razorpay SDK failed to load. Please try again."); setBookingStatus(null); return; }
-					const options = {
-						key: "rzp_test_TJfZRU2xcY3vGX", amount: response.amount, currency: "INR", name: "DivinIQ",
-						description: "Puja Booking Payment", order_id: response.orderId,
-						handler: function () { startPolling(response.orderId); },
-						prefill: { name: formData.participantName, contact: formData.whatsapp },
-						theme: { color: "#FCD417" },
-						modal: { ondismiss: () => setBookingStatus(null) },
-					};
-					const rzp = new window.Razorpay(options);
-					rzp.open();
-				} else { setBookingStatus("success"); }
-			} else { setBookingStatus("failed"); }
+				if (isPayu) {
+					const { payu_url, params } = response.results || {};
+					if (!payu_url || !params) {
+						setBookingStatus("failed");
+						return;
+					}
+					// Navigates this tab away to PayU entirely — nothing after
+					// this line runs; booking status resumes on page reload via
+					// the useEffect above once PayU redirects back here.
+					submitToPayU(payu_url, params);
+					return;
+				}
+				// wallet (or any other non-PayU mode) — direct success
+				setBookingStatus("success");
+			} else {
+				setBookingStatus("failed");
+			}
 		} catch (e) { console.error("Booking Error:", e); setBookingStatus("failed"); }
 	};
 
