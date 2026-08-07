@@ -250,11 +250,24 @@ function OTPScreen({ phone, otpMeta, onBack, onVerified, shieldSrc }) {
 	const mm = String(Math.floor(secs / 60)).padStart(2, "0");
 	const ss = String(secs % 60).padStart(2, "0");
 
+	const verifyBtnRef = useRef(null);
+
 	const handleChange = (i, val) => {
 		const d = val.replace(/\D/g, "").slice(-1);
 		const next = [...digits]; next[i] = d; setDigits(next);
 		setError(null);
-		if (d && i < OTP_LEN - 1) { refs.current[i + 1]?.focus(); setFocused(i + 1); }
+		if (d && i < OTP_LEN - 1) {
+			refs.current[i + 1]?.focus();
+			setFocused(i + 1);
+		} else if (d && i === OTP_LEN - 1) {
+			// Last digit filled — dismiss the mobile keyboard so the
+			// Verify button (previously hidden behind it, per screenshot)
+			// becomes visible, then scroll it into view for good measure.
+			refs.current[i]?.blur();
+			setTimeout(() => {
+				verifyBtnRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+			}, 100);
+		}
 	};
 
 	const handleKeyDown = (i, e) => {
@@ -272,9 +285,16 @@ function OTPScreen({ phone, otpMeta, onBack, onVerified, shieldSrc }) {
 		const next = Array(OTP_LEN).fill("");
 		[...pasted].forEach((ch, i) => { next[i] = ch; });
 		setDigits(next);
-		const focusIdx = Math.min(pasted.length, OTP_LEN - 1);
-		refs.current[focusIdx]?.focus();
-		setFocused(focusIdx);
+		if (pasted.length >= OTP_LEN) {
+			refs.current[OTP_LEN - 1]?.blur();
+			setTimeout(() => {
+				verifyBtnRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+			}, 100);
+		} else {
+			const focusIdx = Math.min(pasted.length, OTP_LEN - 1);
+			refs.current[focusIdx]?.focus();
+			setFocused(focusIdx);
+		}
 	};
 
 	const allFilled = digits.every(Boolean);
@@ -388,6 +408,7 @@ function OTPScreen({ phone, otpMeta, onBack, onVerified, shieldSrc }) {
 			</div>
 
 			<button
+				ref={verifyBtnRef}
 				onClick={handleVerify}
 				disabled={!allFilled || loading || secs === 0}
 				style={{

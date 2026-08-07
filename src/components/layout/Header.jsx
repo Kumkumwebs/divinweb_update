@@ -3,8 +3,16 @@ import { Link, useLocation } from 'react-router-dom';
 import LoginOTPModal from '../accounts/LoginOTPModel';
 import { useStorage } from '../../context/StorageContext';
 import { useLanguage } from '../../context/LanguageContext';
+import apiService from '../../services/apiServices';
 
 import styles from './Header.module.css';
+
+// Only trust a profile_img value if it actually looks like a URL/path —
+// get_profile can echo back a non-empty placeholder for users who haven't
+// uploaded a photo, and a naive truthy check would show that instead of
+// falling back to the initial-letter avatar.
+const isUsableImageUrl = (v) =>
+	typeof v === 'string' && /^(https?:\/\/|\/)/i.test(v.trim());
 
 const Header = ({ onMenuToggle, onSideMenuToggle, onSearchToggle }) => {
 	const location = useLocation();
@@ -13,7 +21,7 @@ const Header = ({ onMenuToggle, onSideMenuToggle, onSearchToggle }) => {
 	const [isDropdownOpen, setIsDropdownOpen] = useState(false);
 	const [isLangOpen, setIsLangOpen] = useState(false);
 const { activeLang, setLanguage, LANGUAGES } = useLanguage();
-	const { user, isLoggedIn, clearStorage } = useStorage();
+	const { user, isLoggedIn, clearStorage, setUser } = useStorage();
 	const dropdownRef = useRef(null);
 	const langRef = useRef(null);
 
@@ -77,6 +85,67 @@ const { activeLang, setLanguage, LANGUAGES } = useLanguage();
 		if (!url) return "";
 		return url.replace(/&#x2F;/g, "/");
 	};
+
+	// The header's avatar comes straight from StorageContext's `user`
+	// object, but user can be null right after login (isLoggedIn is purely
+	// token-based, decoupled from user — nothing else populates user until
+	// something calls setUser). Previously that only happened once the
+	// Profile page's own get_profile call ran. Self-heal here so the real
+	// name/photo show up immediately instead of only after a visit to
+	// /profile.
+	useEffect(() => {
+		if (!isLoggedIn || user?.profile_img) return;
+
+		// The real uploaded photo lives in localStorage (same
+		// "pp_profile_photo" key ProfilePage.jsx caches it under) — it's
+		// the actual source of truth. get_profile's own profile_img field
+		// is unreliable: it can echo back a non-empty default placeholder
+		// (e.g. a rashi icon) even when the user has no real photo, which
+		// looks like a valid URL and would otherwise block this effect
+		// from ever correcting itself. Check the cache first, synchronously,
+		// before touching the network at all.
+		let cachedPhoto = '';
+		try {
+			cachedPhoto = localStorage.getItem('pp_profile_photo') || '';
+		} catch (e) {
+			/* localStorage unavailable — ignore */
+		}
+		if (isUsableImageUrl(cachedPhoto)) {
+			setUser((prev) => ({ ...(prev || {}), profile_img: cachedPhoto }));
+			// Name/number can still come from get_profile below — don't
+			// return early just because the photo was already resolved.
+		}
+
+		let cancelled = false;
+		(async () => {
+			try {
+				const res = await apiService.getBearer(
+					'https://admin.diviniq.in/user_api/get_profile',
+					{ _t: Date.now() }
+				);
+				if (cancelled || !res?.status) return;
+				const web = res.results_web || {};
+				setUser((prev) => ({
+					...(prev || {}),
+					name: web.name || prev?.name,
+					number: web.number || prev?.number,
+					// Only take get_profile's profile_img if we didn't
+					// already get a real one from the cache above, and
+					// only if it actually looks usable (never trust it
+					// blindly — see comment above).
+					...(!isUsableImageUrl(prev?.profile_img) && isUsableImageUrl(web.profile_img)
+						? { profile_img: web.profile_img }
+						: {}),
+				}));
+			} catch (err) {
+				console.error('Header profile sync error:', err);
+			}
+		})();
+
+		return () => {
+			cancelled = true;
+		};
+	}, [isLoggedIn, user?.profile_img, setUser]);
 
 	const handleLangSelect = (lang) => {
 		setLanguage(lang.code);

@@ -88,12 +88,6 @@ const ChadhavaSection = ({ chadhava }) => {
 					transform: translateY(-1px);
 					color: #fff;
 				}
-				.dq-chadhava-item {
-					display: block;
-					border: 1px solid #e9d9b8;
-					border-radius: 12px;
-					overflow: hidden;
-				}
 			`}</style>
 			<div className="dq-container">
 				<div className="dq-section-head-row">
@@ -101,32 +95,30 @@ const ChadhavaSection = ({ chadhava }) => {
 					<a href="/chadhava">Explore Chadhava</a>
 				</div>
 
+				{/* Same card markup/classes as PujaListSection's dq-puja-card —
+				    reusing dq-puja-card / dq-puja-body / dq-puja-footer /
+				    dq-puja-price from home.css directly, so this card is
+				    structurally and visually identical to the Puja card
+				    (fixed 130px image height, same padding, same price+button
+				    footer layout) rather than the old custom dq-chadhava-*
+				    styling. */}
 				<div className="row g-md-5 g-3">
 					{items.map((item) => (
-						<div key={item.id} className="col-12 col-md-6 col-lg-4 overflow-hidden">
-							<a
-								href={`/chadhava/${item.id}`}
-								className="dq-chadhava-item"
-								key={item.id || item.name}
-							>
-								<div className="dq-chadhava-img-wrap" style={{ position: "relative" }}>
-									<img
-										src={item.image}
-										alt={item.name}
-										loading="lazy"
-										onError={handleImgError}
-										style={{ width: "100%", aspectRatio: "1 / 1", objectFit: "cover", objectPosition: "center", display: "block" }}
-									/>
-									<span className="dq-chadhava-price">
-										{item.price > 0 ? `₹${item.price}` : 'Free Seva'}
-									</span>
-								</div>
-								<div className="dq-chadhava-info">
-									<span className="dq-chadhava-name" title={item.name}>{item.name}</span>
-									{item.temple && (
-										<small className="dq-chadhava-temple">{item.temple}</small>
-									)}
-									<div className="dq-chadhava-footer">
+						<div key={item.id} className="col-12 col-md-6 col-lg-4">
+							<a href={`/chadhava/${item.id}`} className="dq-puja-card" style={{ display: 'block' }}>
+								<img
+									src={item.image}
+									alt={item.name}
+									loading="lazy"
+									onError={handleImgError}
+								/>
+								<div className="dq-puja-body">
+									<h4>{item.name}</h4>
+									{item.temple && <div className="dq-puja-sub">{item.temple}</div>}
+									<div className="dq-puja-footer" style={{ flexDirection: 'column', alignItems: 'stretch', gap: 10 }}>
+										<span className="dq-puja-price">
+											{item.price > 0 ? `₹${item.price}` : 'Free Seva'}
+										</span>
 										<span className="dq-btn dq-btn-sm dq-btn-gradient">Book Now</span>
 									</div>
 								</div>

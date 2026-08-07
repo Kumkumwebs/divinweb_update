@@ -608,10 +608,12 @@
 }
 
 .dq-chadhava-info {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
+					padding: 14px;
+				}
+				.dq-chadhava-price {
+					display: block;
+					padding: 8px 14px 0;
+				}
 
 .dq-chadhava-top {
   display: flex;
