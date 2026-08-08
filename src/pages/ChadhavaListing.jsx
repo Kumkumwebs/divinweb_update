@@ -21,17 +21,17 @@ const CONSULTATION_API = "https://admin.diviniq.in/user_api/new_consultation_add
 
 /* ── helpers ── */
 const BADGE_MAP = [
-  { label:'Most Popular', cls:'popular', icon:'fas fa-fire' },
-  { label:'New',          cls:'new',     icon:'fas fa-bolt' },
-  { label:'Bestseller',   cls:'best',    icon:'fas fa-star' },
-  { label:'Limited',      cls:'limited', icon:'fas fa-clock'},
+  { label: 'Most Popular', cls: 'popular', icon: 'fas fa-fire' },
+  { label: 'New', cls: 'new', icon: 'fas fa-bolt' },
+  { label: 'Bestseller', cls: 'best', icon: 'fas fa-star' },
+  { label: 'Limited', cls: 'limited', icon: 'fas fa-clock' },
 ];
 const getBadge = (i) => BADGE_MAP[i % BADGE_MAP.length];
 
 /* ── Custom Radio ── */
 const RadioOpt = ({ label, count, checked, onChange }) => (
   <div className="ch-opt" onClick={onChange}>
-    <span className={`ch-opt-circle${checked?' on':''}`} />
+    <span className={`ch-opt-circle${checked ? ' on' : ''}`} />
     <span>{label}</span>
     {count !== undefined && <span className="ch-opt-count">({count})</span>}
   </div>
@@ -40,16 +40,16 @@ const RadioOpt = ({ label, count, checked, onChange }) => (
 /* ── Skeleton Card ── */
 const SkeletonCard = () => (
   <div className="ch-card">
-    <div className="ch-sk" style={{height:190,borderRadius:'14px 14px 0 0'}} />
-    <div style={{padding:14}}>
-      <div className="ch-sk mb-2" style={{height:14,width:'75%'}} />
-      <div className="ch-sk mb-2" style={{height:12,width:'50%'}} />
-      <div className="ch-sk mb-1" style={{height:11,width:'90%'}} />
-      <div className="ch-sk mb-3" style={{height:11,width:'70%'}} />
-      <div className="ch-sk" style={{height:1,marginBottom:10}} />
+    <div className="ch-sk" style={{ height: 190, borderRadius: '14px 14px 0 0' }} />
+    <div style={{ padding: 14 }}>
+      <div className="ch-sk mb-2" style={{ height: 14, width: '75%' }} />
+      <div className="ch-sk mb-2" style={{ height: 12, width: '50%' }} />
+      <div className="ch-sk mb-1" style={{ height: 11, width: '90%' }} />
+      <div className="ch-sk mb-3" style={{ height: 11, width: '70%' }} />
+      <div className="ch-sk" style={{ height: 1, marginBottom: 10 }} />
       <div className="d-flex justify-content-between">
-        <div className="ch-sk" style={{height:18,width:70}} />
-        <div className="ch-sk" style={{height:18,width:90}} />
+        <div className="ch-sk" style={{ height: 18, width: 70 }} />
+        <div className="ch-sk" style={{ height: 18, width: 90 }} />
       </div>
     </div>
   </div>
@@ -57,14 +57,14 @@ const SkeletonCard = () => (
 
 /* ── Chadhava Card ── */
 const ChadhavaCard = ({ item, index, onView }) => {
-  const [liked,  setLiked]  = useState(false);
+  const [liked, setLiked] = useState(false);
   const [imgErr, setImgErr] = useState(false);
   const { label, cls, icon } = getBadge(index);
 
   return (
     <motion.div className="ch-card"
-      initial={{opacity:0,y:14}} animate={{opacity:1,y:0}} transition={{duration:.28,delay:Math.min(index*.04,.32)}}
-      onClick={()=>onView(item)}>
+      initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: .28, delay: Math.min(index * .04, .32) }}
+      onClick={() => onView(item)}>
 
       {/* Badge */}
       <div className="ch-badge-wrap">
@@ -72,18 +72,18 @@ const ChadhavaCard = ({ item, index, onView }) => {
       </div>
 
       {/* Heart */}
-      <button className={`ch-heart${liked?' on':''}`}
-        onClick={e=>{e.stopPropagation();setLiked(!liked)}}>
-        <i className={liked?'fas fa-heart':'far fa-heart'} />
+      <button className={`ch-heart${liked ? ' on' : ''}`}
+        onClick={e => { e.stopPropagation(); setLiked(!liked) }}>
+        <i className={liked ? 'fas fa-heart' : 'far fa-heart'} />
       </button>
 
       {/* Image */}
-   {/* Image */}
+      {/* Image */}
       <div className="ch-img-wrap">
         {(() => {
           const imgSrc = item.webImage || item.chadhavaImage || item.image || item.pimage;
           return imgSrc && !imgErr
-            ? <img src={imgSrc} alt={item.title || item.name} onError={()=>setImgErr(true)} />
+            ? <img src={imgSrc} alt={item.title || item.name} onError={() => setImgErr(true)} />
             : <div className="ch-img-placeholder"><i className="fas fa-om" /></div>;
         })()}
       </div>
@@ -105,10 +105,10 @@ const ChadhavaCard = ({ item, index, onView }) => {
       {/* Footer */}
       <div className="ch-card-footer">
         <div>
-          <span className="ch-price-from">Starting from</span>
-          <div className="ch-price">₹{item.price > 0 ? item.price.toLocaleString('en-IN') : 'Free'}</div>
+          <span className="ch-price-from">Chadhawa Seva</span>
+          <div className="ch-price">Sacred Offering</div>
         </div>
-        <button className="ch-details-btn" onClick={e=>{e.stopPropagation();onView(item)}}>
+        <button className="ch-details-btn" onClick={e => { e.stopPropagation(); onView(item) }}>
           Details View <i className="fas fa-arrow-right" />
         </button>
       </div>
@@ -265,8 +265,8 @@ const RecommendCard = ({ onOpen }) => (
     <button className="ch-rec-btn" onClick={onOpen}>Get Personalized Recommendation</button>
     <div className="ch-rec-trust">Trusted by 50K+ Devotees</div>
     <div>
-      {['#c0392b','#e67e22','#27ae60','#2980b9','#8e44ad'].map((c,i)=>(
-        <span key={i} className="ch-rec-av" style={{background:c}}>{['A','M','R','S','V'][i]}</span>
+      {['#c0392b', '#e67e22', '#27ae60', '#2980b9', '#8e44ad'].map((c, i) => (
+        <span key={i} className="ch-rec-av" style={{ background: c }}>{['A', 'M', 'R', 'S', 'V'][i]}</span>
       ))}
     </div>
   </div>
@@ -274,9 +274,9 @@ const RecommendCard = ({ onOpen }) => (
 
 /* ── Sidebar ── */
 const SidebarContent = ({ filters, setFilters, onApply, searchVal, setSearchVal }) => {
-  const set   = (k,v) => setFilters(f=>({...f,[k]:v}));
-  const reset = ()    => { setFilters({category:'all',priceBucket:'',sortBy:'popular',temple:'',occasion:'',search:''}); setSearchVal(''); };
-  const [rv, setRv]   = useState(10000);
+  const set = (k, v) => setFilters(f => ({ ...f, [k]: v }));
+  const reset = () => { setFilters({ category: 'all', priceBucket: '', sortBy: 'popular', temple: '', occasion: '', search: '' }); setSearchVal(''); };
+  const [rv, setRv] = useState(10000);
 
   return (
     <>
@@ -292,8 +292,8 @@ const SidebarContent = ({ filters, setFilters, onApply, searchVal, setSearchVal 
           className="ch-sb-search-input"
           placeholder="Search offerings..."
           value={searchVal}
-          onChange={e=>setSearchVal(e.target.value)}
-          onKeyDown={e=>e.key==='Enter' && onApply()}
+          onChange={e => setSearchVal(e.target.value)}
+          onKeyDown={e => e.key === 'Enter' && onApply()}
         />
         <button className="ch-sb-search-btn" onClick={onApply}>
           <i className="fas fa-search" />
@@ -304,41 +304,41 @@ const SidebarContent = ({ filters, setFilters, onApply, searchVal, setSearchVal 
 
       <div className="ch-fh">Category</div>
       {[
-        {v:'all',l:'All Chadhavas',c:45},{v:'saree',l:'Saree Chadava',c:12},
-        {v:'vastra',l:'Vastra Chadava',c:9},{v:'chola',l:'Chola Chadava',c:7},
-        {v:'pushpa',l:'Pushpa Chadava',c:6},{v:'other',l:'Other Chadavas',c:11},
-      ].map(({v,l,c})=>(
-        <RadioOpt key={v} label={l} count={c} checked={filters.category===v} onChange={()=>set('category',v)} />
+        { v: 'all', l: 'All Chadhavas', c: 45 }, { v: 'saree', l: 'Saree Chadava', c: 12 },
+        { v: 'vastra', l: 'Vastra Chadava', c: 9 }, { v: 'chola', l: 'Chola Chadava', c: 7 },
+        { v: 'pushpa', l: 'Pushpa Chadava', c: 6 }, { v: 'other', l: 'Other Chadavas', c: 11 },
+      ].map(({ v, l, c }) => (
+        <RadioOpt key={v} label={l} count={c} checked={filters.category === v} onChange={() => set('category', v)} />
       ))}
 
       <div className="ch-div" />
 
       <div className="ch-fh">Price Range</div>
       <input type="range" className="ch-range-input" min={0} max={10000} step={100} value={rv}
-        onChange={e=>setRv(+e.target.value)}
-        style={{background:`linear-gradient(to right,#c0392b ${rv/100}%,#e5e7eb ${rv/100}%)`}}
+        onChange={e => setRv(+e.target.value)}
+        style={{ background: `linear-gradient(to right,#c0392b ${rv / 100}%,#e5e7eb ${rv / 100}%)` }}
       />
       <div className="ch-range-ends"><span>₹0</span><span>₹10,000+</span></div>
       <div className="ch-buckets">
-        {[['₹0-₹499','0-499'],['₹500-₹1499','500-1499'],['₹1500-₹4999','1500-4999'],['₹5000+','5000+']].map(([l,v])=>(
-          <button key={v} className={`ch-bucket${filters.priceBucket===v?' on':''}`}
-            onClick={()=>set('priceBucket',filters.priceBucket===v?'':v)}>{l}</button>
+        {[['₹0-₹499', '0-499'], ['₹500-₹1499', '500-1499'], ['₹1500-₹4999', '1500-4999'], ['₹5000+', '5000+']].map(([l, v]) => (
+          <button key={v} className={`ch-bucket${filters.priceBucket === v ? ' on' : ''}`}
+            onClick={() => set('priceBucket', filters.priceBucket === v ? '' : v)}>{l}</button>
         ))}
       </div>
 
       <div className="ch-div" />
 
       <div className="ch-fh">Sort By</div>
-      {[['popular','Most Popular'],['price_low','Price: Low to High'],['price_high','Price: High to Low'],['recent','Recently Added'],['az','A - Z']].map(([v,l])=>(
-        <RadioOpt key={v} label={l} checked={filters.sortBy===v} onChange={()=>set('sortBy',v)} />
+      {[['popular', 'Most Popular'], ['price_low', 'Price: Low to High'], ['price_high', 'Price: High to Low'], ['recent', 'Recently Added'], ['az', 'A - Z']].map(([v, l]) => (
+        <RadioOpt key={v} label={l} checked={filters.sortBy === v} onChange={() => set('sortBy', v)} />
       ))}
 
       <div className="ch-div" />
 
       <div className="ch-fh">Temple</div>
-      <select className="ch-sel" value={filters.temple} onChange={e=>set('temple',e.target.value)}>
+      <select className="ch-sel" value={filters.temple} onChange={e => set('temple', e.target.value)}>
         <option value="">All Temples</option>
-        {['Ujjain Mahakaleshwar','Kashi Vishwanath','Tirupati Balaji','Gaya Vishnupad','Moksha Dham, Haridwar'].map(t=>(
+        {['Ujjain Mahakaleshwar', 'Kashi Vishwanath', 'Tirupati Balaji', 'Gaya Vishnupad', 'Moksha Dham, Haridwar'].map(t => (
           <option key={t}>{t}</option>
         ))}
       </select>
@@ -346,9 +346,9 @@ const SidebarContent = ({ filters, setFilters, onApply, searchVal, setSearchVal 
       <div className="ch-div" />
 
       <div className="ch-fh">Occasion</div>
-      <select className="ch-sel" value={filters.occasion} onChange={e=>set('occasion',e.target.value)}>
+      <select className="ch-sel" value={filters.occasion} onChange={e => set('occasion', e.target.value)}>
         <option value="">All Occasions</option>
-        {['Ekadashi','Somvar','Purnima','Amavasya','Navratri','Mahashivratri'].map(o=>(
+        {['Ekadashi', 'Somvar', 'Purnima', 'Amavasya', 'Navratri', 'Mahashivratri'].map(o => (
           <option key={o}>{o}</option>
         ))}
       </select>
@@ -363,19 +363,19 @@ const SidebarContent = ({ filters, setFilters, onApply, searchVal, setSearchVal 
 /* ═══════════════════════ MAIN PAGE ═══════════════════════ */
 const ChadhavaListing = () => {
   const navigate = useNavigate();
-  const [items,         setItems]         = useState([]);
-  const [loading,       setLoading]       = useState(true);
-  const [error,         setError]         = useState(false);
-  const [drawerOpen,    setDrawerOpen]    = useState(false);
-  const [page,          setPage]          = useState(1);
-  const [totalPages,    setTotalPages]    = useState(5);
-  const [searchVal,     setSearchVal]     = useState('');
-  const [filters, setFilters] = useState({category:'all',priceBucket:'',sortBy:'popular',temple:'',occasion:'',search:''});
+  const [items, setItems] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(false);
+  const [drawerOpen, setDrawerOpen] = useState(false);
+  const [page, setPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(5);
+  const [searchVal, setSearchVal] = useState('');
+  const [filters, setFilters] = useState({ category: 'all', priceBucket: '', sortBy: 'popular', temple: '', occasion: '', search: '' });
 
-  const [showSideMenu,   setShowSideMenu]   = useState(false);
+  const [showSideMenu, setShowSideMenu] = useState(false);
   const [showMobileMenu, setShowMobileMenu] = useState(false);
-  const [showSearch,     setShowSearch]     = useState(false);
-  const [showRecModal,   setShowRecModal]   = useState(false);
+  const [showSearch, setShowSearch] = useState(false);
+  const [showRecModal, setShowRecModal] = useState(false);
 
   const PAGE_SIZE = 9;
   const [allItems, setAllItems] = useState([]); // full list from the API, unsliced
@@ -397,10 +397,10 @@ const ChadhavaListing = () => {
         setError(true);
       }
     } catch (e) { console.error(e); setError(true); }
-    finally  { setLoading(false); }
+    finally { setLoading(false); }
   }, [filters.search]);
 
-  useEffect(()=>{ fetchItems(); },[fetchItems]);
+  useEffect(() => { fetchItems(); }, [fetchItems]);
 
   // Since the API returns everything in one shot, pagination here is
   // purely a client-side slice of the already-fetched full list — the
@@ -410,24 +410,24 @@ const ChadhavaListing = () => {
     setItems(allItems.slice(start, start + PAGE_SIZE));
   }, [allItems, page]);
 
-  const handleSearch = () => { setFilters(f=>({...f,search:searchVal})); setPage(1); };
-  const handleApply  = () => { setPage(1); fetchItems(); setDrawerOpen(false); };
-  const handleView   = (item) => navigate(`/chadhava/${item._id || item.id}`);
-  const goPage = (p) => { setPage(p); window.scrollTo({top:0,behavior:'smooth'}); };
-  const pages  = Array.from({length:Math.min(totalPages,5)},(_,i)=>i+1);
+  const handleSearch = () => { setFilters(f => ({ ...f, search: searchVal })); setPage(1); };
+  const handleApply = () => { setPage(1); fetchItems(); setDrawerOpen(false); };
+  const handleView = (item) => navigate(`/chadhava/${item._id || item.id}`);
+  const goPage = (p) => { setPage(p); window.scrollTo({ top: 0, behavior: 'smooth' }); };
+  const pages = Array.from({ length: Math.min(totalPages, 5) }, (_, i) => i + 1);
   const isSinglePage = totalPages <= 1;
 
   return (
-    <div className="main-wrapper" style={{paddingTop:0,marginTop:0}}>
-     
-      <SideMenu   isOpen={showSideMenu}   onClose={()=>setShowSideMenu(false)} />
-      <PopupSearch isOpen={showSearch}    onClose={()=>setShowSearch(false)} />
-      <MobileMenu isOpen={showMobileMenu} onClose={()=>setShowMobileMenu(false)} />
-        
+    <div className="main-wrapper" style={{ paddingTop: 0, marginTop: 0 }}>
+
+      <SideMenu isOpen={showSideMenu} onClose={() => setShowSideMenu(false)} />
+      <PopupSearch isOpen={showSearch} onClose={() => setShowSearch(false)} />
+      <MobileMenu isOpen={showMobileMenu} onClose={() => setShowMobileMenu(false)} />
+
       <Header
-        onMenuToggle={()=>setShowMobileMenu(true)}
-        onSideMenuToggle={()=>setShowSideMenu(true)}
-        onSearchToggle={()=>setShowSearch(true)}
+        onMenuToggle={() => setShowMobileMenu(true)}
+        onSideMenuToggle={() => setShowSideMenu(true)}
+        onSearchToggle={() => setShowSearch(true)}
       />
 
       {/* ══ HERO ══ */}
@@ -435,10 +435,10 @@ const ChadhavaListing = () => {
         <div className="container">
           <div className="ch-hero">
             <img src="/assets/img/bg/chadawa.webp" alt="Explore Holy Chadavas - Sacred Offerings" className="ch-hero-img" />
-           
+
           </div>
 
-         
+
         </div>
       </div>
 
@@ -448,10 +448,10 @@ const ChadhavaListing = () => {
 
           {/* Mobile top bar */}
           <div className="ch-mob-top">
-            <button className="ch-filter-mob-btn" onClick={()=>setDrawerOpen(true)}>
+            <button className="ch-filter-mob-btn" onClick={() => setDrawerOpen(true)}>
               <i className="fas fa-sliders-h" /> Filters
             </button>
-            <select className="ch-sort-sel" value={filters.sortBy} onChange={e=>setFilters(f=>({...f,sortBy:e.target.value}))}>
+            <select className="ch-sort-sel" value={filters.sortBy} onChange={e => setFilters(f => ({ ...f, sortBy: e.target.value }))}>
               <option value="popular">Most Popular</option>
               <option value="price_low">Price: Low–High</option>
               <option value="price_high">Price: High–Low</option>
@@ -462,8 +462,8 @@ const ChadhavaListing = () => {
 
           {/* Drawer */}
           <div className="ch-drawer-wrap">
-            <div className={`ch-drawer-overlay${drawerOpen?' show':''}`} onClick={()=>setDrawerOpen(false)} />
-            <div className={`ch-drawer${drawerOpen?' open':''}`}>
+            <div className={`ch-drawer-overlay${drawerOpen ? ' show' : ''}`} onClick={() => setDrawerOpen(false)} />
+            <div className={`ch-drawer${drawerOpen ? ' open' : ''}`}>
               <SidebarContent filters={filters} setFilters={setFilters} onApply={handleApply} searchVal={searchVal} setSearchVal={setSearchVal} />
             </div>
           </div>
@@ -491,7 +491,7 @@ const ChadhavaListing = () => {
                       Showing {allItems.length > 0 ? (page - 1) * PAGE_SIZE + 1 : 0}–{Math.min(page * PAGE_SIZE, allItems.length)} of {allItems.length} offerings
                     </span>
                   )}
-                  <select className="ch-sort-sel" value={filters.sortBy} onChange={e=>setFilters(f=>({...f,sortBy:e.target.value}))}>
+                  <select className="ch-sort-sel" value={filters.sortBy} onChange={e => setFilters(f => ({ ...f, sortBy: e.target.value }))}>
                     <option value="popular">Top Rated</option>
                     <option value="price_low">Price: Low to High</option>
                     <option value="price_high">Price: High to Low</option>
@@ -504,10 +504,10 @@ const ChadhavaListing = () => {
               {/* Error */}
               {error && !loading && (
                 <div className="text-center py-5">
-                  <i className="fas fa-exclamation-circle fa-3x d-block mb-3" style={{color:'#d1d5db'}} />
+                  <i className="fas fa-exclamation-circle fa-3x d-block mb-3" style={{ color: '#d1d5db' }} />
                   <p className="fw-bold text-dark mb-1">Unable to load offerings</p>
                   <p className="small text-muted mb-3">Please check your connection and try again.</p>
-                  <button className="ch-apply" style={{width:'auto',display:'inline-flex',padding:'10px 28px',borderRadius:9}}
+                  <button className="ch-apply" style={{ width: 'auto', display: 'inline-flex', padding: '10px 28px', borderRadius: 9 }}
                     onClick={fetchItems}>Retry</button>
                 </div>
               )}
@@ -516,17 +516,17 @@ const ChadhavaListing = () => {
               {!error && (
                 <div className="row g-3">
                   {loading
-                    ? Array.from({length:9}).map((_,i)=>(
-                        <div key={i} className="col-12 col-md-4"><SkeletonCard /></div>
-                      ))
+                    ? Array.from({ length: 9 }).map((_, i) => (
+                      <div key={i} className="col-12 col-md-4"><SkeletonCard /></div>
+                    ))
                     : <>
-                        {items.map((item,i)=>(
-                          <div key={item._id||i} className="col-12 col-md-4">
-                            <ChadhavaCard item={item} index={i} onView={handleView} />
-                          </div>
-                        ))}
-                        <div className="col-12 col-md-4"><RecommendCard onOpen={() => setShowRecModal(true)} /></div>
-                      </>
+                      {items.map((item, i) => (
+                        <div key={item._id || i} className="col-12 col-md-4">
+                          <ChadhavaCard item={item} index={i} onView={handleView} />
+                        </div>
+                      ))}
+                      <div className="col-12 col-md-4"><RecommendCard onOpen={() => setShowRecModal(true)} /></div>
+                    </>
                   }
                 </div>
               )}
@@ -534,15 +534,15 @@ const ChadhavaListing = () => {
               {/* Pagination */}
               {!loading && !error && items.length > 0 && !isSinglePage && (
                 <div className="ch-pg">
-                  <button className="ch-pg-btn" disabled={page===1} onClick={()=>goPage(page-1)}>
-                    <i className="fas fa-chevron-left" style={{fontSize:11}} />
+                  <button className="ch-pg-btn" disabled={page === 1} onClick={() => goPage(page - 1)}>
+                    <i className="fas fa-chevron-left" style={{ fontSize: 11 }} />
                   </button>
-                  {pages.map(p=>(
-                    <button key={p} className={`ch-pg-btn${page===p?' cur':''}`} onClick={()=>goPage(p)}>{p}</button>
+                  {pages.map(p => (
+                    <button key={p} className={`ch-pg-btn${page === p ? ' cur' : ''}`} onClick={() => goPage(p)}>{p}</button>
                   ))}
-                  {totalPages>5 && <><span className="ch-pg-dots">…</span><button className="ch-pg-btn" onClick={()=>goPage(totalPages)}>{totalPages}</button></>}
-                  <button className="ch-pg-btn" disabled={page===totalPages} onClick={()=>goPage(page+1)}>
-                    <i className="fas fa-chevron-right" style={{fontSize:11}} />
+                  {totalPages > 5 && <><span className="ch-pg-dots">…</span><button className="ch-pg-btn" onClick={() => goPage(totalPages)}>{totalPages}</button></>}
+                  <button className="ch-pg-btn" disabled={page === totalPages} onClick={() => goPage(page + 1)}>
+                    <i className="fas fa-chevron-right" style={{ fontSize: 11 }} />
                   </button>
                 </div>
               )}
@@ -554,7 +554,7 @@ const ChadhavaListing = () => {
 
       <Footer />
       <ScrollTop />
-      <MobileBottomNav/>
+      <MobileBottomNav />
 
       <RecommendationModal isOpen={showRecModal} onClose={() => setShowRecModal(false)} />
     </div>

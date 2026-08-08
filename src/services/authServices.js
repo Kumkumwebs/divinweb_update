@@ -77,11 +77,16 @@ const AuthService = {
 				message: response?.message || 'OTP verification failed',
 			};
 		} catch (error) {
-			console.error('verifyOtp error:', error);
-			return {
-				success: false,
-				message: 'Network error',
-			};
+			const data = error?.response?.data;
+			if (data) {
+				// Server responded (400/401 = wrong or expired OTP) — pass its message through
+				return {
+					success: false,
+					message: data.message || data.error || "Incorrect OTP. Please try again.",
+				};
+			}
+			// No response at all = genuine network failure
+			return { success: false, message: "Network error. Please check your connection." };
 		}
 	},
 	getHomeData: async () => {

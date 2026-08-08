@@ -53,8 +53,23 @@ const STORAGE_KEYS = {
 
 // --- Provider Component ---
 export const StorageProvider = ({ children }) => {
+  console.log('[STORAGE BOOT]', {
+    local_token: localStorage.getItem('token'),
+    session_token: sessionStorage.getItem('token'),
+    local_user: localStorage.getItem('user'),
+    session_user: sessionStorage.getItem('user'),
+  });
   // Initialize state from sessionStorage
-  const [token, setTokenState] = useState(() => localStorage.getItem(STORAGE_KEYS.TOKEN) || null);
+  const [token, setTokenState] = useState(() => {
+    const t = localStorage.getItem(STORAGE_KEYS.TOKEN) || sessionStorage.getItem(STORAGE_KEYS.TOKEN) || null;
+    // keep both in sync on reload — apiServices reads localStorage,
+    // Liveconfig.getToken() reads sessionStorage
+    if (t) {
+      localStorage.setItem(STORAGE_KEYS.TOKEN, t);
+      sessionStorage.setItem(STORAGE_KEYS.TOKEN, t);
+    }
+    return t;
+  });
 const [user, setUserState] = useState(() => safeJsonParse(localStorage.getItem(STORAGE_KEYS.USER)));
   const [devoteeDetails, setDevoteeDetailsState] = useState(() => 
     safeJsonParse(sessionStorage.getItem(STORAGE_KEYS.DEVOTEE_DETAILS), { name: '', whatsapp: '' })
@@ -71,17 +86,35 @@ const [user, setUserState] = useState(() => safeJsonParse(localStorage.getItem(S
     setTokenState(newToken || null);
     if (newToken) {
       localStorage.setItem(STORAGE_KEYS.TOKEN, newToken);
+      sessionStorage.setItem(STORAGE_KEYS.TOKEN, newToken);
     } else {
       localStorage.removeItem(STORAGE_KEYS.TOKEN);
+      sessionStorage.removeItem(STORAGE_KEYS.TOKEN);
     }
-}, []);
+  }, []);
 
+  // Supports both setUser(obj) and setUser(prev => obj) — Profile.jsx and
+  // Header.jsx use the updater form. Persisting is done in the effect below
+  // so JSON.stringify never receives a function (which produced the literal
+  // string "undefined" in localStorage and logged the user out on refresh).
   const setUser = useCallback((newUser) => {
-  const sanitized = sanitizeObject(newUser);
-  setUserState(sanitized);
-  if (sanitized) localStorage.setItem(STORAGE_KEYS.USER, JSON.stringify(sanitized));
-  else localStorage.removeItem(STORAGE_KEYS.USER);
-}, []);
+    setUserState((prev) =>
+      sanitizeObject(typeof newUser === 'function' ? newUser(prev) : newUser)
+    );
+  }, []);
+
+  // Persist user whenever it changes
+  useEffect(() => {
+    try {
+      if (user) {
+        localStorage.setItem(STORAGE_KEYS.USER, JSON.stringify(user));
+      } else {
+        localStorage.removeItem(STORAGE_KEYS.USER);
+      }
+    } catch (e) {
+      console.error('StorageContext: failed to persist user', e);
+    }
+  }, [user]);
 
   const setDevoteeDetails = useCallback((newDetails) => {
     const sanitized = sanitizeObject(newDetails);
@@ -115,15 +148,15 @@ const [user, setUserState] = useState(() => safeJsonParse(localStorage.getItem(S
 
   // --- Clear all storage ---
   const clearStorage = useCallback(() => {
-  setTokenState(null);
-  setUserState(null);
-  setDevoteeDetailsState({ name: '', whatsapp: '' });
-  setActiveChadhavaIdState(null);
-  setActiveCartState(null);
-  localStorage.removeItem(STORAGE_KEYS.TOKEN);
-  localStorage.removeItem(STORAGE_KEYS.USER);
-  sessionStorage.clear();
-}, []);
+    setTokenState(null);
+    setUserState(null);
+    setDevoteeDetailsState({ name: '', whatsapp: '' });
+    setActiveChadhavaIdState(null);
+    setActiveCartState(null);
+    localStorage.removeItem(STORAGE_KEYS.TOKEN);
+    localStorage.removeItem(STORAGE_KEYS.USER);
+    sessionStorage.clear();
+  }, []);
 
   // --- Context Value ---
   const value = {

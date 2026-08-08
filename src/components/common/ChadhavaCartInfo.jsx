@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from "react";
-import { useNavigate, Link,useSearchParams } from "react-router-dom";
+import { useNavigate, Link, useSearchParams } from "react-router-dom";
 import { motion, AnimatePresence } from 'framer-motion';
 import UserDetailsModal from "../common/ChadhavaUserDetailsModel";
 import ScrollToTop from "./ScrollToTop";
@@ -14,44 +14,187 @@ import "../sections/Chadhavacartpage.css";
 
 /* ══════════════════════════════════════
    IMAGE FALLBACK — Om placeholder
-   Inline SVG data URI, never touches the network so it can never
-   itself fail to load or trigger a retry loop.
 ══════════════════════════════════════ */
 const IMAGE_PLACEHOLDER =
-  "data:image/svg+xml;charset=UTF-8," +
-  encodeURIComponent(`
+	"data:image/svg+xml;charset=UTF-8," +
+	encodeURIComponent(`
     <svg xmlns="http://www.w3.org/2000/svg" width="200" height="200" viewBox="0 0 200 200">
       <rect width="200" height="200" fill="#f5ede0"/>
       <text x="50%" y="52%" font-size="70" text-anchor="middle" dominant-baseline="middle" fill="#c9962f" font-family="serif">ॐ</text>
     </svg>
   `);
 
-// Swaps to the Om placeholder exactly once — the dataset flag rules out
-// any possibility of a retry loop even if this somehow fires more than once.
 const handleImgError = (e) => {
-  const img = e.currentTarget;
-  if (img.dataset.fallback === "done") return;
-  img.dataset.fallback = "done";
-  img.style.visibility = "visible";
-  img.src = IMAGE_PLACEHOLDER;
+	const img = e.currentTarget;
+	if (img.dataset.fallback === "done") return;
+	img.dataset.fallback = "done";
+	img.style.visibility = "visible";
+	img.src = IMAGE_PLACEHOLDER;
 };
 
 const submitToPayU = (payuUrl, params) => {
 	const form = document.createElement("form");
 	form.method = "POST";
 	form.action = payuUrl;
-   
+
 	Object.entries(params || {}).forEach(([key, value]) => {
-	  const input = document.createElement("input");
-	  input.type = "hidden";
-	  input.name = key;
-	  input.value = value ?? "";
-	  form.appendChild(input);
+		const input = document.createElement("input");
+		input.type = "hidden";
+		input.name = key;
+		input.value = value ?? "";
+		form.appendChild(input);
 	});
-   
+
 	document.body.appendChild(form);
 	form.submit();
-  };
+};
+
+/* ══════════════════════════════════════
+   STATUS MODAL — module scope so its identity is stable across
+   renders. Defined inside the page component it was remounting on
+   every state change, replaying the entry animation (the blinking).
+══════════════════════════════════════ */
+const StatusModal = ({ status, onClose, desc = "Unable to process payment. Please try again." }) => {
+	if (!status) return null;
+	const config = {
+		pending: {
+			icon: 'fas fa-fire',
+			title: 'Confirming Sankalp',
+			desc: 'Connecting with the temple server...',
+			color: '#F5A623',
+			ring: true,
+		},
+		success: {
+			icon: 'fas fa-check',
+			title: 'Offering Booked Successfully!',
+			desc: 'Your Sankalp has been registered successfully. May you be blessed. 🙏',
+			color: '#0b845c',
+			btn: 'Done',
+		},
+		failed: {
+			icon: 'fas fa-times',
+			title: 'Transaction Failed',
+			desc: desc,
+			color: '#B33A3A',
+			btn: 'Retry',
+		},
+	};
+	const current = config[status];
+
+	return (
+		<div className="diviniq-modal-overlay">
+			<motion.div
+				initial={{ y: 50, opacity: 0, scale: 0.95 }}
+				animate={{ y: 0, opacity: 1, scale: 1 }}
+				transition={{ duration: 0.35, ease: 'easeOut' }}
+				className="diviniq-modal-card text-center"
+			>
+				{(status === 'success' || status === 'failed' || status === 'pending') && (
+					<div className="diviniq-hang-diyas">
+						<img src="/assets/img/chadawa_detail/diya_chadhawa.png" alt="" className="diviniq-diya diviniq-diya-1" />
+						<img src="/assets/img/chadawa_detail/diya_chadhawa.png" alt="" className="diviniq-diya diviniq-diya-2" />
+					</div>
+				)}
+
+				<button className="diviniq-close-btn" onClick={onClose} aria-label="Close">
+					<i className="fas fa-times"></i>
+				</button>
+
+				<div className="diviniq-badge-wrap">
+					<div className="diviniq-mandala" />
+					<div
+						className="diviniq-icon-wrap"
+						style={{ borderColor: current.color, color: current.color }}
+					>
+						{current.ring && (
+							<motion.div
+								className="diviniq-icon-ring"
+								animate={{ rotate: 360 }}
+								transition={{ duration: 6, repeat: Infinity, ease: 'linear' }}
+							/>
+						)}
+						<i className={current.icon} style={{ fontSize: '30px' }}></i>
+					</div>
+				</div>
+
+				<h3 className="diviniq-title">{current.title}</h3>
+
+				<div className="diviniq-lotus-divider">
+					<span className="line" />
+					<i className="fas fa-spa"></i>
+					<span className="line" />
+				</div>
+
+				<p className="diviniq-desc">{current.desc}</p>
+
+				{(status === 'success' || status === 'failed' || status === 'pending') && (
+					<img
+						src="/assets/img/chadawa_detail/kalashchadawa.png"
+						alt="Kalash offering"
+						className="diviniq-kalash-img"
+						onError={(e) => { e.target.style.display = 'none'; }}
+					/>
+				)}
+
+				{current.btn && (
+					<button
+						className="diviniq-btn"
+						style={{ background: current.color }}
+						onClick={onClose}
+					>
+						<span className="diviniq-btn-dots">
+							<i className="fas fa-gem"></i>
+						</span>
+						{current.btn}
+						<span className="diviniq-btn-dots">
+							<i className="fas fa-gem"></i>
+						</span>
+					</button>
+				)}
+			</motion.div>
+		</div>
+	);
+};
+
+/* ══════════════════════════════════════
+   EMPTY CART VIEW — also module scope for the same reason.
+══════════════════════════════════════ */
+const EmptyCartView = () => (
+	<div className="cc-empty">
+		<div className="cc-empty-hang-diyas">
+			<img src="/assets/img/chadawa_detail/diya_chadhawa.png" alt="" className="diviniq-diya diviniq-diya-1" />
+			<img src="/assets/img/chadawa_detail/diya_chadhawa.png" alt="" className="diviniq-diya diviniq-diya-2" />
+		</div>
+
+		<div className="cc-empty-art">
+			<div className="diviniq-mandala" />
+			<img
+				src="/assets/img/chadawa_detail/kalashchadawa-removebg-preview.png"
+				alt="Empty offering bowl"
+				onError={(e) => { e.target.style.display = 'none'; }}
+			/>
+		</div>
+
+		<h2>Your Offering Bowl is Empty</h2>
+
+		<div className="diviniq-lotus-divider">
+			<span className="line" />
+			<i className="fas fa-spa"></i>
+			<span className="line" />
+		</div>
+
+		<p>Add sacred sevas and prasad to begin your spiritual journey.</p>
+
+		<Link to="/chadhava" className="cc-empty-btn">
+			<span className="diviniq-btn-dots"><i className="fas fa-gem"></i></span>
+			Explore Offerings
+			<i className="fas fa-arrow-right ms-1"></i>
+		</Link>
+	</div>
+);
+
+const formatINR = (n) => (Number(n) || 0).toLocaleString('en-IN');
+
 const ChadhavaCartPage = () => {
 	const navigate = useNavigate();
 	const [searchParams, setSearchParams] = useSearchParams();
@@ -76,6 +219,7 @@ const ChadhavaCartPage = () => {
 		contextDevoteeDetails || { name: '', whatsapp: '' }
 	);
 	const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+	const [pendingPay, setPendingPay] = useState(false);
 	const [bookingStatus, setBookingStatus] = useState(null);
 
 	// --- Coupon States ---
@@ -124,6 +268,7 @@ const ChadhavaCartPage = () => {
 			console.error('Cart fetch error:', error);
 		}
 	}, []);
+
 	const fetchWalletBalance = useCallback(async () => {
 		try {
 			const res = await apiService.getBearer('https://admin.diviniq.in/user_api/get_profile');
@@ -197,13 +342,16 @@ const ChadhavaCartPage = () => {
 			return 'Pending';
 		}
 	};
+
 	useEffect(() => {
 		const status = searchParams.get('status');
 		const txnid = searchParams.get('txnid');
 		if (!status || !txnid) return;
- 
+
 		setBookingStatus('pending');
- 
+
+		let retryInterval = null;
+
 		(async () => {
 			const result = await verifyPayuPayment(txnid);
 			if (result === 'Success') {
@@ -212,9 +360,8 @@ const ChadhavaCartPage = () => {
 			} else if (result === 'Failed') {
 				setBookingStatus('failed');
 			} else {
-				// backend hasn't confirmed yet — retry a few times before giving up
 				let attempts = 0;
-				const retryInterval = setInterval(async () => {
+				retryInterval = setInterval(async () => {
 					attempts += 1;
 					const retryResult = await verifyPayuPayment(txnid);
 					if (retryResult === 'Success') {
@@ -223,19 +370,19 @@ const ChadhavaCartPage = () => {
 						fetchWalletBalance();
 					} else if (retryResult === 'Failed' || attempts >= 5) {
 						clearInterval(retryInterval);
-						setBookingStatus(retryResult === 'Failed' ? 'failed' : 'failed');
+						setBookingStatus('failed');
 					}
 				}, 3000);
 			}
 		})();
- 
-		// clean the query params out of the URL so a refresh doesn't re-trigger this
+
 		setSearchParams({}, { replace: true });
+
+		return () => { if (retryInterval) clearInterval(retryInterval); };
 		// eslint-disable-next-line react-hooks/exhaustive-deps
 	}, []);
- 
-	const handlePayNow = async () => {
-		if (!userDetails.name) return setIsEditModalOpen(true);
+
+	const startPayment = async () => {
 		setBookingStatus('pending');
 		try {
 			const isPayu = paymentMode === 'payu';
@@ -254,9 +401,9 @@ const ChadhavaCartPage = () => {
 			const endpoint = isPayu
 				? 'https://admin.diviniq.in/puja/createChadhavaBooking_payu'
 				: 'https://admin.diviniq.in/puja/createChadhavaBooking';
- 
+
 			const res = await apiService.postBearer(endpoint, payload);
- 
+
 			if (res && res.status === true) {
 				if (isPayu) {
 					const { payu_url, params } = res.results || {};
@@ -264,14 +411,9 @@ const ChadhavaCartPage = () => {
 						setBookingStatus('failed');
 						return;
 					}
-					// Navigates this tab away to PayU entirely — nothing after
-					// this line runs; the modal state resumes on page reload
-					// via the useEffect above once PayU redirects back.
 					submitToPayU(payu_url, params);
 					return;
-				}
-				// For other payment modes (wallet), directly show success
-				else {
+				} else {
 					setBookingStatus('success');
 					fetchWalletBalance();
 				}
@@ -282,7 +424,24 @@ const ChadhavaCartPage = () => {
 			setBookingStatus('failed');
 		}
 	};
- 
+
+	const handlePayNow = async () => {
+		if (!userDetails.name) {
+			setPendingPay(true);
+			setIsEditModalOpen(true);
+			return;
+		}
+		await startPayment();
+	};
+
+	useEffect(() => {
+		if (pendingPay && userDetails.name && !isEditModalOpen) {
+			setPendingPay(false);
+			startPayment();
+		}
+		// eslint-disable-next-line react-hooks/exhaustive-deps
+	}, [pendingPay, userDetails.name, isEditModalOpen]);
+
 	const applyCoupon = () => {
 		if (couponCode.toUpperCase() === 'FIRST100') {
 			setAppliedDiscount(100);
@@ -297,153 +456,11 @@ const ChadhavaCartPage = () => {
 		setBookingStatus(null);
 	};
 
-	// --- Sub-Components ---
-	const StatusModal = ({ status, onClose, desc = "Unable to process payment. Please try again." }) => {
-		if (!status) return null;
-		const config = {
-			pending: {
-				icon: 'fas fa-fire',
-				title: 'Confirming Sankalp',
-				desc: 'Connecting with the temple server...',
-				color: '#F5A623',
-				ring: true,
-			},
-			success: {
-				icon: 'fas fa-check',
-				title: 'Offering Booked Successfully!',
-				desc: 'Your Sankalp has been registered successfully. May you be blessed. 🙏',
-				color: '#0b845c',
-				btn: 'Done',
-			},
-			failed: {
-				icon: 'fas fa-times',
-				title: 'Transaction Failed',
-				desc: desc,
-				color: '#B33A3A',
-				btn: 'Retry',
-			},
-		};
-		const current = config[status];
- 
-		return (
-			<div className="diviniq-modal-overlay">
-				<motion.div
-					initial={{ y: 50, opacity: 0, scale: 0.95 }}
-					animate={{ y: 0, opacity: 1, scale: 1 }}
-					transition={{ duration: 0.35, ease: 'easeOut' }}
-					className="diviniq-modal-card text-center"
-				>
-					{/* Hanging diyas — decorative, success state only */}
-					{(status === 'success' || status === 'failed' || status === 'pending') && (
-						<div className="diviniq-hang-diyas">
-							<img src="/assets/img/chadawa_detail/diya_chadhawa.png" alt="" className="diviniq-diya diviniq-diya-1" />
-							<img src="/assets/img/chadawa_detail/diya_chadhawa.png" alt="" className="diviniq-diya diviniq-diya-2" />
-						</div>
-					)}
- 
-					{/* Close button */}
-					<button className="diviniq-close-btn" onClick={onClose} aria-label="Close">
-						<i className="fas fa-times"></i>
-					</button>
- 
-					{/* Badge with mandala ring */}
-					<div className="diviniq-badge-wrap">
-						<div className="diviniq-mandala" />
-						<div
-							className="diviniq-icon-wrap"
-							style={{ borderColor: current.color, color: current.color }}
-						>
-							{current.ring && (
-								<motion.div
-									className="diviniq-icon-ring"
-									animate={{ rotate: 360 }}
-									transition={{ duration: 6, repeat: Infinity, ease: 'linear' }}
-								/>
-							)}
-							<i className={current.icon} style={{ fontSize: '30px' }}></i>
-						</div>
-					</div>
- 
-					<h3 className="diviniq-title">{current.title}</h3>
- 
-					<div className="diviniq-lotus-divider">
-						<span className="line" />
-						<i className="fas fa-spa"></i>
-						<span className="line" />
-					</div>
- 
-					<p className="diviniq-desc">{current.desc}</p>
- 
-					{(status === 'success' || status === 'failed' || status === 'pending') && (
-						<img
-							src="/assets/img/chadawa_detail/kalashchadawa.png"
-							alt="Kalash offering"
-							className="diviniq-kalash-img"
-							onError={(e) => { e.target.style.display = 'none'; }}
-						/>
-					)}
- 
-					{current.btn && (
-						<button
-							className="diviniq-btn"
-							style={{ background: current.color }}
-							onClick={onClose}
-						>
-							<span className="diviniq-btn-dots">
-								<i className="fas fa-gem"></i>
-							</span>
-							{current.btn}
-							<span className="diviniq-btn-dots">
-								<i className="fas fa-gem"></i>
-							</span>
-						</button>
-					)}
-				</motion.div>
-			</div>
-		);
-	};
-
-	const EmptyCartView = () => (
-		<div className="cc-empty">
-			<div className="cc-empty-hang-diyas">
-				<img src="/assets/img/chadawa_detail/diya_chadhawa.png" alt="" className="diviniq-diya diviniq-diya-1" />
-				<img src="/assets/img/chadawa_detail/diya_chadhawa.png" alt="" className="diviniq-diya diviniq-diya-2" />
-			</div>
-
-			<div className="cc-empty-art">
-				<div className="diviniq-mandala" />
-				<img
-					src="/assets/img/chadawa_detail/kalashchadawa-removebg-preview.png"
-					alt="Empty offering bowl"
-					onError={(e) => { e.target.style.display = 'none'; }}
-				/>
-			</div>
-
-			<h2>Your Offering Bowl is Empty</h2>
-
-			<div className="diviniq-lotus-divider">
-				<span className="line" />
-				<i className="fas fa-spa"></i>
-				<span className="line" />
-			</div>
-
-			<p>Add sacred sevas and prasad to begin your spiritual journey.</p>
-
-			<Link to="/chadhava" className="cc-empty-btn">
-				<span className="diviniq-btn-dots"><i className="fas fa-gem"></i></span>
-				Explore Offerings
-				<i className="fas fa-arrow-right ms-1"></i>
-			</Link>
-		</div>
-	);
-
-	const formatINR = (n) => (Number(n) || 0).toLocaleString('en-IN');
-
 	const subtotal = cartResponse?.grand_total || 0;
 	const totalAmount = subtotal - appliedDiscount + 10;
 
 	return (
-			<div className="main-wrapper bg-white">
+		<div className="main-wrapper bg-white">
 			<ScrollToTop />
 			<SideMenu isOpen={showSideMenu} onClose={() => setShowSideMenu(false)} />
 			<PopupSearch isOpen={showSearch} onClose={() => setShowSearch(false)} />
@@ -509,9 +526,6 @@ const ChadhavaCartPage = () => {
 									<div className="cc-offering-info">
 										<h6>{cartResponse.chadhava_id.title}</h6>
 									</div>
-									{/* <div className="cc-offering-price">
-										₹{formatINR(cartResponse.total_chadhava_amount)}
-									</div> */}
 								</div>
 
 								{mergedCart.map((item, idx) => (
@@ -643,6 +657,7 @@ const ChadhavaCartPage = () => {
 				isOpen={isEditModalOpen}
 				onClose={() => {
 					setIsEditModalOpen(false);
+					setPendingPay(false);
 					fetchCartFromServer();
 				}}
 				cart={mergedCart}

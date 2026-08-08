@@ -181,6 +181,24 @@ const NewUserDetailsModal = ({ isOpen, onClose, userData }) => {
 							className={styles.submitButton}
 							onClick={handleSubmit}
 							disabled={isLoading}
+							style={{
+								background: 'linear-gradient(135deg, #BA473D 0%, #5B1625 100%)',
+								border: 'none',
+								color: '#fff',
+								boxShadow: isLoading ? 'none' : '0 4px 14px rgba(91, 22, 37, 0.28)',
+								opacity: isLoading ? 0.55 : 1,
+								cursor: isLoading ? 'not-allowed' : 'pointer',
+								display: 'flex',
+								alignItems: 'center',
+								justifyContent: 'center',
+								gap: '8px',
+								width: '100%',
+								padding: '16px',
+								borderRadius: '12px',
+								fontSize: '17px',
+								fontWeight: 600,
+								transition: 'all 0.3s ease',
+							}}
 						>
 							{isLoading ? (
 								<>

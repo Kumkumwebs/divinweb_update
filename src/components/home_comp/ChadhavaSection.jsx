@@ -163,7 +163,7 @@ const ChadhavaSection = ({ chadhava }) => {
 									{item.temple && <div className="dq-puja-sub">{item.temple}</div>}
 									<div className="dq-puja-footer" style={{ flexDirection: 'column', alignItems: 'stretch', gap: 10 }}>
 										<span className="dq-puja-price">
-											{item.price > 0 ? `₹${item.price}` : 'Free Seva'}
+											 Offer Chadhawa with Devotion
 										</span>
 										<span className="dq-btn dq-btn-sm dq-btn-gradient">Book Now</span>
 									</div>

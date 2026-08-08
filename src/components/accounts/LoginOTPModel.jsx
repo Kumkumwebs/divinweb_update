@@ -177,7 +177,7 @@ function LoginScreen({ phone, setPhone, agreedToTerms, setAgreedToTerms, onSendO
 }
 
 /* ── OTP SCREEN ── */
-function OTPScreen({ phone, otpMeta, onBack, onVerified, shieldSrc }) {
+function OTPScreen({ phone, otpMeta, onBack, onVerified, shieldSrc, onToast }) {
 	const [digits, setDigits] = useState(Array(OTP_LEN).fill(""));
 	const [focused, setFocused] = useState(0);
 	const [secs, setSecs] = useState(otpMeta?.expiresIn ?? 60);
@@ -206,177 +206,182 @@ function OTPScreen({ phone, otpMeta, onBack, onVerified, shieldSrc }) {
 			refs.current[i + 1]?.focus();
 			setFocused(i + 1);
 		} else if (d && i === OTP_LEN - 1) {
-			// Last digit filled — dismiss the mobile keyboard so the
-			// Verify button (previously hidden behind it, per screenshot)
-			// becomes visible, then scroll it into view for good measure.
 			refs.current[i]?.blur();
-			setTimeout(() => {
-				verifyBtnRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
-			}, 100);
-		}
-	};
+	}
+};
 
-	const handleKeyDown = (i, e) => {
-		if (e.key === "Backspace") {
-			if (digits[i]) { const n = [...digits]; n[i] = ""; setDigits(n); }
-			else if (i > 0) { refs.current[i - 1]?.focus(); setFocused(i - 1); }
-		}
-		if (e.key === "Enter" && allFilled) handleVerify();
-	};
+const handleKeyDown = (i, e) => {
+	if (e.key === "Backspace") {
+		if (digits[i]) { const n = [...digits]; n[i] = ""; setDigits(n); }
+		else if (i > 0) { refs.current[i - 1]?.focus(); setFocused(i - 1); }
+	}
+	if (e.key === "Enter" && allFilled) handleVerify();
+};
 
-	const handlePaste = (e) => {
-		e.preventDefault();
-		const pasted = e.clipboardData.getData("text").replace(/\D/g, "").slice(0, OTP_LEN);
-		if (!pasted) return;
-		const next = Array(OTP_LEN).fill("");
-		[...pasted].forEach((ch, i) => { next[i] = ch; });
-		setDigits(next);
-		if (pasted.length >= OTP_LEN) {
-			refs.current[OTP_LEN - 1]?.blur();
-			setTimeout(() => {
-				verifyBtnRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
-			}, 100);
-		} else {
-			const focusIdx = Math.min(pasted.length, OTP_LEN - 1);
-			refs.current[focusIdx]?.focus();
-			setFocused(focusIdx);
-		}
-	};
+const handlePaste = (e) => {
+	e.preventDefault();
+	const pasted = e.clipboardData.getData("text").replace(/\D/g, "").slice(0, OTP_LEN);
+	if (!pasted) return;
+	const next = Array(OTP_LEN).fill("");
+	[...pasted].forEach((ch, i) => { next[i] = ch; });
+	setDigits(next);
+	if (pasted.length >= OTP_LEN) {
+		refs.current[OTP_LEN - 1]?.blur();
+		setTimeout(() => {
+			verifyBtnRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+		}, 100);
+	} else {
+		const focusIdx = Math.min(pasted.length, OTP_LEN - 1);
+		refs.current[focusIdx]?.focus();
+		setFocused(focusIdx);
+	}
+};
 
-	const allFilled = digits.every(Boolean);
+const allFilled = digits.every(Boolean);
 
-	const handleVerify = async () => {
-		if (!allFilled || loading || secs === 0) return;
-		setError(null);
-		setLoading(true);
-		const otpValue = digits.join("");
-		const res = await AuthService.verifyOtp({ phone, otp: otpValue });
-		setLoading(false);
+const handleVerify = async () => {
+	if (!allFilled || loading || secs === 0) return;
+	setError(null);
+	setLoading(true);
+	const otpValue = digits.join("");
+	const res = await AuthService.verifyOtp({ phone, otp: otpValue });
+	setLoading(false);
 
-		if (res.success || res.status) {
-			const token = res.token;
-			const userData = res.results || res.user;
-			onVerified({ token, user: userData, isNewOrIncomplete: res.isNewOrIncomplete });
-		} else {
-			setError(res.message || "OTP verification failed.");
-			setDigits(Array(OTP_LEN).fill(""));
-			setTimeout(() => refs.current[0]?.focus(), 50);
-		}
-	};
+	if (res.success || res.status) {
+		const token = res.token;
+		const userData = res.results || res.user;
+		onVerified({ token, user: userData, isNewOrIncomplete: res.isNewOrIncomplete });
+	} else {
+		const raw = res?.message || "";
+		const isOtpFailure =
+			!raw ||
+			/network error/i.test(raw) ||
+			/credentials do not match/i.test(raw) ||
+			/invalid|incorrect|wrong/i.test(raw);
+		const msg = isOtpFailure ? "Incorrect OTP. Please try again." : raw;
+		setError(msg);
+		onToast?.(msg, "error");
+		setDigits(Array(OTP_LEN).fill(""));
+		setTimeout(() => refs.current[0]?.focus(), 50);
+	}
+};
 
-	const handleResend = async () => {
-		if (secs > 0 || resending) return;
-		setError(null);
-		setResending(true);
-		const res = await AuthService.checkNumber({ phone, otp: "" });
-		setResending(false);
-		if (res && res.success) {
-			setSecs(60);
-			setDigits(Array(OTP_LEN).fill(""));
-			setTimeout(() => refs.current[0]?.focus(), 50);
-		} else {
-			setError(res?.message || "Failed to resend OTP.");
-		}
-	};
+const handleResend = async () => {
+	if (secs > 0 || resending) return;
+	setError(null);
+	setResending(true);
+	const res = await AuthService.checkNumber({ phone, otp: "" });
+	setResending(false);
+	if (res && res.success) {
+		setSecs(60);
+		setDigits(Array(OTP_LEN).fill(""));
+		onToast?.("New OTP sent successfully", "success");
+		setTimeout(() => refs.current[0]?.focus(), 50);
+	} else {
+		const msg = res?.message || "Failed to resend OTP.";
+		setError(msg);
+		onToast?.(msg, "error");
+	}
+};
 
-	return (
-		<div className="aom-otp-pad d-flex flex-column flex-grow-1 p-3">
-			<button onClick={onBack} className="btn btn-link aom-text-med p-0 mb-3 d-flex align-items-center gap-2 fw-semibold text-decoration-none align-self-start" style={{ fontSize: 14 }}>
-				<span style={{ fontSize: 16 }}>←</span> Back
-			</button>
+return (
+	<div className="aom-otp-pad d-flex flex-column flex-grow-1 p-3">
+		<button onClick={onBack} className="btn btn-link aom-text-med p-0 mb-3 d-flex align-items-center gap-2 fw-semibold text-decoration-none align-self-start" style={{ fontSize: 14 }}>
+			<span style={{ fontSize: 16 }}>←</span> Back
+		</button>
 
-			<div className="d-flex justify-content-center mb-3">
-				<div className="aom-avatar-ring rounded-circle d-flex align-items-center justify-content-center position-relative overflow-hidden">
-					{shieldSrc
-						? <img src={shieldSrc} alt="Secure" className="aom-shield-icon" style={{ width: 54, height: 54, objectFit: "contain" }} />
-						: <span style={{ fontSize: 36 }}>🛡️</span>
-					}
-					<div className="aom-avatar-badge">✉️</div>
-				</div>
-			</div>
-
-			<div className="text-center mb-3">
-				<h2 className="aom-title-text fw-bold mb-1" style={{ fontSize: 22 }}>Verify Your Mobile Number</h2>
-				<p className="aom-text-gray mb-0" style={{ fontSize: 13 }}>We've sent a 4-digit OTP to</p>
-			</div>
-
-			<div className="aom-phone-pill d-flex align-items-center gap-2 px-3 py-3 mb-4">
-				<span style={{ fontSize: 20 }}>🇮🇳</span>
-				<span className="aom-title-text fw-bold flex-grow-1" style={{ fontSize: 15 }}>+91 {phone.slice(0, 5)} {phone.slice(5)}</span>
-				<button onClick={onBack} className="aom-btn-link btn p-0 d-flex align-items-center gap-1" style={{ fontSize: 13 }}>
-					Edit <span style={{ fontSize: 12 }}>✏️</span>
-				</button>
-			</div>
-
-			<label className="aom-title-text fw-bold mb-2 d-block" style={{ fontSize: 13.5 }}>Enter 4-digit OTP</label>
-
-			<div className="aom-otp-row mb-2">
-				{digits.map((d, i) => (
-					<input
-						key={i}
-						ref={el => refs.current[i] = el}
-						type="tel"
-						inputMode="numeric"
-						maxLength={1}
-						value={d}
-						onChange={e => handleChange(i, e.target.value)}
-						onKeyDown={e => handleKeyDown(i, e)}
-						onFocus={() => setFocused(i)}
-						onPaste={i === 0 ? handlePaste : undefined}
-						disabled={loading}
-						className={`aom-otp-box form-control flex-fill ${error ? "aom-otp-box--error" : d ? "aom-otp-box--filled" : ""}`}
-					/>
-				))}
-			</div>
-
-			{error && (
-				<p className="aom-text-danger d-flex align-items-center gap-1 mb-2" style={{ fontSize: 12.5 }}>
-					<span>⚠️</span> {error}
-				</p>
-			)}
-
-			<div className="aom-text-gray d-flex align-items-center gap-1 mb-4" style={{ fontSize: 12 }}>
-				<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--aom-link-purple)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="flex-shrink-0">
-					<rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
-					<path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
-				</svg>
-				{secs > 0
-					? <><span>OTP will expire in </span><span className="aom-text-danger fw-bold">{mm}:{ss}</span></>
-					: <span className="aom-text-danger fw-bold">OTP expired. Please resend.</span>
+		<div className="d-flex justify-content-center mb-3">
+			<div className="aom-avatar-ring rounded-circle d-flex align-items-center justify-content-center position-relative overflow-hidden">
+				{shieldSrc
+					? <img src={shieldSrc} alt="Secure" className="aom-shield-icon" style={{ width: 54, height: 54, objectFit: "contain" }} />
+					: <span style={{ fontSize: 36 }}>🛡️</span>
 				}
-			</div>
-
-			<button
-				ref={verifyBtnRef}
-				onClick={handleVerify}
-				disabled={!allFilled || loading || secs === 0}
-				className="aom-btn-verify btn w-100 py-3 d-flex align-items-center justify-content-center gap-2 mb-3"
-			>
-				{loading ? <><Spinner /> Verifying…</> : <>Verify OTP <span style={{ fontSize: 20 }}>→</span></>}
-			</button>
-
-			<div className="d-flex justify-content-between align-items-center aom-text-gray mb-3" style={{ fontSize: 13 }}>
-				<span>Didn't receive OTP?</span>
-				<button onClick={handleResend} disabled={secs > 0 || resending} className="aom-btn-link btn p-0 d-flex align-items-center gap-1 fw-bold">
-					{resending ? "Sending…" : <>Resend OTP <span style={{ fontSize: 14 }}>↺</span></>}
-				</button>
-			</div>
-
-			<div className="aom-secure-box d-flex align-items-center gap-3 px-3 py-3">
-				<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--aom-link-purple)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="flex-shrink-0">
-					<rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
-					<path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
-				</svg>
-				<div className="flex-grow-1">
-					<p className="aom-title-text fw-bold mb-1" style={{ fontSize: 13 }}>Secure & Confidential</p>
-					<p className="aom-text-gray mb-0" style={{ fontSize: 11.5, lineHeight: 1.5 }}>Your information is safe with us and<br />never shared with anyone.</p>
-				</div>
-				{shieldSrc && (
-					<img src={shieldSrc} alt="Secure" className="aom-shield-icon--sm flex-shrink-0" style={{ width: 46, height: 46, objectFit: "contain" }} />
-				)}
+				<div className="aom-avatar-badge">✉️</div>
 			</div>
 		</div>
-	);
+
+		<div className="text-center mb-3">
+			<h2 className="aom-title-text fw-bold mb-1" style={{ fontSize: 22 }}>Verify Your Mobile Number</h2>
+			<p className="aom-text-gray mb-0" style={{ fontSize: 13 }}>We've sent a 4-digit OTP to</p>
+		</div>
+
+		<div className="aom-phone-pill d-flex align-items-center gap-2 px-3 py-3 mb-4">
+			<span style={{ fontSize: 20 }}>🇮🇳</span>
+			<span className="aom-title-text fw-bold flex-grow-1" style={{ fontSize: 15 }}>+91 {phone.slice(0, 5)} {phone.slice(5)}</span>
+			<button onClick={onBack} className="aom-btn-link btn p-0 d-flex align-items-center gap-1" style={{ fontSize: 13 }}>
+				Edit <span style={{ fontSize: 12 }}>✏️</span>
+			</button>
+		</div>
+
+		<label className="aom-title-text fw-bold mb-2 d-block" style={{ fontSize: 13.5 }}>Enter 4-digit OTP</label>
+
+		<div className="aom-otp-row mb-2">
+			{digits.map((d, i) => (
+				<input
+					key={i}
+					ref={el => refs.current[i] = el}
+					type="tel"
+					inputMode="numeric"
+					maxLength={1}
+					value={d}
+					onChange={e => handleChange(i, e.target.value)}
+					onKeyDown={e => handleKeyDown(i, e)}
+					onFocus={() => setFocused(i)}
+					onPaste={i === 0 ? handlePaste : undefined}
+					disabled={loading}
+					className={`aom-otp-box form-control flex-fill ${error ? "aom-otp-box--error" : d ? "aom-otp-box--filled" : ""}`}
+				/>
+			))}
+		</div>
+
+		{error && (
+			<p className="aom-text-danger d-flex align-items-center gap-1 mb-2" style={{ fontSize: 12.5 }}>
+				<span>⚠️</span> {error}
+			</p>
+		)}
+
+		<div className="aom-text-gray d-flex align-items-center gap-1 mb-4" style={{ fontSize: 12 }}>
+			<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--aom-link-purple)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="flex-shrink-0">
+				<rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+				<path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+			</svg>
+			{secs > 0
+				? <><span>OTP will expire in </span><span className="aom-text-danger fw-bold">{mm}:{ss}</span></>
+				: <span className="aom-text-danger fw-bold">OTP expired. Please resend.</span>
+			}
+		</div>
+
+		<button
+			ref={verifyBtnRef}
+			onClick={handleVerify}
+			disabled={!allFilled || loading || secs === 0}
+			className="aom-btn-verify btn w-100 py-3 d-flex align-items-center justify-content-center gap-2 mb-3"
+		>
+			{loading ? <><Spinner /> Verifying…</> : <>Verify OTP <span style={{ fontSize: 20 }}>→</span></>}
+		</button>
+
+		<div className="aom-resend-row d-flex justify-content-between align-items-center aom-text-gray mb-3" style={{ fontSize: 13 }}>
+			<span>Didn't receive OTP?</span>
+			<button onClick={handleResend} disabled={secs > 0 || resending} className="aom-btn-link btn p-0 d-flex align-items-center gap-1 fw-bold">
+				{resending ? "Sending…" : <>Resend OTP <span style={{ fontSize: 14 }}>↺</span></>}
+			</button>
+		</div>
+
+		<div className="aom-secure-box d-flex align-items-center gap-3 px-3 py-3">
+			<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--aom-link-purple)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="flex-shrink-0">
+				<rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+				<path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+			</svg>
+			<div className="flex-grow-1">
+				<p className="aom-title-text fw-bold mb-1" style={{ fontSize: 13 }}>Secure & Confidential</p>
+				<p className="aom-text-gray mb-0" style={{ fontSize: 11.5, lineHeight: 1.5 }}>Your information is safe with us and<br />never shared with anyone.</p>
+			</div>
+			{shieldSrc && (
+				<img src={shieldSrc} alt="Secure" className="aom-shield-icon--sm flex-shrink-0" style={{ width: 46, height: 46, objectFit: "contain" }} />
+			)}
+		</div>
+	</div>
+);
 }
 
 /* ─────────────────────────────────────────────────────────────────────────
@@ -434,19 +439,21 @@ export default function LoginOTPModal({
 
 	const handleClose = () => { setToast(null); onClose(); };
 
+	const showToast = (msg, type = "error") => setToast({ msg, type, id: Date.now() });
+
 	const handleSendOTP = (p, meta) => {
 		setPhone(p);
 		setOtpMeta(meta);
 		setLoginType(meta?.type || "");
 		setScreen("otp");
-		setToast({ msg: `OTP sent to +91 ${p.slice(0, 5)} ${p.slice(5)}`, type: "success" });
+		showToast(`OTP sent to +91 ${p.slice(0, 5)} ${p.slice(5)}`, "success");
 	};
 
 	const handleVerified = ({ token, user, isNewOrIncomplete }) => {
 		setToken(token);
 		setUser(user);
 
-		setToast({ msg: "Login successful! Welcome 🙏", type: "success" });
+		showToast("Login successful! Welcome 🙏", "success");
 
 		if (isNewOrIncomplete === true || loginType?.toLowerCase() !== "login") {
 			// New registration — collect Name + Email next
@@ -476,7 +483,7 @@ export default function LoginOTPModal({
 
 	return (
 		<>
-			{toast && <Toast msg={toast.msg} type={toast.type} onDone={() => setToast(null)} />}
+			{toast && <Toast key={toast.id} msg={toast.msg} type={toast.type} onDone={() => setToast(null)} />}
 
 			{/* Backdrop — click outside closes */}
 			<div
@@ -508,6 +515,7 @@ export default function LoginOTPModal({
 								onBack={() => setScreen("login")}
 								shieldSrc={shieldSrc}
 								onVerified={handleVerified}
+								onToast={showToast}
 							/>
 						)}
 					</div>

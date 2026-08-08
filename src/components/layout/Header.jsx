@@ -86,21 +86,33 @@ const Header = ({ onMenuToggle, onSideMenuToggle, onSearchToggle }) => {
 		return url.replace(/&#x2F;/g, "/");
 	};
 
+	// Remembers which user we've already synced, so the effect below can't
+	// re-fire when its own setUser() call mutates user.profile_img.
+	const syncedForRef = useRef(null);
+
 	useEffect(() => {
 
-		if (!isLoggedIn || isUsableImageUrl(user?.profile_img)) return;
+		if (!isLoggedIn) return;
 
-		if (!user?.id && !user?.number) return;
 		let cachedPhoto = '';
 		try {
-			const cacheKey = `pp_profile_photo_${user?.id || user?.number || 'anon'}`;
+			// Try the exact per-user key first; if that misses (e.g. the
+			// photo was cached before `number` was populated, so it landed
+			// under `_anon`), fall back to any pp_profile_photo_* entry.
+			const cacheKey = `pp_profile_photo_${user?.number || 'anon'}`;
 			cachedPhoto = localStorage.getItem(cacheKey) || '';
-			console.log('[HEADER DEBUG] user object:', user);
-			console.log('[HEADER DEBUG] cacheKey:', cacheKey, '| cachedPhoto found:', cachedPhoto);
+
+			if (!cachedPhoto) {
+				const anyKey = Object.keys(localStorage).find((k) =>
+					k.startsWith('pp_profile_photo_')
+				);
+				if (anyKey) cachedPhoto = localStorage.getItem(anyKey) || '';
+			}
+			console.log('[HEADER DEBUG] cacheKey:', cacheKey, '| photo:', cachedPhoto);
 		} catch (e) {
 			/* localStorage unavailable — ignore */
 		}
-		if (isUsableImageUrl(cachedPhoto)) {
+		if (isUsableImageUrl(cachedPhoto) && cachedPhoto !== user?.profile_img) {
 			setUser((prev) => ({ ...(prev || {}), profile_img: cachedPhoto }));
 			// Name/number can still come from get_profile below — don't
 			// return early just because the photo was already resolved.
@@ -135,7 +147,7 @@ const Header = ({ onMenuToggle, onSideMenuToggle, onSearchToggle }) => {
 		return () => {
 			cancelled = true;
 		};
-	}, [isLoggedIn, user?.profile_img, user?.number, user?.id, setUser]);
+	}, [isLoggedIn, user?.number]);
 
 	const handleLangSelect = (lang) => {
 		setLanguage(lang.code);
@@ -499,7 +511,7 @@ const Header = ({ onMenuToggle, onSideMenuToggle, onSearchToggle }) => {
 													className={styles.userBtn}
 													onClick={() => setIsDropdownOpen(!isDropdownOpen)}
 												>
-													{user.profile_img ? (
+													{isUsableImageUrl(user.profile_img) ? (
 														<img src={fixImageUrl(user.profile_img)} alt="User" />
 													) : (
 														<span className={styles.userInitial}>

@@ -23,7 +23,7 @@
   --aom-text-hint: #9ca3af;
   --aom-border-light: #e5e7eb;
   --aom-btn-purple: #4a0e82;
-  --aom-btn-purple-disabled: #6c1191be;
+  --aom-btn-purple-disabled: #4a0e82;
   --aom-verify-1: #6b1459;
   --aom-verify-2: #9d1b6e;
   --aom-link-purple: #8b1e6b;
@@ -39,15 +39,33 @@
 
 /* ---------- keyframes ---------- */
 @keyframes aom-spin {
-  to { transform: rotate(360deg); }
+  to {
+    transform: rotate(360deg);
+  }
 }
+
 @keyframes aom-fadein {
-  from { opacity: 0; transform: translateX(-50%) translateY(-10px); }
-  to   { opacity: 1; transform: translateX(-50%) translateY(0); }
+  from {
+    opacity: 0;
+    transform: translateX(-50%) translateY(-10px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+  }
 }
+
 @keyframes aom-modalin {
-  from { opacity: 0; transform: scale(0.96); }
-  to   { opacity: 1; transform: scale(1); }
+  from {
+    opacity: 0;
+    transform: scale(0.96);
+  }
+
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
 }
 
 /* ---------- backdrop ---------- */
@@ -62,10 +80,14 @@
 
 /* ---------- modal shell ---------- */
 .aom-modal-shell {
-  width: min(750px, 100%);
-  max-height: min(680px, 95vh);
+  width: min(700px, 100%);
+  height: min(680px, 92vh);
+  max-height: 92vh;
+
+  position: relative;
   border-radius: 20px;
   overflow: hidden;
+
   box-shadow: 0 32px 100px rgba(0, 0, 0, 0.65);
   background: #fff;
   animation: aom-modalin 0.25s ease;
@@ -73,8 +95,8 @@
 
 /* ---------- left decorative panel ---------- */
 .aom-left-panel {
-  width: 300px;
-  min-width: 300px;
+  width: 280px;
+  min-width: 280px;
   background-image: url("/assets/img/whtspic.jpeg");
   background-size: cover;
   background-position: center;
@@ -84,6 +106,79 @@
 
 .aom-right-panel {
   position: relative;
+  min-height: 0;
+}
+
+/* ---------- OTP screen: compact layout (fits 680px card, no scroll) ---------- */
+.aom-otp-pad {
+  padding: 14px 20px !important;
+}
+
+.aom-otp-pad>.mb-2 {
+  margin-bottom: 6px !important;
+}
+
+.aom-otp-pad>.mb-3 {
+  margin-bottom: 4px !important;
+}
+
+.aom-otp-pad>.mb-4 {
+  margin-bottom: 12px !important;
+}
+
+.aom-otp-pad .aom-avatar-ring {
+  width: 62px !important;
+  height: 62px !important;
+}
+
+.aom-otp-pad .aom-avatar-ring .aom-shield-icon {
+  width: 40px !important;
+  height: 40px !important;
+}
+
+.aom-otp-pad h2 {
+  font-size: 19px !important;
+}
+
+.aom-otp-pad .aom-phone-pill {
+  padding: 9px 12px !important;
+}
+
+.aom-otp-pad .aom-otp-box {
+  height: 46px !important;
+  font-size: 20px !important;
+}
+
+.aom-otp-pad .aom-btn-verify {
+  padding: 11px 0 !important;
+}
+
+.aom-otp-pad .aom-secure-box {
+  padding: 10px 12px !important;
+}
+
+.aom-otp-pad .aom-secure-box .aom-shield-icon--sm {
+  width: 38px !important;
+  height: 38px !important;
+}
+
+.aom-login-pad,
+.aom-otp-pad {
+  flex: 0 0 auto !important;
+  min-height: 0;
+}
+
+.aom-right-panel::-webkit-scrollbar {
+  width: 6px;
+}
+
+.aom-right-panel::-webkit-scrollbar-thumb {
+  background: rgba(139, 30, 107, 0.25);
+  border-radius: 3px;
+}
+
+.aom-right-panel::-webkit-scrollbar-track {
+  background: transparent;
 }
 
 /* ---------- close button ---------- */
@@ -102,21 +197,56 @@
 }
 
 /* ---------- toast ---------- */
+/* ---------- success / error popup ---------- */
 .aom-toast {
   position: fixed;
-  top: 24px;
+  top: 68px;
   left: 50%;
   transform: translateX(-50%);
   z-index: 100001;
-  color: #fff;
-  font-size: 13.5px;
-  font-weight: 600;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.35);
+
+  min-width: 392px;
+  max-width: calc(100vw - 30px);
+  min-height: 75px;
+
+  padding: 0 28px !important;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  border-radius: 15px !important;
+
+  font-size: 13px;
+  min-height: 50px;
+  padding: 0 20px !important;
+  border-radius: 12px !important;
+
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.20);
+
   white-space: nowrap;
-  animation: aom-fadein 0.25s ease;
+  animation: aom-toast-in 0.25s ease-out;
 }
-.aom-toast--success { background: var(--aom-success); }
-.aom-toast--error { background: var(--aom-danger); }
+
+.aom-toast--success {
+  background: #079b70 !important;
+}
+
+.aom-toast--error {
+  background: #dc2626 !important;
+}
+
+@keyframes aom-toast-in {
+  from {
+    opacity: 0;
+    transform: translate(-50%, -15px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translate(-50%, 0);
+  }
+}
 
 /* ---------- spinner ---------- */
 .aom-spinner {
@@ -124,28 +254,48 @@
   border-top-color: #fff;
   animation: aom-spin 0.7s linear infinite;
 }
+
 .aom-spinner--dark {
   border-color: rgba(124, 58, 237, 0.25);
   border-top-color: var(--aom-otp-focus);
 }
 
 /* ---------- typography ---------- */
-.aom-title-text { color: var(--aom-title); }
-.aom-text-med { color: var(--aom-text-med); }
-.aom-text-gray { color: var(--aom-text-gray); }
-.aom-text-hint { color: var(--aom-text-hint); }
-.aom-text-danger { color: var(--aom-danger); }
+.aom-title-text {
+  color: var(--aom-title);
+}
+
+.aom-text-med {
+  color: var(--aom-text-med);
+}
+
+.aom-text-gray {
+  color: var(--aom-text-gray);
+}
+
+.aom-text-hint {
+  color: var(--aom-text-hint);
+}
+
+.aom-text-danger {
+  color: var(--aom-danger);
+}
+
 .aom-text-link {
   color: var(--aom-link-purple);
   text-decoration: none;
 }
-.aom-text-label { color: var(--aom-label-purple); }
+
+.aom-text-label {
+  color: var(--aom-label-purple);
+}
 
 /* ---------- divider with centered label ---------- */
 .aom-divider {
   position: relative;
   text-align: center;
 }
+
 .aom-divider::before {
   content: "";
   position: absolute;
@@ -155,6 +305,7 @@
   height: 1px;
   background: var(--aom-border-light);
 }
+
 .aom-divider-label {
   position: relative;
   background: #fff;
@@ -172,9 +323,11 @@
   overflow: hidden;
   transition: border-color 0.2s;
 }
+
 .aom-phone-group--error {
   border-color: var(--aom-danger);
 }
+
 .aom-phone-flag {
   background: #fafafa;
   border-right: 1.5px solid var(--aom-border-light);
@@ -182,6 +335,7 @@
   white-space: nowrap;
   min-width: 82px;
 }
+
 .aom-phone-input {
   /* Overrides the site-wide `select, .form-control, .form-select, textarea,
      input { padding:0 25px; padding-right:50px; border:1px solid ...;
@@ -199,6 +353,7 @@
   font-weight: 400 !important;
   width: 100%;
 }
+
 .aom-phone-input:focus {
   box-shadow: none;
   outline: none;
@@ -207,22 +362,30 @@
 
 /* ---------- buttons ---------- */
 .aom-btn-primary {
-  background: var(--aom-btn-purple);
-  border: none;
-  color: #eaeff1;
+  background: #3b82f6 !important;
+  /* blue when disabled */
+  background-color: #3b82f6 !important;
+  border: none !important;
+  color: #fff !important;
   font-size: 15.5px;
   font-weight: 700;
   letter-spacing: 0.2px;
-  transition: background 0.2s;
+  transition: background 0.2s ease;
 }
+
+/* Purple after valid 10-digit number */
+.aom-btn-primary:not(:disabled) {
+  background: #4a0e82 !important;
+  background-color: #4a0e82 !important;
+  color: #fff !important;
+}
+
+/* Keep blue while disabled */
 .aom-btn-primary:disabled {
-  background: var(--aom-btn-purple-disabled);
-  color: #eaeff1;
-}
-.aom-btn-primary:hover:not(:disabled) {
-  background: var(--aom-btn-purple);
-  color: #eaeff1;
-  opacity: 0.95;
+  background: rgba(108, 17, 145, 0.745) !important;
+  background-color: rgba(108, 17, 145, 0.745) !important;
+  color: #fff !important;
+  opacity: 1 !important;
 }
 
 .aom-btn-verify {
@@ -233,10 +396,12 @@
   font-weight: 700;
   letter-spacing: 0.2px;
 }
+
 .aom-btn-verify:disabled {
   opacity: 0.55;
   color: #fff;
 }
+
 .aom-btn-verify:hover:not(:disabled) {
   color: #fff;
   opacity: 0.95;
@@ -248,6 +413,7 @@
   color: var(--aom-link-purple);
   font-weight: 600;
 }
+
 .aom-btn-link:disabled {
   color: var(--aom-text-hint);
   cursor: not-allowed;
@@ -255,16 +421,23 @@
 
 /* ---------- feature strip ---------- */
 .aom-features-row {
-  border: 1px solid var(--aom-border-light);
+  /* border: 1px solid var(--aom-border-light); */
   border-radius: 12px;
 }
+
 .aom-feature-icon {
-  width: 42px;
-  height: 42px;
-  font-size: 18px;
+  width: 34px;
+  height: 34px;
+  font-size: 13px;
 }
-.aom-feature-icon--orange { background: #fff7ed; }
-.aom-feature-icon--purple { background: #f5f0ff; }
+
+.aom-feature-icon--orange {
+  background: #fff7ed;
+}
+
+.aom-feature-icon--purple {
+  background: #f5f0ff;
+}
 
 /* ---------- OTP screen ---------- */
 .aom-avatar-ring {
@@ -273,6 +446,7 @@
   background: linear-gradient(135deg, #f3e8ff 0%, #fce7f3 100%);
   border: 2px solid rgba(139, 30, 107, 0.1);
 }
+
 .aom-avatar-badge {
   position: absolute;
   right: 4px;
@@ -289,7 +463,19 @@
 
 .aom-otp-row {
   display: flex;
-  gap: 8px;
+  gap: 15px;
+}
+
+/* ---------- resend row: guarantee space between label and button ---------- */
+.aom-resend-row {
+  gap: 130px;
+}
+.aom-resend-row > span {
+  white-space: nowrap;
+}
+.aom-resend-row .aom-btn-link {
+  white-space: nowrap;
+  flex-shrink: 0;
 }
 
 .aom-otp-box {
@@ -313,13 +499,16 @@
   outline: none;
   transition: border-color 0.15s !important;
 }
+
 .aom-otp-box:focus {
   border-color: var(--aom-otp-focus) !important;
   box-shadow: none;
 }
+
 .aom-otp-box--filled {
   border-color: var(--aom-otp-border);
 }
+
 .aom-otp-box--error {
   border-color: var(--aom-danger);
 }
@@ -334,6 +523,7 @@
   border: 1px solid #adb5bd !important;
   background-color: #fff !important;
 }
+
 .aom-root .form-check-input[type="checkbox"]:checked {
   background-color: var(--aom-label-purple) !important;
   border-color: var(--aom-label-purple) !important;
@@ -348,6 +538,7 @@
 .aom-shield-icon {
   filter: drop-shadow(0 2px 8px rgba(100, 0, 80, 0.3));
 }
+
 .aom-shield-icon--sm {
   filter: drop-shadow(0 2px 6px rgba(100, 0, 80, 0.25));
 }
@@ -356,36 +547,87 @@
    RESPONSIVE (mobile / small screens)
    ========================================================================= */
 @media (max-width: 700px) {
-  .aom-backdrop { padding: 8px !important; }
+  .aom-backdrop {
+    padding: 8px !important;
+  }
+
   .aom-modal-shell {
     flex-direction: column !important;
     width: 100% !important;
+    height: auto !important;
     max-height: 96vh !important;
-    overflow-y: auto !important;
+    overflow: hidden !important;
   }
-  .aom-left-panel { display: none !important; }
-  .aom-right-panel { border-radius: 20px !important; }
-  .aom-login-pad { padding: 22px 14px 18px !important; }
-  .aom-otp-pad { padding: 16px 12px 14px !important; }
-  .aom-title { font-size: 21px !important; }
+
+  .aom-left-panel {
+    display: none !important;
+  }
+
+  .aom-right-panel {
+    border-radius: 20px !important;
+  }
+
+  .aom-login-pad {
+    padding: 22px 14px 18px !important;
+  }
+
+  .aom-otp-pad {
+    padding: 16px 12px 14px !important;
+  }
+
+  .aom-title {
+    font-size: 18px !important;
+  }
+
   .aom-features-row {
     flex-wrap: nowrap !important;
     padding: 12px 4px !important;
     gap: 2px !important;
   }
-  .aom-features-row > div { flex: 1 1 0 !important; gap: 4px !important; padding: 0 2px !important; }
-  .aom-feature-icon { width: 32px !important; height: 32px !important; font-size: 14px !important; }
-  .aom-feature-title { font-size: 10px !important; }
-  .aom-feature-desc { font-size: 9px !important; }
+
+  .aom-features-row>div {
+    flex: 1 1 0 !important;
+    gap: 4px !important;
+    padding: 0 2px !important;
+  }
+
+  .aom-feature-icon {
+    width: 32px !important;
+    height: 32px !important;
+    font-size: 14px !important;
+  }
+
+  .aom-feature-title {
+    font-size: 10px !important;
+  }
+
+  .aom-feature-desc {
+    font-size: 9px !important;
+  }
 
   /* OTP boxes: tighter gap + padding so all 4 stay on screen without
      overflowing the card on narrow phones. */
-  .aom-otp-row { gap: 6px !important; }
-  .aom-otp-box { height: 48px !important; font-size: 20px !important; }
-  .aom-phone-pill { padding: 10px 12px !important; }
+  .aom-otp-row {
+    gap: 6px !important;
+  }
+
+  .aom-otp-box {
+    height: 48px !important;
+    font-size: 20px !important;
+  }
+
+  .aom-phone-pill {
+    padding: 10px 12px !important;
+  }
 }
 
 @media (max-width: 380px) {
-  .aom-otp-row { gap: 4px !important; }
-  .aom-otp-box { height: 44px !important; font-size: 18px !important; }
+  .aom-otp-row {
+    gap: 4px !important;
+  }
+
+  .aom-otp-box {
+    height: 44px !important;
+    font-size: 18px !important;
+  }
 }

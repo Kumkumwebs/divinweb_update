@@ -89,6 +89,27 @@ const EMPTY_PROFILE = {
 const isUsableImageUrl = (v) =>
   typeof v === "string" && /^(https?:\/\/|\/)/i.test(v.trim());
 
+// Merges profile_img into the stored `user` object wherever the app keeps
+// it, so the Header avatar survives a reload. Checks both storages and a
+// couple of likely key names since StorageContext owns the real one.
+const persistUserPhoto = (url) => {
+  const KEYS = ["user", "userData", "user_details"];
+  [localStorage, sessionStorage].forEach((store) => {
+    KEYS.forEach((key) => {
+      try {
+        const raw = store.getItem(key);
+        if (!raw) return;
+        const parsed = JSON.parse(raw);
+        if (parsed && typeof parsed === "object") {
+          store.setItem(key, JSON.stringify({ ...parsed, profile_img: url }));
+        }
+      } catch (e) {
+        /* not JSON or storage blocked — skip */
+      }
+    });
+  });
+};
+
 const ICONS = {
   user: (
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -307,6 +328,9 @@ export default function ProfilePage() {
         // exactly what was triggering the "Cannot update a component
         // while rendering a different component" warning.
         if (resolvedProfile) {
+          if (resolvedProfile.profile_img) {
+            persistUserPhoto(resolvedProfile.profile_img);
+          }
           setUser((prevUser) => ({
             ...prevUser,
             name: resolvedProfile.name || prevUser?.name,
@@ -389,6 +413,11 @@ export default function ProfilePage() {
           } catch (e) {
             /* localStorage unavailable — photo still shows for this session */
           }
+
+          // Also write it into the persisted `user` object, so the Header
+          // avatar survives a page reload even if StorageContext doesn't
+          // mirror setUser() back to storage on its own.
+          persistUserPhoto(uploadedUrl);
 
           // Propagate to the global user immediately so the Header avatar
           // updates without waiting for a page reload.
