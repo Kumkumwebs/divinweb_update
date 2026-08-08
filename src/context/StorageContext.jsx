@@ -54,8 +54,8 @@ const STORAGE_KEYS = {
 // --- Provider Component ---
 export const StorageProvider = ({ children }) => {
   // Initialize state from sessionStorage
-  const [token, setTokenState] = useState(() => sessionStorage.getItem(STORAGE_KEYS.TOKEN) || null);
-  const [user, setUserState] = useState(() => safeJsonParse(sessionStorage.getItem(STORAGE_KEYS.USER)));
+  const [token, setTokenState] = useState(() => localStorage.getItem(STORAGE_KEYS.TOKEN) || null);
+const [user, setUserState] = useState(() => safeJsonParse(localStorage.getItem(STORAGE_KEYS.USER)));
   const [devoteeDetails, setDevoteeDetailsState] = useState(() => 
     safeJsonParse(sessionStorage.getItem(STORAGE_KEYS.DEVOTEE_DETAILS), { name: '', whatsapp: '' })
   );
@@ -77,14 +77,11 @@ export const StorageProvider = ({ children }) => {
 }, []);
 
   const setUser = useCallback((newUser) => {
-    const sanitized = sanitizeObject(newUser);
-    setUserState(sanitized);
-    if (sanitized) {
-      sessionStorage.setItem(STORAGE_KEYS.USER, JSON.stringify(sanitized));
-    } else {
-      sessionStorage.removeItem(STORAGE_KEYS.USER);
-    }
-  }, []);
+  const sanitized = sanitizeObject(newUser);
+  setUserState(sanitized);
+  if (sanitized) localStorage.setItem(STORAGE_KEYS.USER, JSON.stringify(sanitized));
+  else localStorage.removeItem(STORAGE_KEYS.USER);
+}, []);
 
   const setDevoteeDetails = useCallback((newDetails) => {
     const sanitized = sanitizeObject(newDetails);
@@ -118,13 +115,15 @@ export const StorageProvider = ({ children }) => {
 
   // --- Clear all storage ---
   const clearStorage = useCallback(() => {
-    setTokenState(null);
-    setUserState(null);
-    setDevoteeDetailsState({ name: '', whatsapp: '' });
-    setActiveChadhavaIdState(null);
-    setActiveCartState(null);
-    sessionStorage.clear();
-  }, []);
+  setTokenState(null);
+  setUserState(null);
+  setDevoteeDetailsState({ name: '', whatsapp: '' });
+  setActiveChadhavaIdState(null);
+  setActiveCartState(null);
+  localStorage.removeItem(STORAGE_KEYS.TOKEN);
+  localStorage.removeItem(STORAGE_KEYS.USER);
+  sessionStorage.clear();
+}, []);
 
   // --- Context Value ---
   const value = {
