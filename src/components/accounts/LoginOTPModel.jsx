@@ -1,48 +1,21 @@
 import { useState, useRef, useEffect } from "react";
 import AuthService from "../../services/authServices";
 import { useStorage } from "../../context/StorageContext";
-import ProfileDetailsModal from "./ProfileDetailsModal";
-
-/* ── COLOUR PALETTE ── */
-const C = {
-	panelBg1: "#0D0118",
-	panelBg2: "#200840",
-	panelBg3: "#4A0E82",
-	gold: "#C8862A",
-	goldLight: "#E5A83A",
-	goldBorder: "rgba(200,134,42,0.55)",
-	titleBlack: "#111827",
-	textMed: "#374151",
-	textGray: "#6B7280",
-	textHint: "#9CA3AF",
-	borderLight: "#E5E7EB",
-	btnPurple: "#4A0E82",
-	btnVerify1: "#6B1459",
-	btnVerify2: "#9D1B6E",
-	linkPurple: "#8B1E6B",
-	labelPurple: "#7C3AED",
-	phonePill: "#F3EDF8",
-	createBg: "#F5EEF8",
-	secureBg: "#F5EEF8",
-	otpBorder: "#C084FC",
-	otpFocus: "#7C3AED",
-	expireRed: "#DC2626",
-	successGreen: "#059669",
-};
+import NewUserDetailsModal from "./NewUserDetailsModal";
+import "./auth-otp-modal.css";
+// NOTE: assumes Bootstrap 5 CSS is already loaded globally in the app, e.g.
+//   import "bootstrap/dist/css/bootstrap.min.css";
 
 const OTP_LEN = 4; // matches existing AuthService OTP length
 
 /* ── SPINNER ── */
-function Spinner({ size = 18, color = "#fff" }) {
+function Spinner({ dark = false }) {
 	return (
-		<span style={{
-			display: "inline-block",
-			width: size, height: size,
-			border: `2.5px solid rgba(255,255,255,0.3)`,
-			borderTopColor: color,
-			borderRadius: "50%",
-			animation: "diq-spin 0.7s linear infinite",
-		}} />
+		<span
+			className={`spinner-border spinner-border-sm aom-spinner ${dark ? "aom-spinner--dark" : ""}`}
+			role="status"
+			aria-hidden="true"
+		/>
 	);
 }
 
@@ -53,16 +26,7 @@ function Toast({ msg, type = "error", onDone }) {
 		return () => clearTimeout(id);
 	}, [msg]);
 	return (
-		<div style={{
-			position: "fixed", top: 24, left: "50%", transform: "translateX(-50%)",
-			zIndex: 100001,
-			background: type === "success" ? C.successGreen : "#DC2626",
-			color: "#fff", padding: "12px 22px", borderRadius: 10,
-			fontSize: 13.5, fontWeight: 600,
-			boxShadow: "0 8px 32px rgba(0,0,0,0.35)",
-			display: "flex", alignItems: "center", gap: 8,
-			animation: "diq-fadein 0.25s ease", whiteSpace: "nowrap",
-		}}>
+		<div className={`aom-toast aom-toast--${type} rounded-3 px-4 py-2 d-flex align-items-center gap-2`}>
 			{type === "success" ? "✅" : "⚠️"} {msg}
 		</div>
 	);
@@ -70,24 +34,7 @@ function Toast({ msg, type = "error", onDone }) {
 
 /* ── LEFT PANEL ── */
 function LeftPanel() {
-	return (
-		<div className="diq-left-panel" style={{
-			width: 300,
-			minWidth: 300,
-			backgroundImage: `url('/assets/img/whtspic.jpeg')`,
-			backgroundSize: "cover",
-			backgroundPosition: "center",
-			backgroundRepeat: "no-repeat",
-			borderRadius: "20px 0 0 20px",
-			display: "flex",
-			flexDirection: "column",
-			alignItems: "center",
-			padding: "32px 24px 28px",
-			position: "relative",
-			overflow: "hidden",
-		}}>
-		</div>
-	);
+	return <div className="aom-left-panel d-flex flex-column align-items-center position-relative overflow-hidden" />;
 }
 
 /* ── LOGIN SCREEN ──
@@ -127,25 +74,26 @@ function LoginScreen({ phone, setPhone, agreedToTerms, setAgreedToTerms, onSendO
 	};
 
 	return (
-		<div className="diq-login-pad" style={{ padding: "36px 36px 32px", display: "flex", flexDirection: "column", flex: 1 }}>
-			<h1 className="diq-title" style={{ fontSize: 27, fontWeight: 800, color: C.titleBlack, margin: "0 0 4px", lineHeight: 1.2 }}>Login to Your Account</h1>
-			<p style={{ fontSize: 13.5, color: C.textGray, margin: "0 0 26px" }}>We're happy to have you back! 🙏</p>
+		<div className="aom-login-pad d-flex flex-column flex-grow-1 p-4 px-lg-5 py-lg-4">
+			<h1 className="aom-title aom-title-text fw-bold mb-1" style={{ fontSize: 27 }}>
+				Login to Your Account
+			</h1>
+			<p className="aom-text-gray mb-4" style={{ fontSize: 13.5 }}>
+				We're happy to have you back! 🙏
+			</p>
 
-			<div style={{ position: "relative", textAlign: "center", marginBottom: 22 }}>
-				<div style={{ position: "absolute", top: "50%", left: 0, right: 0, height: 1, background: C.borderLight }} />
-				<span style={{ position: "relative", background: "#fff", padding: "0 14px", fontSize: 12.5, fontWeight: 700, color: C.labelPurple, letterSpacing: 0.3 }}>Login with Mobile Number</span>
+			<div className="aom-divider mb-4">
+				<span className="aom-divider-label">Login with Mobile Number</span>
 			</div>
 
-			<label style={{ fontSize: 13.5, fontWeight: 700, color: C.titleBlack, marginBottom: 8, display: "block" }}>Mobile Number</label>
-			<div style={{
-				display: "flex",
-				border: `1.5px solid ${error ? C.expireRed : C.borderLight}`,
-				borderRadius: 10, overflow: "hidden", marginBottom: 7, transition: "border-color 0.2s",
-			}}>
-				<div style={{ display: "flex", alignItems: "center", gap: 5, padding: "0 12px", background: "#FAFAFA", borderRight: `1.5px solid ${C.borderLight}`, fontSize: 13, color: C.textMed, whiteSpace: "nowrap", minWidth: 82 }}>
+			<label className="aom-title-text fw-bold mb-2 d-block" style={{ fontSize: 13.5 }}>
+				Mobile Number
+			</label>
+			<div className={`aom-phone-group d-flex mb-2 ${error ? "aom-phone-group--error" : ""}`}>
+				<div className="aom-phone-flag d-flex align-items-center gap-1 px-3">
 					<span style={{ fontSize: 18 }}>🇮🇳</span>
-					<span style={{ fontSize: 11, color: "#aaa" }}>▾</span>
-					<span style={{ fontWeight: 600 }}>+91</span>
+					<span className="text-black-50" style={{ fontSize: 11 }}>▾</span>
+					<span className="fw-semibold">+91</span>
 				</div>
 				<input
 					type="tel"
@@ -159,72 +107,70 @@ function LoginScreen({ phone, setPhone, agreedToTerms, setAgreedToTerms, onSendO
 					}}
 					placeholder="Enter your mobile number"
 					disabled={loading}
-					style={{ flex: 1, padding: "13px 14px", border: "none", outline: "none", fontSize: 13.5, color: C.titleBlack, background: "transparent" }}
+					className="aom-phone-input form-control border-0 flex-grow-1 px-3 py-3"
 				/>
 			</div>
 
-			<div style={{ display: "flex", alignItems: "flex-start", gap: 8, margin: "6px 0 4px" }}>
+			<div className="d-flex align-items-start gap-2 mt-1 mb-1 form-check ps-0">
 				<input
 					type="checkbox"
-					id="diq-terms"
+					id="aom-terms"
 					checked={agreedToTerms}
 					onChange={e => setAgreedToTerms(e.target.checked)}
 					disabled={loading}
-					style={{ marginTop: 3, width: 15, height: 15, flexShrink: 0, cursor: "pointer" }}
+					className="form-check-input mt-1 ms-0 flex-shrink-0"
+					style={{ width: 15, height: 15 }}
 				/>
-				<label htmlFor="diq-terms" style={{ fontSize: 12, color: C.textGray, lineHeight: 1.5, cursor: "pointer" }}>
+				<label htmlFor="aom-terms" className="form-check-label aom-text-gray" style={{ fontSize: 12, lineHeight: 1.5 }}>
 					I accept the{" "}
-					<a href="/terms_of_use" style={{ color: C.linkPurple, fontWeight: 600, textDecoration: "none" }}>Terms of Service</a>{" "}
+					<a href="/terms_of_use" className="aom-text-link fw-semibold">Terms of Service</a>{" "}
 					&{" "}
-					<a href="/privacy_policy" style={{ color: C.linkPurple, fontWeight: 600, textDecoration: "none" }}>Privacy Policy</a>
+					<a href="/privacy_policy" className="aom-text-link fw-semibold">Privacy Policy</a>
 				</label>
 			</div>
 
 			{error && (
-				<p style={{ fontSize: 12.5, color: C.expireRed, margin: "6px 0", display: "flex", alignItems: "center", gap: 4 }}>
+				<p className="aom-text-danger d-flex align-items-center gap-1 my-2" style={{ fontSize: 12.5 }}>
 					<span>⚠️</span> {error}
 				</p>
 			)}
-			<p style={{ fontSize: 12, color: C.textHint, margin: "0 0 20px" }}>We will send you a 4-digit OTP on this number</p>
+			<p className="aom-text-hint mb-4" style={{ fontSize: 12 }}>
+				We will send you a 4-digit OTP on this number
+			</p>
 
 			<button
 				onClick={handleSend}
 				disabled={!ok}
-				style={{
-					width: "100%", padding: "15px",
-					background: ok ? C.btnPurple : "#6c1191be",
-					border: "none", borderRadius: 10, color: "#eaeff1", fontSize: 15.5, fontWeight: 700,
-					cursor: ok ? "pointer" : "not-allowed",
-					display: "flex", alignItems: "center", justifyContent: "center",
-					gap: 10, letterSpacing: 0.2, marginBottom: 22, transition: "background 0.2s",
-				}}
+				className="aom-btn-primary btn w-100 py-3 d-flex align-items-center justify-content-center gap-2 mb-4"
 			>
 				{loading ? <><Spinner /> Sending OTP…</> : <>Send OTP <span style={{ fontSize: 20 }}>→</span></>}
 			</button>
 
-			<div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 18 }}>
-				<div style={{ flex: 1, height: 1, background: C.borderLight }} />
-				<span style={{ fontSize: 12, color: C.textHint, fontWeight: 500 }}>OR</span>
-				<div style={{ flex: 1, height: 1, background: C.borderLight }} />
+			<div className="d-flex align-items-center gap-2 mb-3">
+				<div className="flex-grow-1 border-top" style={{ borderColor: "var(--aom-border-light)" }} />
+				<span className="aom-text-hint fw-medium" style={{ fontSize: 12 }}>OR</span>
+				<div className="flex-grow-1 border-top" style={{ borderColor: "var(--aom-border-light)" }} />
 			</div>
 
-			<div className="diq-features-row" style={{ border: `1px solid ${C.borderLight}`, borderRadius: 12, padding: "16px 8px", display: "flex", justifyContent: "space-around", marginBottom: 20 }}>
+			<div className="aom-features-row d-flex justify-content-around py-3 px-2 mb-3">
 				{[
-					{ bg: "#FFF7ED", icon: "⚡", title: "Quick Login", desc: "Sign in within\nseconds" },
-					{ bg: "#F5F0FF", icon: "🛡️", title: "Secure & Safe", desc: "Your data is always\nprotected" },
-					{ bg: "#F5F0FF", icon: "✅", title: "Trusted Platform", desc: "Used by lakhs of\ndevotees" },
+					{ cls: "aom-feature-icon--orange", icon: "⚡", title: "Quick Login", desc: "Sign in within\nseconds" },
+					{ cls: "aom-feature-icon--purple", icon: "🛡️", title: "Secure & Safe", desc: "Your data is always\nprotected" },
+					{ cls: "aom-feature-icon--purple", icon: "✅", title: "Trusted Platform", desc: "Used by lakhs of\ndevotees" },
 				].map((f, i) => (
-					<div key={i} style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: 6, padding: "0 4px" }}>
-						<div style={{ width: 42, height: 42, borderRadius: "50%", background: f.bg, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18 }}>{f.icon}</div>
-						<span style={{ fontSize: 11.5, fontWeight: 700, color: C.titleBlack, textAlign: "center" }}>{f.title}</span>
-						<span style={{ fontSize: 10.5, color: C.textGray, textAlign: "center", lineHeight: 1.45, whiteSpace: "pre-line" }}>{f.desc}</span>
+					<div key={i} className="flex-fill d-flex flex-column align-items-center gap-1 px-1">
+						<div className={`aom-feature-icon ${f.cls} rounded-circle d-flex align-items-center justify-content-center`}>
+							{f.icon}
+						</div>
+						<span className="aom-feature-title aom-title-text fw-bold text-center" style={{ fontSize: 11.5 }}>{f.title}</span>
+						<span className="aom-feature-desc aom-text-gray text-center" style={{ fontSize: 10.5, lineHeight: 1.45, whiteSpace: "pre-line" }}>{f.desc}</span>
 					</div>
 				))}
 			</div>
 
-			<div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 5 }}>
-				<span style={{ fontSize: 13, color: C.textHint }}>🔒</span>
-				<span style={{ fontSize: 11.5, color: C.textHint }}>Your data is safe with us. We never share your information.</span>
+			<div className="d-flex align-items-center justify-content-center gap-1">
+				<span className="aom-text-hint" style={{ fontSize: 13 }}>🔒</span>
+				<span className="aom-text-hint" style={{ fontSize: 11.5 }}>Your data is safe with us. We never share your information.</span>
 			</div>
 		</div>
 	);
@@ -334,37 +280,37 @@ function OTPScreen({ phone, otpMeta, onBack, onVerified, shieldSrc }) {
 	};
 
 	return (
-		<div className="diq-otp-pad" style={{ padding: "20px 20px 20px", display: "flex", flexDirection: "column", flex: 1 }}>
-			<button onClick={onBack} style={{ background: "none", border: "none", cursor: "pointer", display: "flex", alignItems: "center", gap: 6, fontSize: 14, fontWeight: 600, color: C.textMed, padding: 0, marginBottom: 12, alignSelf: "flex-start" }}>
+		<div className="aom-otp-pad d-flex flex-column flex-grow-1 p-3">
+			<button onClick={onBack} className="btn btn-link aom-text-med p-0 mb-3 d-flex align-items-center gap-2 fw-semibold text-decoration-none align-self-start" style={{ fontSize: 14 }}>
 				<span style={{ fontSize: 16 }}>←</span> Back
 			</button>
 
-			<div style={{ display: "flex", justifyContent: "center", marginBottom: 14 }}>
-				<div style={{ width: 82, height: 82, borderRadius: "50%", background: "linear-gradient(135deg,#F3E8FF 0%,#FCE7F3 100%)", border: "2px solid rgba(139,30,107,0.10)", display: "flex", alignItems: "center", justifyContent: "center", overflow: "hidden", position: "relative" }}>
+			<div className="d-flex justify-content-center mb-3">
+				<div className="aom-avatar-ring rounded-circle d-flex align-items-center justify-content-center position-relative overflow-hidden">
 					{shieldSrc
-						? <img src={shieldSrc} alt="Secure" style={{ width: 54, height: 54, objectFit: "contain", filter: "drop-shadow(0 2px 8px rgba(100,0,80,0.3))" }} />
+						? <img src={shieldSrc} alt="Secure" className="aom-shield-icon" style={{ width: 54, height: 54, objectFit: "contain" }} />
 						: <span style={{ fontSize: 36 }}>🛡️</span>
 					}
-					<div style={{ position: "absolute", right: 4, top: 6, fontSize: 13, transform: "rotate(-20deg)" }}>✉️</div>
+					<div className="aom-avatar-badge">✉️</div>
 				</div>
 			</div>
 
-			<div style={{ textAlign: "center", marginBottom: 14 }}>
-				<h2 style={{ fontSize: 22, fontWeight: 800, color: C.titleBlack, margin: "0 0 4px" }}>Verify Your Mobile Number</h2>
-				<p style={{ fontSize: 13, color: C.textGray, margin: 0 }}>We've sent a 4-digit OTP to</p>
+			<div className="text-center mb-3">
+				<h2 className="aom-title-text fw-bold mb-1" style={{ fontSize: 22 }}>Verify Your Mobile Number</h2>
+				<p className="aom-text-gray mb-0" style={{ fontSize: 13 }}>We've sent a 4-digit OTP to</p>
 			</div>
 
-			<div style={{ display: "flex", alignItems: "center", gap: 10, background: C.phonePill, borderRadius: 10, padding: "12px 16px", marginBottom: 18, border: "1.5px solid rgba(139,30,107,0.10)" }}>
+			<div className="aom-phone-pill d-flex align-items-center gap-2 px-3 py-3 mb-4">
 				<span style={{ fontSize: 20 }}>🇮🇳</span>
-				<span style={{ flex: 1, fontSize: 15, fontWeight: 700, color: C.titleBlack }}>+91 {phone.slice(0, 5)} {phone.slice(5)}</span>
-				<button onClick={onBack} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 13, fontWeight: 600, color: C.linkPurple, display: "flex", alignItems: "center", gap: 3, padding: 0 }}>
+				<span className="aom-title-text fw-bold flex-grow-1" style={{ fontSize: 15 }}>+91 {phone.slice(0, 5)} {phone.slice(5)}</span>
+				<button onClick={onBack} className="aom-btn-link btn p-0 d-flex align-items-center gap-1" style={{ fontSize: 13 }}>
 					Edit <span style={{ fontSize: 12 }}>✏️</span>
 				</button>
 			</div>
 
-			<label style={{ fontSize: 13.5, fontWeight: 700, color: C.titleBlack, marginBottom: 10, display: "block" }}>Enter 4-digit OTP</label>
+			<label className="aom-title-text fw-bold mb-2 d-block" style={{ fontSize: 13.5 }}>Enter 4-digit OTP</label>
 
-			<div style={{ display: "flex", gap: 8, marginBottom: 10 }}>
+			<div className="aom-otp-row mb-2">
 				{digits.map((d, i) => (
 					<input
 						key={i}
@@ -378,32 +324,25 @@ function OTPScreen({ phone, otpMeta, onBack, onVerified, shieldSrc }) {
 						onFocus={() => setFocused(i)}
 						onPaste={i === 0 ? handlePaste : undefined}
 						disabled={loading}
-						style={{
-							flex: 1, height: 52,
-							border: `2px solid ${error ? C.expireRed : focused === i ? C.otpFocus : (d ? C.otpBorder : C.borderLight)}`,
-							borderRadius: 10, textAlign: "center",
-							fontSize: 22, fontWeight: 700, color: C.titleBlack,
-							outline: "none", background: "#fff",
-							transition: "border-color 0.15s",
-						}}
+						className={`aom-otp-box form-control flex-fill ${error ? "aom-otp-box--error" : d ? "aom-otp-box--filled" : ""}`}
 					/>
 				))}
 			</div>
 
 			{error && (
-				<p style={{ fontSize: 12.5, color: C.expireRed, margin: "0 0 8px", display: "flex", alignItems: "center", gap: 4 }}>
+				<p className="aom-text-danger d-flex align-items-center gap-1 mb-2" style={{ fontSize: 12.5 }}>
 					<span>⚠️</span> {error}
 				</p>
 			)}
 
-			<div style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 12, color: C.textGray, marginBottom: 18 }}>
-				<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={C.linkPurple} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
+			<div className="aom-text-gray d-flex align-items-center gap-1 mb-4" style={{ fontSize: 12 }}>
+				<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--aom-link-purple)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="flex-shrink-0">
 					<rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
 					<path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
 				</svg>
 				{secs > 0
-					? <><span>OTP will expire in </span><span style={{ color: C.expireRed, fontWeight: 700 }}>{mm}:{ss}</span></>
-					: <span style={{ color: C.expireRed, fontWeight: 700 }}>OTP expired. Please resend.</span>
+					? <><span>OTP will expire in </span><span className="aom-text-danger fw-bold">{mm}:{ss}</span></>
+					: <span className="aom-text-danger fw-bold">OTP expired. Please resend.</span>
 				}
 			</div>
 
@@ -411,37 +350,29 @@ function OTPScreen({ phone, otpMeta, onBack, onVerified, shieldSrc }) {
 				ref={verifyBtnRef}
 				onClick={handleVerify}
 				disabled={!allFilled || loading || secs === 0}
-				style={{
-					width: "100%", padding: "15px",
-					background: `linear-gradient(135deg,${C.btnVerify1} 0%,${C.btnVerify2} 100%)`,
-					opacity: (allFilled && !loading && secs > 0) ? 1 : 0.55,
-					border: "none", borderRadius: 10, color: "#fff", fontSize: 15.5, fontWeight: 700,
-					cursor: (allFilled && !loading && secs > 0) ? "pointer" : "not-allowed",
-					display: "flex", alignItems: "center", justifyContent: "center",
-					gap: 10, letterSpacing: 0.2, marginBottom: 16,
-				}}
+				className="aom-btn-verify btn w-100 py-3 d-flex align-items-center justify-content-center gap-2 mb-3"
 			>
 				{loading ? <><Spinner /> Verifying…</> : <>Verify OTP <span style={{ fontSize: 20 }}>→</span></>}
 			</button>
 
-			<div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: 13, color: C.textGray, marginBottom: 16 }}>
+			<div className="d-flex justify-content-between align-items-center aom-text-gray mb-3" style={{ fontSize: 13 }}>
 				<span>Didn't receive OTP?</span>
-				<button onClick={handleResend} disabled={secs > 0 || resending} style={{ background: "none", border: "none", cursor: (secs > 0 || resending) ? "not-allowed" : "pointer", fontSize: 13, fontWeight: 700, color: (secs > 0 || resending) ? C.textHint : C.linkPurple, display: "flex", alignItems: "center", gap: 4, padding: 0 }}>
+				<button onClick={handleResend} disabled={secs > 0 || resending} className="aom-btn-link btn p-0 d-flex align-items-center gap-1 fw-bold">
 					{resending ? "Sending…" : <>Resend OTP <span style={{ fontSize: 14 }}>↺</span></>}
 				</button>
 			</div>
 
-			<div style={{ background: C.secureBg, borderRadius: 12, padding: "14px 16px", display: "flex", alignItems: "center", gap: 12, border: "1px solid rgba(139,30,107,0.10)" }}>
-				<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={C.linkPurple} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
+			<div className="aom-secure-box d-flex align-items-center gap-3 px-3 py-3">
+				<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--aom-link-purple)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="flex-shrink-0">
 					<rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
 					<path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
 				</svg>
-				<div style={{ flex: 1 }}>
-					<p style={{ fontSize: 13, fontWeight: 700, color: C.titleBlack, margin: "0 0 3px" }}>Secure & Confidential</p>
-					<p style={{ fontSize: 11.5, color: C.textGray, margin: 0, lineHeight: 1.5 }}>Your information is safe with us and<br />never shared with anyone.</p>
+				<div className="flex-grow-1">
+					<p className="aom-title-text fw-bold mb-1" style={{ fontSize: 13 }}>Secure & Confidential</p>
+					<p className="aom-text-gray mb-0" style={{ fontSize: 11.5, lineHeight: 1.5 }}>Your information is safe with us and<br />never shared with anyone.</p>
 				</div>
 				{shieldSrc && (
-					<img src={shieldSrc} alt="Secure" style={{ width: 46, height: 46, objectFit: "contain", flexShrink: 0, filter: "drop-shadow(0 2px 6px rgba(100,0,80,0.25))" }} />
+					<img src={shieldSrc} alt="Secure" className="aom-shield-icon--sm flex-shrink-0" style={{ width: 46, height: 46, objectFit: "contain" }} />
 				)}
 			</div>
 		</div>
@@ -454,7 +385,8 @@ function OTPScreen({ phone, otpMeta, onBack, onVerified, shieldSrc }) {
    Behaves exactly like the old modal internally:
 	 - AuthService.checkNumber / AuthService.verifyOtp
 	 - useStorage().setToken / setUser on success
-	 - shows ProfileDetailsModal for new registrations (loginType !== 'login')
+	 - shows NewUserDetailsModal (Name + Email) for new registrations
+	   (loginType !== 'login')
    ───────────────────────────────────────────────────────────────────────── */
 export default function LoginOTPModal({
 	isOpen,
@@ -517,7 +449,7 @@ export default function LoginOTPModal({
 		setToast({ msg: "Login successful! Welcome 🙏", type: "success" });
 
 		if (loginType?.toLowerCase() !== "login") {
-			// New registration — collect profile details next
+			// New registration — collect Name + Email next
 			setTimeout(() => {
 				setToast(null);
 				setShowProfileModal(true);
@@ -531,83 +463,22 @@ export default function LoginOTPModal({
 
 	return (
 		<>
-			<style>{`
-        @keyframes diq-spin   { to { transform: rotate(360deg); } }
-        @keyframes diq-fadein { from { opacity:0; transform:translateX(-50%) translateY(-10px); } to { opacity:1; transform:translateX(-50%) translateY(0); } }
-        @keyframes diq-modalin{ from { opacity:0; transform:scale(0.96); } to { opacity:1; transform:scale(1); } }
-
-        /* ── RESPONSIVE (mobile/small screens) ──
-           Only visual overrides — no logic changes. The decorative left
-           panel becomes a full-width image strip placed AFTER the form
-           (via flex order) instead of a fixed side panel, and padding &
-           a few font sizes shrink so nothing overflows narrow screens. */
-        @media (max-width: 700px) {
-          .diq-modal-shell {
-            flex-direction: column !important;
-            width: 100% !important;
-            max-height: 92vh !important;
-            overflow-y: auto !important;
-          }
-          .diq-left-panel { display: none !important; }
-          .diq-right-panel { border-radius: 20px !important; }
-          .diq-login-pad { padding: 24px 18px 20px !important; }
-          .diq-otp-pad { padding: 18px 16px 16px !important; }
-          .diq-title { font-size: 21px !important; }
-          .diq-features-row {
-            flex-wrap: nowrap !important;
-            padding: 12px 4px !important;
-            gap: 2px !important;
-          }
-          .diq-features-row > div { flex: 1 1 0 !important; gap: 4px !important; padding: 0 2px !important; }
-          .diq-features-row > div > div:first-child { width: 32px !important; height: 32px !important; font-size: 14px !important; }
-          .diq-features-row > div > span:nth-child(2) { font-size: 10px !important; }
-          .diq-features-row > div > span:nth-child(3) { font-size: 9px !important; }
-        }
-      `}</style>
-
 			{toast && <Toast msg={toast.msg} type={toast.type} onDone={() => setToast(null)} />}
 
 			{/* Backdrop — click outside closes */}
 			<div
 				onClick={handleClose}
-				style={{
-					position: "fixed", inset: 0, zIndex: 99998,
-					background: "rgba(8,2,22,0.75)",
-					backdropFilter: "blur(6px)",
-					WebkitBackdropFilter: "blur(6px)",
-					display: "flex", alignItems: "center", justifyContent: "center",
-					padding: 16,
-					fontFamily: "-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif",
-				}}
+				className="aom-root aom-backdrop d-flex align-items-center justify-content-center p-3"
 			>
 				{/* Modal shell — stop click propagation */}
 				<div
 					onClick={e => e.stopPropagation()}
-					className="diq-modal-shell"
-					style={{
-						display: "flex",
-						width: "min(750px,100%)",
-						maxHeight: "min(680px,95vh)",
-						borderRadius: 20, overflow: "hidden",
-						boxShadow: "0 32px 100px rgba(0,0,0,0.65)",
-						background: "#fff",
-						animation: "diq-modalin 0.25s ease",
-					}}
+					className="aom-modal-shell d-flex"
 				>
-					<LeftPanel screen={screen} />
-					<div className="diq-right-panel" style={{ flex: 1, background: "#fff", position: "relative", display: "flex", flexDirection: "column" }}>
+					<LeftPanel />
+					<div className="aom-right-panel flex-grow-1 bg-white d-flex flex-column">
 						{/* Close × */}
-						<button
-							onClick={handleClose}
-							style={{
-								position: "absolute", top: 14, right: 14,
-								width: 30, height: 30, borderRadius: "50%",
-								background: "#F3F4F6", border: "none", cursor: "pointer",
-								fontSize: 15, color: "#6B7280",
-								display: "flex", alignItems: "center", justifyContent: "center",
-								fontWeight: 600, zIndex: 10,
-							}}
-						>✕</button>
+						<button onClick={handleClose} className="aom-close-btn btn rounded-circle d-flex align-items-center justify-content-center">✕</button>
 
 						{screen === "login" ? (
 							<LoginScreen
@@ -630,8 +501,8 @@ export default function LoginOTPModal({
 				</div>
 			</div>
 
-			{/* Profile Details Modal for new registrations */}
-			<ProfileDetailsModal
+			{/* Name + Email popup — only shown for new registrations */}
+			<NewUserDetailsModal
 				isOpen={showProfileModal}
 				onClose={() => {
 					setShowProfileModal(false);

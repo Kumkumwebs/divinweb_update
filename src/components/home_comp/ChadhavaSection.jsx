@@ -88,6 +88,52 @@ const ChadhavaSection = ({ chadhava }) => {
 					transform: translateY(-1px);
 					color: #fff;
 				}
+
+				/* ── Equal-height cards ──
+				   home.css's .dq-puja-card sizes to its own content, so a
+				   2-line title (or a missing temple line / "Free Seva" vs a
+				   priced item) made cards in the same row different heights.
+				   Scoped to this section (.dq-section-cream) only, so the Puja
+				   section elsewhere on the page isn't affected. The column,
+				   card, and body all stretch to fill the row height via flex;
+				   the title is clamped to a fixed 2-line box so short/long
+				   names take up the same space either way; and the price +
+				   button footer is pinned to the bottom with margin-top: auto
+				   so "Book Now" lines up across every card in the row. */
+				.dq-section-cream .row.g-md-5.g-3 {
+					align-items: stretch;
+				}
+				.dq-section-cream .row > [class*="col-"] {
+					display: flex;
+				}
+				.dq-section-cream .dq-puja-card {
+					display: flex;
+					flex-direction: column;
+					width: 100%;
+					height: 100%;
+				}
+				.dq-section-cream .dq-puja-card img {
+					flex-shrink: 0;
+				}
+				.dq-section-cream .dq-puja-body {
+					display: flex;
+					flex-direction: column;
+					flex: 1 1 auto;
+				}
+				.dq-section-cream .dq-puja-body h4 {
+					display: -webkit-box;
+					-webkit-line-clamp: 2;
+					-webkit-box-orient: vertical;
+					overflow: hidden;
+					min-height: 2.6em;
+				}
+				.dq-section-cream .dq-puja-sub {
+					min-height: 1.4em;
+				}
+				.dq-section-cream .dq-puja-footer {
+					margin-top: auto;
+					padding-top: 12px;
+				}
 			`}</style>
 			<div className="dq-container">
 				<div className="dq-section-head-row">
@@ -105,7 +151,7 @@ const ChadhavaSection = ({ chadhava }) => {
 				<div className="row g-md-5 g-3">
 					{items.map((item) => (
 						<div key={item.id} className="col-12 col-md-6 col-lg-4">
-							<a href={`/chadhava/${item.id}`} className="dq-puja-card" style={{ display: 'block' }}>
+							<a href={`/chadhava/${item.id}`} className="dq-puja-card">
 								<img
 									src={item.image}
 									alt={item.name}

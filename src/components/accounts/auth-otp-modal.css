@@ -1,0 +1,391 @@
+/* ============================================================================
+   auth-otp-modal.css
+   Scoped stylesheet for LoginOTPModal.
+   - Built on top of Bootstrap 5 utility classes (bootstrap must already be
+     imported globally in the app, e.g. `import "bootstrap/dist/css/bootstrap.min.css"`).
+   - All custom class names are prefixed with `aom-` (Auth OTP Modal) so they
+     cannot collide with the old `diq-*` classes or any other stylesheet.
+   - Only the styling that Bootstrap utilities can't express (brand colors,
+     gradients, the left-panel image, OTP box focus states, keyframes) lives
+     here; everything else uses plain Bootstrap classes in the JSX.
+   ========================================================================= */
+
+.aom-root {
+  --aom-panel-bg-1: #0d0118;
+  --aom-panel-bg-2: #200840;
+  --aom-panel-bg-3: #4a0e82;
+  --aom-gold: #c8862a;
+  --aom-gold-light: #e5a83a;
+  --aom-gold-border: rgba(200, 134, 42, 0.55);
+  --aom-title: #111827;
+  --aom-text-med: #374151;
+  --aom-text-gray: #6b7280;
+  --aom-text-hint: #9ca3af;
+  --aom-border-light: #e5e7eb;
+  --aom-btn-purple: #4a0e82;
+  --aom-btn-purple-disabled: #6c1191be;
+  --aom-verify-1: #6b1459;
+  --aom-verify-2: #9d1b6e;
+  --aom-link-purple: #8b1e6b;
+  --aom-label-purple: #7c3aed;
+  --aom-phone-pill: #f3edf8;
+  --aom-panel-soft: #f5eef8;
+  --aom-otp-border: #c084fc;
+  --aom-otp-focus: #7c3aed;
+  --aom-danger: #dc2626;
+  --aom-success: #059669;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+
+/* ---------- keyframes ---------- */
+@keyframes aom-spin {
+  to { transform: rotate(360deg); }
+}
+@keyframes aom-fadein {
+  from { opacity: 0; transform: translateX(-50%) translateY(-10px); }
+  to   { opacity: 1; transform: translateX(-50%) translateY(0); }
+}
+@keyframes aom-modalin {
+  from { opacity: 0; transform: scale(0.96); }
+  to   { opacity: 1; transform: scale(1); }
+}
+
+/* ---------- backdrop ---------- */
+.aom-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 99998;
+  background: rgba(8, 2, 22, 0.75);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+}
+
+/* ---------- modal shell ---------- */
+.aom-modal-shell {
+  width: min(750px, 100%);
+  max-height: min(680px, 95vh);
+  border-radius: 20px;
+  overflow: hidden;
+  box-shadow: 0 32px 100px rgba(0, 0, 0, 0.65);
+  background: #fff;
+  animation: aom-modalin 0.25s ease;
+}
+
+/* ---------- left decorative panel ---------- */
+.aom-left-panel {
+  width: 300px;
+  min-width: 300px;
+  background-image: url("/assets/img/whtspic.jpeg");
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  border-radius: 20px 0 0 20px;
+}
+
+.aom-right-panel {
+  position: relative;
+}
+
+/* ---------- close button ---------- */
+.aom-close-btn {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  width: 30px;
+  height: 30px;
+  background: #f3f4f6;
+  border: none;
+  font-size: 15px;
+  color: #6b7280;
+  font-weight: 600;
+  z-index: 10;
+}
+
+/* ---------- toast ---------- */
+.aom-toast {
+  position: fixed;
+  top: 24px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 100001;
+  color: #fff;
+  font-size: 13.5px;
+  font-weight: 600;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.35);
+  white-space: nowrap;
+  animation: aom-fadein 0.25s ease;
+}
+.aom-toast--success { background: var(--aom-success); }
+.aom-toast--error { background: var(--aom-danger); }
+
+/* ---------- spinner ---------- */
+.aom-spinner {
+  border: 2.5px solid rgba(255, 255, 255, 0.3);
+  border-top-color: #fff;
+  animation: aom-spin 0.7s linear infinite;
+}
+.aom-spinner--dark {
+  border-color: rgba(124, 58, 237, 0.25);
+  border-top-color: var(--aom-otp-focus);
+}
+
+/* ---------- typography ---------- */
+.aom-title-text { color: var(--aom-title); }
+.aom-text-med { color: var(--aom-text-med); }
+.aom-text-gray { color: var(--aom-text-gray); }
+.aom-text-hint { color: var(--aom-text-hint); }
+.aom-text-danger { color: var(--aom-danger); }
+.aom-text-link {
+  color: var(--aom-link-purple);
+  text-decoration: none;
+}
+.aom-text-label { color: var(--aom-label-purple); }
+
+/* ---------- divider with centered label ---------- */
+.aom-divider {
+  position: relative;
+  text-align: center;
+}
+.aom-divider::before {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: var(--aom-border-light);
+}
+.aom-divider-label {
+  position: relative;
+  background: #fff;
+  padding: 0 14px;
+  font-size: 12.5px;
+  font-weight: 700;
+  color: var(--aom-label-purple);
+  letter-spacing: 0.3px;
+}
+
+/* ---------- phone input group ---------- */
+.aom-phone-group {
+  border: 1.5px solid var(--aom-border-light);
+  border-radius: 10px;
+  overflow: hidden;
+  transition: border-color 0.2s;
+}
+.aom-phone-group--error {
+  border-color: var(--aom-danger);
+}
+.aom-phone-flag {
+  background: #fafafa;
+  border-right: 1.5px solid var(--aom-border-light);
+  color: var(--aom-text-med);
+  white-space: nowrap;
+  min-width: 82px;
+}
+.aom-phone-input {
+  /* Overrides the site-wide `select, .form-control, .form-select, textarea,
+     input { padding:0 25px; padding-right:50px; border:1px solid ...;
+     border-radius:8px; background-color:...; color:...; font-family:...;
+     font-weight:400; } ` rule so this input keeps this component's design. */
+  height: auto !important;
+  padding: 13px 14px !important;
+  border: none !important;
+  border-radius: 0 !important;
+  outline: none;
+  font-size: 13.5px !important;
+  color: var(--aom-title) !important;
+  background-color: transparent !important;
+  font-family: inherit !important;
+  font-weight: 400 !important;
+  width: 100%;
+}
+.aom-phone-input:focus {
+  box-shadow: none;
+  outline: none;
+  border: none !important;
+}
+
+/* ---------- buttons ---------- */
+.aom-btn-primary {
+  background: var(--aom-btn-purple);
+  border: none;
+  color: #eaeff1;
+  font-size: 15.5px;
+  font-weight: 700;
+  letter-spacing: 0.2px;
+  transition: background 0.2s;
+}
+.aom-btn-primary:disabled {
+  background: var(--aom-btn-purple-disabled);
+  color: #eaeff1;
+}
+.aom-btn-primary:hover:not(:disabled) {
+  background: var(--aom-btn-purple);
+  color: #eaeff1;
+  opacity: 0.95;
+}
+
+.aom-btn-verify {
+  background: linear-gradient(135deg, var(--aom-verify-1) 0%, var(--aom-verify-2) 100%);
+  border: none;
+  color: #fff;
+  font-size: 15.5px;
+  font-weight: 700;
+  letter-spacing: 0.2px;
+}
+.aom-btn-verify:disabled {
+  opacity: 0.55;
+  color: #fff;
+}
+.aom-btn-verify:hover:not(:disabled) {
+  color: #fff;
+  opacity: 0.95;
+}
+
+.aom-btn-link {
+  background: none;
+  border: none;
+  color: var(--aom-link-purple);
+  font-weight: 600;
+}
+.aom-btn-link:disabled {
+  color: var(--aom-text-hint);
+  cursor: not-allowed;
+}
+
+/* ---------- feature strip ---------- */
+.aom-features-row {
+  border: 1px solid var(--aom-border-light);
+  border-radius: 12px;
+}
+.aom-feature-icon {
+  width: 42px;
+  height: 42px;
+  font-size: 18px;
+}
+.aom-feature-icon--orange { background: #fff7ed; }
+.aom-feature-icon--purple { background: #f5f0ff; }
+
+/* ---------- OTP screen ---------- */
+.aom-avatar-ring {
+  width: 82px;
+  height: 82px;
+  background: linear-gradient(135deg, #f3e8ff 0%, #fce7f3 100%);
+  border: 2px solid rgba(139, 30, 107, 0.1);
+}
+.aom-avatar-badge {
+  position: absolute;
+  right: 4px;
+  top: 6px;
+  font-size: 13px;
+  transform: rotate(-20deg);
+}
+
+.aom-phone-pill {
+  background: var(--aom-phone-pill);
+  border: 1.5px solid rgba(139, 30, 107, 0.1);
+  border-radius: 10px;
+}
+
+.aom-otp-row {
+  display: flex;
+  gap: 8px;
+}
+
+.aom-otp-box {
+  /* Overrides the site-wide `select, .form-control, .form-select, textarea,
+     input { height:56px; padding:0 25px; padding-right:50px; border:1px
+     solid ...; border-radius:8px; font-size:14px; ... } ` rule so the OTP
+     boxes keep this component's square, centered, large-digit design. */
+  box-sizing: border-box;
+  height: 52px !important;
+  min-width: 0;
+  padding: 0 !important;
+  padding-right: 0 !important;
+  border: 2px solid var(--aom-border-light) !important;
+  border-radius: 10px !important;
+  text-align: center;
+  font-size: 22px !important;
+  font-weight: 700 !important;
+  color: var(--aom-title) !important;
+  background-color: #fff !important;
+  font-family: inherit !important;
+  outline: none;
+  transition: border-color 0.15s !important;
+}
+.aom-otp-box:focus {
+  border-color: var(--aom-otp-focus) !important;
+  box-shadow: none;
+}
+.aom-otp-box--filled {
+  border-color: var(--aom-otp-border);
+}
+.aom-otp-box--error {
+  border-color: var(--aom-danger);
+}
+
+/* Terms checkbox is also a bare <input>, so it inherits the same global
+   `input { height:56px; padding:0 25px 0 25px; ... }` rule unless reset. */
+.aom-root .form-check-input[type="checkbox"] {
+  width: 15px !important;
+  height: 15px !important;
+  padding: 0 !important;
+  border-radius: 3px !important;
+  border: 1px solid #adb5bd !important;
+  background-color: #fff !important;
+}
+.aom-root .form-check-input[type="checkbox"]:checked {
+  background-color: var(--aom-label-purple) !important;
+  border-color: var(--aom-label-purple) !important;
+}
+
+.aom-secure-box {
+  background: var(--aom-panel-soft);
+  border: 1px solid rgba(139, 30, 107, 0.1);
+  border-radius: 12px;
+}
+
+.aom-shield-icon {
+  filter: drop-shadow(0 2px 8px rgba(100, 0, 80, 0.3));
+}
+.aom-shield-icon--sm {
+  filter: drop-shadow(0 2px 6px rgba(100, 0, 80, 0.25));
+}
+
+/* ============================================================================
+   RESPONSIVE (mobile / small screens)
+   ========================================================================= */
+@media (max-width: 700px) {
+  .aom-backdrop { padding: 8px !important; }
+  .aom-modal-shell {
+    flex-direction: column !important;
+    width: 100% !important;
+    max-height: 96vh !important;
+    overflow-y: auto !important;
+  }
+  .aom-left-panel { display: none !important; }
+  .aom-right-panel { border-radius: 20px !important; }
+  .aom-login-pad { padding: 22px 14px 18px !important; }
+  .aom-otp-pad { padding: 16px 12px 14px !important; }
+  .aom-title { font-size: 21px !important; }
+  .aom-features-row {
+    flex-wrap: nowrap !important;
+    padding: 12px 4px !important;
+    gap: 2px !important;
+  }
+  .aom-features-row > div { flex: 1 1 0 !important; gap: 4px !important; padding: 0 2px !important; }
+  .aom-feature-icon { width: 32px !important; height: 32px !important; font-size: 14px !important; }
+  .aom-feature-title { font-size: 10px !important; }
+  .aom-feature-desc { font-size: 9px !important; }
+
+  /* OTP boxes: tighter gap + padding so all 4 stay on screen without
+     overflowing the card on narrow phones. */
+  .aom-otp-row { gap: 6px !important; }
+  .aom-otp-box { height: 48px !important; font-size: 20px !important; }
+  .aom-phone-pill { padding: 10px 12px !important; }
+}
+
+@media (max-width: 380px) {
+  .aom-otp-row { gap: 4px !important; }
+  .aom-otp-box { height: 44px !important; font-size: 18px !important; }
+}
