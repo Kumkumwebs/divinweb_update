@@ -35,13 +35,13 @@ const PujaListSection = ({ puja }) => {
 
 	const items = rawItems
 		? rawItems.map((p) => ({
-				id: p._id,
-				name: p.title,
-				image: p.pujaImage || PLACEHOLDER,
-				mandir: p.mandirName,
-				purpose: p.purposeOfPooja,
-				date: formatDate(p.pujaDatetime),
-		  }))
+			id: p._id,
+			name: p.title,
+			image: p.pujaImage || PLACEHOLDER,
+			mandir: p.mandirName,
+			purpose: p.purposeOfPooja,
+			date: formatDate(p.pujaDatetime),
+		}))
 		: FALLBACK_PUJAS.map((p) => ({ ...p, image: p.image || PLACEHOLDER }));
 
 	return (
@@ -72,8 +72,7 @@ const PujaListSection = ({ puja }) => {
 
 				<div className="dq-cards-row dq-cards-scroll">
 					{items.map((item) => (
-						<a 			href={`/puja/${item.name}/${item.id}`}
- className="dq-puja-card" key={item.id || item.name}>
+						<div className="dq-puja-card" key={item.id || item.name}>
 							<img
 								src={item.image}
 								alt={item.name}
@@ -95,11 +94,10 @@ const PujaListSection = ({ puja }) => {
 									</a>
 								</div>
 							</div>
-						</a>
+						</div>
 					))}
 				</div>
-
-				</div>
+			</div>
 		</section>
 	);
 };

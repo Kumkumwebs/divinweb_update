@@ -24,23 +24,27 @@ const storageService = {
 	setToken: token => {
 		const sanitized = sanitize(token);
 		if (sanitized) {
-			sessionStorage.setItem('token', sanitized);
+			localStorage.setItem('token', sanitized);
 		} else {
-			sessionStorage.removeItem('token');
+			localStorage.removeItem('token');
 		}
 	},
-	getToken: () => sessionStorage.getItem('token'),
+	getToken: () => localStorage.getItem('token'),
 
 	setUser: user => {
 		if (user) {
-			sessionStorage.setItem('user', JSON.stringify(user));
+			localStorage.setItem('user', JSON.stringify(user));
 		} else {
-			sessionStorage.removeItem('user');
+			localStorage.removeItem('user');
 		}
 	},
-	getUser: () => safeJsonParse(sessionStorage.getItem('user')),
+	getUser: () => safeJsonParse(localStorage.getItem('user')),
 
-	clear: () => sessionStorage.clear(),
+	clear: () => {
+		localStorage.removeItem('token');
+		localStorage.removeItem('user');
+		sessionStorage.clear();
+	},
 };
 
 export default storageService;

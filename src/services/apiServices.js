@@ -34,14 +34,14 @@ const apiService = {
 	putBearer: (url, data) =>
 		api.put(url, data, {
 			headers: {
-				Authorization: `Bearer ${sessionStorage.getItem('token')}`,
+				Authorization: `Bearer ${localStorage.getItem('token')}`,
 			},
 		}),
 
 	postBearer: (url, data) =>
 		api.post(url, data, {
 			headers: {
-				Authorization: `Bearer ${sessionStorage.getItem('token')}`,
+				Authorization: `Bearer ${localStorage.getItem('token')}`,
 			},
 		}),
 
@@ -49,7 +49,7 @@ const apiService = {
 	postMultipart: (url, formData) =>
 		api.post(url, formData, {
 			headers: {
-				Authorization: `Bearer ${sessionStorage.getItem('token')}`,
+				Authorization: `Bearer ${localStorage.getItem('token')}`,
 				// Note: Do NOT set 'Content-Type': 'multipart/form-data' here.
 				// Axios/Browser will set it automatically with the correct boundary.
 			},
@@ -59,7 +59,7 @@ const apiService = {
 		api.get(url, {
 			params,
 			headers: {
-				Authorization: `Bearer ${sessionStorage.getItem('token')}`,
+				Authorization: `Bearer ${localStorage.getItem('token')}`,
 			},
 		}),
 
@@ -67,7 +67,7 @@ const apiService = {
 		api.get(url, {
 			responseType: 'blob',
 			headers: {
-				Authorization: `Bearer ${sessionStorage.getItem('token')}`,
+				Authorization: `Bearer ${localStorage.getItem('token')}`,
 			},
 		}),
 

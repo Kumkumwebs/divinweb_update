@@ -1,3 +1,4 @@
+import { Link } from 'react-router-dom';
 import '../../pages/home.css';
 
 const TRUST_ITEMS = [

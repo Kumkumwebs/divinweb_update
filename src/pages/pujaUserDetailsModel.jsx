@@ -22,13 +22,13 @@ const PujaUserDetailsModal = ({
     let name = "";
     let whatsapp = "";
     try {
-      const user = JSON.parse(sessionStorage.getItem("user") || "null");
+      const user = JSON.parse(localStorage.getItem("user") || "null");
       if (user) {
         name = user.name || "";
         whatsapp = user.number || user.whatsapp || "";
       }
     } catch (e) {
-      console.warn("Error reading user from sessionStorage", e);
+      console.warn("Error reading user from localStorage", e);
     }
     setFormData({ name, whatsapp });
     setShowUserList(false);
@@ -77,8 +77,8 @@ const PujaUserDetailsModal = ({
       sankalp: "",
     });
     try {
-      const existing = JSON.parse(sessionStorage.getItem("user") || "{}");
-      sessionStorage.setItem(
+      const existing = JSON.parse(localStorage.getItem("user") || "{}");
+      localStorage.setItem(
         "user",
         JSON.stringify({ ...existing, name: formData.name, number: formData.whatsapp })
       );
@@ -86,11 +86,11 @@ const PujaUserDetailsModal = ({
     setActiveCart(cart);
     onClose();
     if (page === "chadhava") {
-      if (window.location.pathname.includes("chadhava_review_booking")) {
-        window.location.reload();
-      } else {
+      if (!window.location.pathname.includes("chadhava_review_booking")) {
         navigate("/chadhava_review_booking");
       }
+      // Already on the review page — no reload needed, onClose() above
+      // already triggers a refetch of cart/devotee details.
     } else {
       if (window.location.pathname.includes("puja_review_booking")) {
         window.location.reload();

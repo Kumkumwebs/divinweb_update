@@ -25,7 +25,7 @@ const UserDetailsModal = ({
 
       // Try to prefill from logged-in user in sessionStorage
       try {
-        const user = JSON.parse(sessionStorage.getItem("user"));
+        const user = JSON.parse(localStorage.getItem("user"));
         if (user) {
           name = user.name || "";
           whatsapp = user.number || "";

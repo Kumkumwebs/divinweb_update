@@ -1,6 +1,7 @@
 import '../../pages/home.css';
 import { useState } from 'react';
 import { motion } from 'framer-motion';
+import { Link, useNavigate } from 'react-router-dom';
 // import AstrologerCard from './AstrologerCard';
 
 const FALLBACK_ASTROLOGERS = [
@@ -12,14 +13,16 @@ const FALLBACK_ASTROLOGERS = [
 
 const TeamSection = ({ astrologer }) => {
 	const items = astrologer && astrologer.length ? astrologer : FALLBACK_ASTROLOGERS;
+	const navigate = useNavigate();
 
 	const handleAction = (astro, type) => {
+		const id = astro.id || astro._id;
 		if (type === 'chat') {
-			window.location.href = `/astrologer/${astro.id || astro._id}?action=chat`;
+			navigate(`/astrologer/${id}?action=chat`);
 		} else if (type === 'call') {
-			window.location.href = `/astrologer/${astro.id || astro._id}?action=call`;
+			navigate(`/astrologer/${id}?action=call`);
 		} else {
-			window.location.href = `/astrologer/${astro.id || astro._id}`;
+			navigate(`/astrologer/${id}`);
 		}
 	};
 
@@ -28,7 +31,7 @@ const TeamSection = ({ astrologer }) => {
 			<div className="dq-container">
 				<div className="dq-section-head-row">
 					<h2>Top Astrologers</h2>
-					<a href="/astrologer">View All Astrologers</a>
+					<Link to="/astrologer">View All Astrologers</Link>
 				</div>
 
 				<div className="dq-astro-grid">

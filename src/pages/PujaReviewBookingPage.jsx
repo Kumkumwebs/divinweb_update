@@ -348,7 +348,7 @@ const PujaReviewBookingPage = () => {
         <div className="prb-hero-inner">
           <div>
             <div className="prb-bc">
-              <a href="/">Home</a> › <a href="/puja">Puja</a> › <a href="#">{puja.title}</a> › <span>Review Booking</span>
+              <Link to="/">Home</Link> › <Link to="/puja">Puja</Link> › <span>{puja.title}</span> › <span>Review Booking</span>
             </div>
             <h1 className="prb-hero-title">Review <em>Booking</em></h1>
             <p className="prb-hero-sub">Please review your booking details before proceeding</p>
