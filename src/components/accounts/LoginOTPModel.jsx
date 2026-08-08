@@ -256,7 +256,7 @@ function OTPScreen({ phone, otpMeta, onBack, onVerified, shieldSrc }) {
 		if (res.success || res.status) {
 			const token = res.token;
 			const userData = res.results || res.user;
-			onVerified({ token, user: userData });
+			onVerified({ token, user: userData, isNewOrIncomplete: res.isNewOrIncomplete });
 		} else {
 			setError(res.message || "OTP verification failed.");
 			setDigits(Array(OTP_LEN).fill(""));
@@ -442,13 +442,13 @@ export default function LoginOTPModal({
 		setToast({ msg: `OTP sent to +91 ${p.slice(0, 5)} ${p.slice(5)}`, type: "success" });
 	};
 
-	const handleVerified = ({ token, user }) => {
+	const handleVerified = ({ token, user, isNewOrIncomplete }) => {
 		setToken(token);
 		setUser(user);
 
 		setToast({ msg: "Login successful! Welcome 🙏", type: "success" });
 
-		if (loginType?.toLowerCase() !== "login") {
+		if (isNewOrIncomplete === true || loginType?.toLowerCase() !== "login") {
 			// New registration — collect Name + Email next
 			setTimeout(() => {
 				setToast(null);
@@ -460,6 +460,19 @@ export default function LoginOTPModal({
 	};
 
 	if (!isOpen) return null;
+
+	if (showProfileModal) {
+		return (
+			<NewUserDetailsModal
+				isOpen={showProfileModal}
+				onClose={() => {
+					setShowProfileModal(false);
+					onClose();
+				}}
+				userData={{ phone, country_code: "91" }}
+			/>
+		);
+	}
 
 	return (
 		<>
@@ -500,16 +513,6 @@ export default function LoginOTPModal({
 					</div>
 				</div>
 			</div>
-
-			{/* Name + Email popup — only shown for new registrations */}
-			<NewUserDetailsModal
-				isOpen={showProfileModal}
-				onClose={() => {
-					setShowProfileModal(false);
-					onClose();
-				}}
-				userData={{ phone, country_code: "91" }}
-			/>
 		</>
 	);
 }

@@ -30,6 +30,38 @@ const FEATURES = [
 const WhyTrustSection = () => {
 	return (
 		<section className="dq-section dq-section-cream">
+			{/* Same gradient used by the "Book Now" buttons (PujaListSection /
+			    ChadhavaSection) so this CTA matches that style instead of the
+			    default solid-maroon .dq-btn look.
+			    NOTE: intentionally NOT reusing the ".dq-btn-gradient" class
+			    name — PujaListSection/ChadhavaSection define a class with
+			    that same name via a plain (unscoped) <style> tag too, and
+			    theirs sets display:block; width:100%; padding:10px 32px.
+			    Since these style tags aren't CSS-modules-scoped, whichever
+			    one mounts last on the page would win the cascade and could
+			    silently resize this button. Using a unique class name here,
+			    with size explicitly pinned to match the original .dq-btn,
+			    avoids that entirely. */}
+			<style>{`
+				.dq-btn-gradient-trust {
+					display: inline-block;
+					width: auto;
+					padding: 12px 26px;
+					border-radius: 6px;
+					font-size: 14px;
+					font-weight: 500;
+					background: linear-gradient(135deg, #c0392b, #4a1024);
+					border: none;
+					color: #fff;
+					text-decoration: none;
+					transition: opacity 0.2s ease, transform 0.2s ease;
+				}
+				.dq-btn-gradient-trust:hover {
+					opacity: 0.9;
+					transform: translateY(-1px);
+					color: #fff;
+				}
+			`}</style>
 			<div className="dq-container">
 				<div className="dq-why-trust">
 					<div
@@ -52,7 +84,7 @@ const WhyTrustSection = () => {
 								</div>
 							))}
 						</div>
-						<a href="/about_us" className="dq-btn">Know More About Us</a>
+						<a href="/about_us" className="dq-btn-gradient-trust">Know More About Us</a>
 					</div>
 				</div>
 			</div>

@@ -58,10 +58,17 @@ const AuthService = {
 					phone: response.results.number,
 				});
 
+				// FIX: ground-truth "is this a new/incomplete account" check,
+				// based on the actual verified user data instead of only the
+				// checkNumber() `type` flag.
+				const isNewOrIncomplete =
+					!response.results.name?.trim() || !response.results.email?.trim();
+
 				return {
 					success: true,
 					user: response.results,
 					token: response.token,
+					isNewOrIncomplete,
 				};
 			}
 
