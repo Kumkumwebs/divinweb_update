@@ -20,7 +20,7 @@ const Header = ({ onMenuToggle, onSideMenuToggle, onSearchToggle }) => {
 	const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
 	const [isDropdownOpen, setIsDropdownOpen] = useState(false);
 	const [isLangOpen, setIsLangOpen] = useState(false);
-const { activeLang, setLanguage, LANGUAGES } = useLanguage();
+	const { activeLang, setLanguage, LANGUAGES } = useLanguage();
 	const { user, isLoggedIn, clearStorage, setUser } = useStorage();
 	const dropdownRef = useRef(null);
 	const langRef = useRef(null);
@@ -86,27 +86,17 @@ const { activeLang, setLanguage, LANGUAGES } = useLanguage();
 		return url.replace(/&#x2F;/g, "/");
 	};
 
-	// The header's avatar comes straight from StorageContext's `user`
-	// object, but user can be null right after login (isLoggedIn is purely
-	// token-based, decoupled from user — nothing else populates user until
-	// something calls setUser). Previously that only happened once the
-	// Profile page's own get_profile call ran. Self-heal here so the real
-	// name/photo show up immediately instead of only after a visit to
-	// /profile.
 	useEffect(() => {
-		if (!isLoggedIn || user?.profile_img) return;
 
-		// The real uploaded photo lives in localStorage (same
-		// "pp_profile_photo" key ProfilePage.jsx caches it under) — it's
-		// the actual source of truth. get_profile's own profile_img field
-		// is unreliable: it can echo back a non-empty default placeholder
-		// (e.g. a rashi icon) even when the user has no real photo, which
-		// looks like a valid URL and would otherwise block this effect
-		// from ever correcting itself. Check the cache first, synchronously,
-		// before touching the network at all.
+		if (!isLoggedIn || isUsableImageUrl(user?.profile_img)) return;
+
+		if (!user?.id && !user?.number) return;
 		let cachedPhoto = '';
 		try {
-			cachedPhoto = localStorage.getItem('pp_profile_photo') || '';
+			const cacheKey = `pp_profile_photo_${user?.id || user?.number || 'anon'}`;
+			cachedPhoto = localStorage.getItem(cacheKey) || '';
+			console.log('[HEADER DEBUG] user object:', user);
+			console.log('[HEADER DEBUG] cacheKey:', cacheKey, '| cachedPhoto found:', cachedPhoto);
 		} catch (e) {
 			/* localStorage unavailable — ignore */
 		}
@@ -145,7 +135,7 @@ const { activeLang, setLanguage, LANGUAGES } = useLanguage();
 		return () => {
 			cancelled = true;
 		};
-	}, [isLoggedIn, user?.profile_img, setUser]);
+	}, [isLoggedIn, user?.profile_img, user?.number, user?.id, setUser]);
 
 	const handleLangSelect = (lang) => {
 		setLanguage(lang.code);
@@ -561,7 +551,7 @@ const { activeLang, setLanguage, LANGUAGES } = useLanguage();
 																	className={`fas fa-chevron-right ${styles.chevron}`}
 																></i>
 															</Link>
-															
+
 
 															<Link
 																to="/my_puja_booking"
@@ -689,7 +679,7 @@ const { activeLang, setLanguage, LANGUAGES } = useLanguage();
 																></i>
 															</Link>
 
-																<Link
+															<Link
 																to="/notification"
 																className={styles.menuItem}
 																onClick={() => setIsDropdownOpen(false)}
@@ -742,20 +732,20 @@ const { activeLang, setLanguage, LANGUAGES } = useLanguage();
 											</div>
 										) : (
 											<button
-  onClick={() => setIsModalOpen(true)}
-  className="th-btn style3 rounded-circle p-0 d-flex align-items-center justify-content-center"
-  style={{
-    width: '45px',
-    height: '45px',
-    borderRadius: '50%',
-  }}
->
-  <img
-    src={isLoggedIn ? "/assets/img/icon/user-active.svg" : "/assets/img/icon/user.svg"}
-    alt={isLoggedIn ? "My Account" : "Login"}
-    style={{ width: '20px', height: '20px' }}
-  />
-</button>
+												onClick={() => setIsModalOpen(true)}
+												className="th-btn style3 rounded-circle p-0 d-flex align-items-center justify-content-center"
+												style={{
+													width: '45px',
+													height: '45px',
+													borderRadius: '50%',
+												}}
+											>
+												<img
+													src={isLoggedIn ? "/assets/img/icon/user-active.svg" : "/assets/img/icon/user.svg"}
+													alt={isLoggedIn ? "My Account" : "Login"}
+													style={{ width: '20px', height: '20px' }}
+												/>
+											</button>
 										)}
 									</div>
 								</div>

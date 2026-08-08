@@ -125,6 +125,15 @@ export const StorageProvider = ({ children }) => {
     setActiveChadhavaIdState(null);
     setActiveCartState(null);
     sessionStorage.clear();
+
+    // FIX: pp_profile_photo lives in localStorage (not sessionStorage) and
+    // wasn't scoped per-user, so it survived logout and leaked the
+    // previous account's photo onto the next login on this browser.
+    try {
+      localStorage.removeItem('pp_profile_photo');
+    } catch (e) {
+      /* localStorage unavailable — ignore */
+    }
   }, []);
 
   // --- Context Value ---

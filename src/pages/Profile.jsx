@@ -33,7 +33,9 @@ const UPLOAD_IMAGE_URL = "https://admin.diviniq.in/user_api/upload_a_file";
 // uploaded photo URL is cached in localStorage, purely so it survives a
 // page refresh in this browser. It will NOT sync across devices/browsers
 // until the backend adds real support for this field.
-const AVATAR_CACHE_KEY = "pp_profile_photo";
+// FIX: scope the cache key per logged-in user so different accounts on
+// the same browser never inherit each other's cached photo.
+const getAvatarCacheKey = (u) => `pp_profile_photo_${u?.number || 'anon'}`;
 
 // Read-only fields — not part of profile_update, just displayed.
 const PHONE_FIELD = { key: "number", label: "Phone Number", icon: "phone" };
@@ -215,7 +217,7 @@ export default function ProfilePage() {
     // avatar briefly shows initials before loadProfile resolves.
     let cachedPhoto = "";
     try {
-      cachedPhoto = localStorage.getItem(AVATAR_CACHE_KEY) || "";
+      cachedPhoto = localStorage.getItem(getAvatarCacheKey(user)) || "";
     } catch (e) {
       /* localStorage unavailable — ignore */
     }
@@ -284,7 +286,9 @@ export default function ProfilePage() {
 
         let cachedPhoto = "";
         try {
-          cachedPhoto = localStorage.getItem(AVATAR_CACHE_KEY) || "";
+          cachedPhoto = localStorage.getItem(getAvatarCacheKey(user)) || "";
+          console.log('[PROFILE DEBUG] user object:', user);
+          console.log('[PROFILE DEBUG] cacheKey:', getAvatarCacheKey(user), '| cachedPhoto found:', cachedPhoto);
         } catch (e) {
           /* localStorage unavailable — ignore */
         }
@@ -381,7 +385,7 @@ export default function ProfilePage() {
           setValues((prev) => ({ ...prev, profile_img: uploadedUrl }));
 
           try {
-            localStorage.setItem(AVATAR_CACHE_KEY, uploadedUrl);
+            localStorage.setItem(getAvatarCacheKey(user), uploadedUrl);
           } catch (e) {
             /* localStorage unavailable — photo still shows for this session */
           }

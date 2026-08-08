@@ -6,7 +6,7 @@ import SideMenu from '../components/layout/SideMenu';
 import MobileMenu from '../components/layout/MobileMenu';
 import PopupSearch from '../components/layout/PopupSearch';
 import ScrollTop from '../components/common/ScrollTop';
-import LoginModal from '../components/common/LoginModal';
+import LoginModal from '../components/accounts/LoginOTPModel';
 import AuthService from '../services/authServices';
 import apiService from '../services/apiServices';
 import './BlogDetail.css';

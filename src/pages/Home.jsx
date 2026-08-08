@@ -14,7 +14,7 @@ import FAQSection from '../components/home_comp/FAQSection';
 import QuickLinksSection from '../components/home_comp/QuickLinksSection';
 import Footer from '../components/layout/Footer';
 import ScrollTop from '../components/common/ScrollTop';
-import LoginModal from '../components/common/LoginModal';
+import LoginModal from '../components/accounts/LoginOTPModel';
 import AuthService from '../services/authServices';
 import './home.css';
 import MobileBottomNav from '../components/layout/MobileNavbar';
