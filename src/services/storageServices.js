@@ -22,9 +22,8 @@ const safeJsonParse = (value, fallback = null) => {
 
 const storageService = {
 	setToken: token => {
-		const sanitized = sanitize(token);
-		if (sanitized) {
-			localStorage.setItem('token', sanitized);
+		if (token) {
+			localStorage.setItem('token', token);   // no sanitize()
 		} else {
 			localStorage.removeItem('token');
 		}

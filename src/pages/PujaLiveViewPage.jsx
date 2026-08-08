@@ -124,7 +124,7 @@ const PujaLiveViewPage = () => {
   //     (i.e. they're a logged-in DivinIQ user) or already dismissed it once
   //     this session. ────────────────────────────────────────────────────
   useEffect(() => {
-    const alreadyLoggedIn = !!sessionStorage.getItem("token");
+    const alreadyLoggedIn = !sessionStorage.getItem("token");
     const alreadyDismissed = sessionStorage.getItem("plv_register_dismissed") === "true";
     if (alreadyLoggedIn || alreadyDismissed) return;
 

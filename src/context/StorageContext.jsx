@@ -53,39 +53,36 @@ const STORAGE_KEYS = {
 
 // --- Provider Component ---
 export const StorageProvider = ({ children }) => {
-  // Token/User: persisted to localStorage so they survive a page refresh.
-  const [token, setTokenState] = useState(() => localStorage.getItem(STORAGE_KEYS.TOKEN) || null);
-  const [user, setUserState] = useState(() => safeJsonParse(localStorage.getItem(STORAGE_KEYS.USER)));
-
-  // Everything else stays session-scoped (fine to reset per tab).
-  const [devoteeDetails, setDevoteeDetailsState] = useState(() =>
+  // Initialize state from sessionStorage
+  const [token, setTokenState] = useState(() => sessionStorage.getItem(STORAGE_KEYS.TOKEN) || null);
+  const [user, setUserState] = useState(() => safeJsonParse(sessionStorage.getItem(STORAGE_KEYS.USER)));
+  const [devoteeDetails, setDevoteeDetailsState] = useState(() => 
     safeJsonParse(sessionStorage.getItem(STORAGE_KEYS.DEVOTEE_DETAILS), { name: '', whatsapp: '' })
   );
-  const [activeChadhavaId, setActiveChadhavaIdState] = useState(() =>
+  const [activeChadhavaId, setActiveChadhavaIdState] = useState(() => 
     sessionStorage.getItem(STORAGE_KEYS.ACTIVE_CHADHAVA_ID) || null
   );
-  const [activeCart, setActiveCartState] = useState(() =>
+  const [activeCart, setActiveCartState] = useState(() => 
     safeJsonParse(sessionStorage.getItem(STORAGE_KEYS.ACTIVE_CART))
   );
 
-  // --- Setters ---
+  // --- Setters with sessionStorage sync ---
   const setToken = useCallback((newToken) => {
-    const sanitized = sanitize(newToken);
-    setTokenState(sanitized);
-    if (sanitized) {
-      localStorage.setItem(STORAGE_KEYS.TOKEN, sanitized);
+    setTokenState(newToken || null);
+    if (newToken) {
+      localStorage.setItem(STORAGE_KEYS.TOKEN, newToken);
     } else {
       localStorage.removeItem(STORAGE_KEYS.TOKEN);
     }
-  }, []);
+}, []);
 
   const setUser = useCallback((newUser) => {
     const sanitized = sanitizeObject(newUser);
     setUserState(sanitized);
     if (sanitized) {
-      localStorage.setItem(STORAGE_KEYS.USER, JSON.stringify(sanitized));
+      sessionStorage.setItem(STORAGE_KEYS.USER, JSON.stringify(sanitized));
     } else {
-      localStorage.removeItem(STORAGE_KEYS.USER);
+      sessionStorage.removeItem(STORAGE_KEYS.USER);
     }
   }, []);
 
@@ -127,37 +124,27 @@ export const StorageProvider = ({ children }) => {
     setActiveChadhavaIdState(null);
     setActiveCartState(null);
     sessionStorage.clear();
-
-    try {
-      localStorage.removeItem(STORAGE_KEYS.TOKEN);
-      localStorage.removeItem(STORAGE_KEYS.USER);
-      // pp_profile_photo wasn't scoped per-user, so it survived logout and
-      // leaked the previous account's photo onto the next login.
-      localStorage.removeItem('pp_profile_photo');
-    } catch (e) {
-      /* localStorage unavailable — ignore */
-    }
   }, []);
 
   // --- Context Value ---
   const value = {
-    // State
-    token,
-    user,
-    devoteeDetails,
-    activeChadhavaId,
-    activeCart,
-    // Setters
-    setToken,
-    setUser,
-    setDevoteeDetails,
-    setActiveChadhavaId,
-    setActiveCart,
-    clearStorage,
-    logout: clearStorage, // Alias for semantic usage
-    // Helpers
-    isLoggedIn: !!token,
-  };
+		// State
+		token,
+		user,
+		devoteeDetails,
+		activeChadhavaId,
+		activeCart,
+		// Setters
+		setToken,
+		setUser,
+		setDevoteeDetails,
+		setActiveChadhavaId,
+		setActiveCart,
+		clearStorage,
+		logout: clearStorage, // Alias for semantic usage
+		// Helpers
+		isLoggedIn: !!token,
+	};
 
   return (
     <StorageContext.Provider value={value}>
