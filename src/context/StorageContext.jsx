@@ -98,9 +98,14 @@ const [user, setUserState] = useState(() => safeJsonParse(localStorage.getItem(S
   // so JSON.stringify never receives a function (which produced the literal
   // string "undefined" in localStorage and logged the user out on refresh).
   const setUser = useCallback((newUser) => {
-    setUserState((prev) =>
-      sanitizeObject(typeof newUser === 'function' ? newUser(prev) : newUser)
-    );
+    setUserState((prev) => {
+      const resolved = typeof newUser === 'function' ? newUser(prev) : newUser;
+      if (!resolved) return resolved;
+      const sanitized = sanitizeObject(resolved);
+      // profile_img is a URL, not user-facing text — sanitizing it corrupts
+      // the slashes and requires lossy workarounds to undo. Keep it raw.
+      return { ...sanitized, profile_img: resolved.profile_img };
+    });
   }, []);
 
   // Persist user whenever it changes

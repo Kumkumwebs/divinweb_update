@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from "react";
+  import React, { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { useStorage } from "../context/StorageContext";
 import apiService from "../services/apiServices";
@@ -308,6 +308,18 @@ export default function ProfilePage() {
         let cachedPhoto = "";
         try {
           cachedPhoto = localStorage.getItem(getAvatarCacheKey(user)) || "";
+
+          // Fallback: if the exact per-user key misses (e.g. the photo was
+          // cached before `user.number` was populated, so it landed under
+          // the "_anon" key), fall back to any pp_profile_photo_* entry —
+          // same defensive logic Header.jsx already uses.
+          if (!cachedPhoto) {
+            const anyKey = Object.keys(localStorage).find((k) =>
+              k.startsWith('pp_profile_photo_')
+            );
+            if (anyKey) cachedPhoto = localStorage.getItem(anyKey) || "";
+          }
+
           console.log('[PROFILE DEBUG] user object:', user);
           console.log('[PROFILE DEBUG] cacheKey:', getAvatarCacheKey(user), '| cachedPhoto found:', cachedPhoto);
         } catch (e) {

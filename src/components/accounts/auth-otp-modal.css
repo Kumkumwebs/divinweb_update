@@ -150,7 +150,7 @@
 }
 
 .aom-otp-pad .aom-btn-verify {
-  padding: 11px 0 !important;
+  padding: 5px 0 !important;
 }
 
 .aom-otp-pad .aom-secure-box {
@@ -388,13 +388,82 @@
   opacity: 1 !important;
 }
 
-.aom-btn-verify {
-  background: linear-gradient(135deg, var(--aom-verify-1) 0%, var(--aom-verify-2) 100%);
+/* ---------- buttons ---------- */
+.aom-btn {
+  width: 100%;
+  height: 48px;
+  padding: 0 20px;
   border: none;
-  color: #fff;
-  font-size: 15.5px;
+  border-radius: 10px;
+  font-size: 15px;
   font-weight: 700;
   letter-spacing: 0.2px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  transition: background 0.2s ease, opacity 0.2s ease, transform 0.1s ease;
+}
+
+.aom-btn:active:not(:disabled) {
+  transform: scale(0.98);
+}
+
+.aom-btn-primary {
+  background: #3b82f6;
+  color: #fff !important;
+}
+
+.aom-btn-primary:not(:disabled) {
+  background: #4a0e82;
+}
+
+.aom-btn-primary:disabled {
+  background: rgba(108, 17, 145, 0.745);
+  opacity: 1;
+}
+
+.aom-btn-verify {
+  background: linear-gradient(135deg, var(--aom-verify-1) 0%, var(--aom-verify-2) 100%);
+  color: #fff;
+}
+
+.aom-btn-verify:disabled {
+  opacity: 0.55;
+}
+
+.aom-btn-verify:hover:not(:disabled) {
+  opacity: 0.95;
+}
+
+.aom-btn-link {
+  background: none;
+  border: none;
+  color: var(--aom-link-purple);
+  font-weight: 600;
+}
+
+.aom-btn-link:disabled {
+  color: var(--aom-text-hint);
+  cursor: not-allowed;
+}
+
+.aom-btn-verify {
+  background: linear-gradient(135deg, var(--aom-verify-1) 0%, var(--aom-verify-2) 100%);
+  border: none !important;
+  color: #fff !important;
+  font-size: 14px !important;
+  font-weight: 700;
+  letter-spacing: 0.2px;
+  width: auto !important;
+  height: auto !important;
+  min-height: 0 !important;
+  padding: 10px 36px !important;
+  border-radius: 8px !important;
+}
+
+.aom-otp-pad .aom-btn-verify {
+  padding: 9px 32px !important;
 }
 
 .aom-btn-verify:disabled {
@@ -570,9 +639,13 @@
   .aom-login-pad {
     padding: 22px 14px 18px !important;
   }
-
+  .aom-otp-back {
+    margin-top: 0 !important;
+    padding-top: 4px !important;   /* small breathing room above the arrow/text, without pushing the whole screen down */
+    margin-bottom: 14px !important; /* clearer gap before the avatar circle below it */
+  }
   .aom-otp-pad {
-    padding: 16px 12px 14px !important;
+    padding: 44px 20px 14px !important;   /* was 14px 20px — top bumped to clear the close (×) button, which sits at top:14px/right:14px */
   }
 
   .aom-title {

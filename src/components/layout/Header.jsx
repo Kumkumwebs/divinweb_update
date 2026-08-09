@@ -512,8 +512,8 @@ const Header = ({ onMenuToggle, onSideMenuToggle, onSearchToggle }) => {
 													onClick={() => setIsDropdownOpen(!isDropdownOpen)}
 												>
 													{isUsableImageUrl(user.profile_img) ? (
-														<img src={fixImageUrl(user.profile_img)} alt="User" />
-													) : (
+  <img src={user.profile_img} alt="User" />
+) : (
 														<span className={styles.userInitial}>
 															{getUserInitial(user.name)}
 														</span>

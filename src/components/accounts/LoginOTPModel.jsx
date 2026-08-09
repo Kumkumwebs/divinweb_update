@@ -286,9 +286,13 @@ const handleResend = async () => {
 
 return (
 	<div className="aom-otp-pad d-flex flex-column flex-grow-1 p-3">
-		<button onClick={onBack} className="btn btn-link aom-text-med p-0 mb-3 d-flex align-items-center gap-2 fw-semibold text-decoration-none align-self-start" style={{ fontSize: 14 }}>
-			<span style={{ fontSize: 16 }}>←</span> Back
-		</button>
+	<button
+	onClick={onBack}
+	className="btn btn-link aom-text-med p-0 d-flex align-items-center gap-2 fw-semibold text-decoration-none align-self-start"
+	style={{ fontSize: 14, marginTop: 0, marginBottom: 16, padding: "4px 0 0" }}
+>
+	<span style={{ fontSize: 16 }}>←</span> Back
+</button>
 
 		<div className="d-flex justify-content-center mb-3">
 			<div className="aom-avatar-ring rounded-circle d-flex align-items-center justify-content-center position-relative overflow-hidden">
@@ -350,15 +354,14 @@ return (
 				: <span className="aom-text-danger fw-bold">OTP expired. Please resend.</span>
 			}
 		</div>
-
 		<button
-			ref={verifyBtnRef}
-			onClick={handleVerify}
-			disabled={!allFilled || loading || secs === 0}
-			className="aom-btn-verify btn w-100 py-3 d-flex align-items-center justify-content-center gap-2 mb-3"
-		>
-			{loading ? <><Spinner /> Verifying…</> : <>Verify OTP <span style={{ fontSize: 20 }}>→</span></>}
-		</button>
+	ref={verifyBtnRef}
+	onClick={handleVerify}
+	disabled={!allFilled || loading || secs === 0}
+	className="aom-btn aom-btn-verify mb-3"
+>
+	{loading ? <><Spinner /> Verifying…</> : <>Verify OTP <span style={{ fontSize: 18 }}>→</span></>}
+</button>
 
 		<div className="aom-resend-row d-flex justify-content-between align-items-center aom-text-gray mb-3" style={{ fontSize: 13 }}>
 			<span>Didn't receive OTP?</span>
