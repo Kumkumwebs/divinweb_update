@@ -168,6 +168,10 @@
   min-height: 0;
 }
 
+.aom-login-pad {
+  padding: 8px 12px 5px !important;
+}
+
 .aom-right-panel::-webkit-scrollbar {
   width: 6px;
 }
@@ -322,6 +326,8 @@
   border-radius: 10px;
   overflow: hidden;
   transition: border-color 0.2s;
+  min-height: 52px !important;
+  height: 30px !important;
 }
 
 .aom-phone-group--error {
@@ -375,17 +381,38 @@
 
 /* Purple after valid 10-digit number */
 .aom-btn-primary:not(:disabled) {
+  height: 48px !important;
+  min-height: 48px !important;
+  width: 100% !important;
+  padding: 6px 20px !important;
+  box-sizing: border-box !important;
+
   background: #4a0e82 !important;
   background-color: #4a0e82 !important;
+  background-image: none !important;
+
   color: #fff !important;
+  border: none !important;
+  opacity: 1 !important;
 }
 
 /* Keep blue while disabled */
+.aom-btn-primary,
+.aom-btn-primary:hover,
+.aom-btn-primary:focus,
+.aom-btn-primary:active,
 .aom-btn-primary:disabled {
-  background: rgba(108, 17, 145, 0.745) !important;
-  background-color: rgba(108, 17, 145, 0.745) !important;
+  height: 48px !important;
+  min-height: 48px !important;
+  padding: 6px 20px !important;
+
+  background: #56163C !important;
+  background-color: #56163C !important;
+  background-image: none !important;
   color: #fff !important;
   opacity: 1 !important;
+  border: none !important;
+  box-shadow: none !important;
 }
 
 /* ---------- buttons ---------- */
@@ -409,18 +436,24 @@
   transform: scale(0.98);
 }
 
-.aom-btn-primary {
-  background: #3b82f6;
-  color: #fff !important;
+.aom-login-pad,
+.aom-otp-pad {
+  flex: 0 0 auto !important;
+  min-height: 0;
 }
 
-.aom-btn-primary:not(:disabled) {
-  background: #4a0e82;
-}
-
+.aom-.aom-btn-primary,
+.aom-btn-primary:hover,
+.aom-btn-primary:focus,
+.aom-btn-primary:active,
 .aom-btn-primary:disabled {
-  background: rgba(108, 17, 145, 0.745);
-  opacity: 1;
+  background: #56163C !important;
+  background-color: #56163C !important;
+  background-image: none !important;
+  color: #fff !important;
+  opacity: 1 !important;
+}login-pad {
+  padding: 8px 12px 5px !important;
 }
 
 .aom-btn-verify {
@@ -490,14 +523,13 @@
 
 /* ---------- feature strip ---------- */
 .aom-features-row {
-  /* border: 1px solid var(--aom-border-light); */
   border-radius: 12px;
+  margin-top: -20px !important;
 }
-
 .aom-feature-icon {
-  width: 34px;
-  height: 34px;
-  font-size: 13px;
+  width: 30px;
+  height: 30px;
+  font-size: 12px;
 }
 
 .aom-feature-icon--orange {
@@ -539,9 +571,11 @@
 .aom-resend-row {
   gap: 130px;
 }
-.aom-resend-row > span {
+
+.aom-resend-row>span {
   white-space: nowrap;
 }
+
 .aom-resend-row .aom-btn-link {
   white-space: nowrap;
   flex-shrink: 0;
@@ -637,15 +671,30 @@
   }
 
   .aom-login-pad {
-    padding: 22px 14px 18px !important;
+    padding: 8px 12px 5px !important;
   }
+
+  .aom-login-pad .aom-form-group {
+    margin-bottom: 8px !important;
+  }
+
+  .aom-btn-primary {
+    height: 48px !important;
+    min-height: 48px !important;
+    padding: 6px 20px !important;
+  }
+
   .aom-otp-back {
     margin-top: 0 !important;
-    padding-top: 4px !important;   /* small breathing room above the arrow/text, without pushing the whole screen down */
-    margin-bottom: 14px !important; /* clearer gap before the avatar circle below it */
+    padding-top: 4px !important;
+    /* small breathing room above the arrow/text, without pushing the whole screen down */
+    margin-bottom: 14px !important;
+    /* clearer gap before the avatar circle below it */
   }
+
   .aom-otp-pad {
-    padding: 44px 20px 14px !important;   /* was 14px 20px — top bumped to clear the close (×) button, which sits at top:14px/right:14px */
+    padding: 44px 20px 14px !important;
+    /* was 14px 20px — top bumped to clear the close (×) button, which sits at top:14px/right:14px */
   }
 
   .aom-title {
