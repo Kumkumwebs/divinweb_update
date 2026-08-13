@@ -203,6 +203,7 @@ const ChadhavaCartPage = () => {
 	const {
 		devoteeDetails: contextDevoteeDetails,
 		setDevoteeDetails,
+		user,
 		activeChadhavaId: contextActiveChadhavaId,
 		setActiveChadhavaId,
 	} = useStorage();
@@ -215,9 +216,7 @@ const ChadhavaCartPage = () => {
 	const [cartResponse, setCartResponse] = useState(null);
 	const [mergedCart, setMergedCart] = useState([]);
 	const [walletBalance, setWalletBalance] = useState(0);
-	const [userDetails, setUserDetails] = useState(
-		contextDevoteeDetails || { name: '', whatsapp: '' }
-	);
+	const [userDetails, setUserDetails] = useState({ name: '', whatsapp: '' });
 	const [isEditModalOpen, setIsEditModalOpen] = useState(false);
 	const [pendingPay, setPendingPay] = useState(false);
 	const [bookingStatus, setBookingStatus] = useState(null);
@@ -226,6 +225,28 @@ const ChadhavaCartPage = () => {
 	const [isCouponModalOpen, setIsCouponModalOpen] = useState(false);
 	const [couponCode, setCouponCode] = useState('');
 	const [appliedDiscount, setAppliedDiscount] = useState(0);
+
+	const getSavedDevoteeInfo = useCallback(() => {
+		let name = contextDevoteeDetails?.name || '';
+		let whatsapp = contextDevoteeDetails?.whatsapp || '';
+
+		if (!name || !whatsapp) {
+			let storageUser = user;
+			if (!storageUser) {
+				try {
+					storageUser = JSON.parse(localStorage.getItem('user') || sessionStorage.getItem('user') || null);
+				} catch (e) {}
+			}
+			if (storageUser) {
+				if (!name && storageUser.name) name = storageUser.name;
+				if (!whatsapp && (storageUser.number || storageUser.whatsapp || storageUser.phone)) {
+					whatsapp = storageUser.number || storageUser.whatsapp || storageUser.phone;
+				}
+			}
+		}
+
+		return { name: (name || '').trim(), whatsapp: (whatsapp || '').trim() };
+	}, [contextDevoteeDetails, user]);
 
 	const fetchCartFromServer = useCallback(async () => {
 		try {
@@ -293,8 +314,14 @@ const ChadhavaCartPage = () => {
 	useEffect(() => {
 		fetchCartFromServer();
 		fetchWalletBalance();
-		if (contextDevoteeDetails?.name) setUserDetails(contextDevoteeDetails);
-	}, [fetchCartFromServer, fetchWalletBalance]);
+		const info = getSavedDevoteeInfo();
+		if (info.name || info.whatsapp) {
+			setUserDetails(info);
+			if ((!contextDevoteeDetails?.name || !contextDevoteeDetails?.whatsapp) && info.name && info.whatsapp) {
+				setDevoteeDetails(info);
+			}
+		}
+	}, [fetchCartFromServer, fetchWalletBalance, getSavedDevoteeInfo, contextDevoteeDetails, setDevoteeDetails]);
 
 	const handleQtyChange = async (item, delta) => {
 		const newQty = (item.qty || 0) + delta;
@@ -382,9 +409,10 @@ const ChadhavaCartPage = () => {
 		// eslint-disable-next-line react-hooks/exhaustive-deps
 	}, []);
 
-	const startPayment = async () => {
+	const startPayment = async (overrideDetails) => {
 		setBookingStatus('pending');
 		try {
+			const activeUser = overrideDetails || userDetails;
 			const isPayu = paymentMode === 'payu';
 			const payload = {
 				chadhava_id: contextActiveChadhavaId,
@@ -395,7 +423,7 @@ const ChadhavaCartPage = () => {
 					.filter(i => i.type === 'prasad')
 					.map(i => ({ prasad_id: i.prasad_id, qty: i.qty })),
 				payment_mode: paymentMode,
-				userDetails: { name: userDetails.name, whatsapp: userDetails.whatsapp },
+				userDetails: { name: activeUser.name, whatsapp: activeUser.whatsapp },
 				...(isPayu ? { platform: 'web' } : {}),
 			};
 			const endpoint = isPayu
@@ -426,21 +454,28 @@ const ChadhavaCartPage = () => {
 	};
 
 	const handlePayNow = async () => {
-		if (!userDetails.name) {
+		const info = getSavedDevoteeInfo();
+		if (!info.name || !info.whatsapp) {
 			setPendingPay(true);
 			setIsEditModalOpen(true);
 			return;
 		}
-		await startPayment();
+
+		setUserDetails(info);
+		if (!contextDevoteeDetails?.name || !contextDevoteeDetails?.whatsapp) {
+			setDevoteeDetails(info);
+		}
+
+		await startPayment(info);
 	};
 
 	useEffect(() => {
-		if (pendingPay && userDetails.name && !isEditModalOpen) {
+		const info = getSavedDevoteeInfo();
+		if (pendingPay && info.name && info.whatsapp && !isEditModalOpen) {
 			setPendingPay(false);
-			startPayment();
+			startPayment(info);
 		}
-		// eslint-disable-next-line react-hooks/exhaustive-deps
-	}, [pendingPay, userDetails.name, isEditModalOpen]);
+	}, [pendingPay, isEditModalOpen, getSavedDevoteeInfo]);
 
 	const applyCoupon = () => {
 		if (couponCode.toUpperCase() === 'FIRST100') {
@@ -457,7 +492,9 @@ const ChadhavaCartPage = () => {
 	};
 
 	const subtotal = cartResponse?.grand_total || 0;
-	const totalAmount = subtotal - appliedDiscount + 10;
+	const subtotalAfterDiscount = Math.max(0, subtotal - appliedDiscount);
+	const gstAmount = Number((subtotalAfterDiscount * 0.18).toFixed(2));
+	const totalAmount = Number((subtotalAfterDiscount + gstAmount).toFixed(2));
 
 	return (
 		<div className="main-wrapper bg-white">
@@ -502,7 +539,10 @@ const ChadhavaCartPage = () => {
 									</div>
 									<div className="cc-devotee-info">
 										<span>Devotee Details</span>
-										<h5>{userDetails.name}</h5>
+										<h5>{userDetails.name || contextDevoteeDetails?.name || user?.name || 'Devotee'}</h5>
+										{(userDetails.whatsapp || contextDevoteeDetails?.whatsapp || user?.number) && (
+											<p className="small text-muted mb-0">+91 {userDetails.whatsapp || contextDevoteeDetails?.whatsapp || user?.number}</p>
+										)}
 									</div>
 									<button
 										className="cc-change-btn"
@@ -583,16 +623,23 @@ const ChadhavaCartPage = () => {
 											<span>Subtotal</span>
 											<span>₹{formatINR(subtotal)}</span>
 										</div>
-										<div className="cc-summary-row">
-											<span>Platform Fee</span>
-											<span>₹10</span>
-										</div>
 										{appliedDiscount > 0 && (
 											<div className="cc-summary-row discount">
 												<span>Coupon Discount</span>
 												<span>-₹{formatINR(appliedDiscount)}</span>
 											</div>
 										)}
+										<div className="cc-summary-row">
+											<span>GST (18%)</span>
+											<span>₹{formatINR(gstAmount)}</span>
+										</div>
+										<div className="cc-summary-row">
+											<span>Platform Fee</span>
+											<span>
+												<span style={{ textDecoration: "line-through", color: "#9ca3af", marginRight: "6px" }}>₹10</span>
+												<span style={{ color: "#16a34a", fontWeight: "700" }}>₹0</span>
+											</span>
+										</div>
 
 										<div className="cc-summary-total">
 											<h4>Total Pay</h4>

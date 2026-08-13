@@ -1,3 +1,4 @@
+import { Link } from 'react-router-dom';
 import '../../pages/home.css';
 
 const FALLBACK_ITEMS = [
@@ -60,12 +61,8 @@ const ChadhavaSection = ({ chadhava }) => {
 			id: c._id,
 			name: c.title,
 			temple: c.templeName,
-			// webImage only — no fallback chain to chadhavaImage /
-			// bannerImages / etc. Records without webImage show the
-			// placeholder. Still run through fixImgHost in case webImage
-			// itself ever comes back on the old domain.
 			image: fixImgHost(c.webImage) || PLACEHOLDER,
-			price: c.price,
+			price: c.price || c.chadhava_price || c.chadhavaPrice || c.amount || c.chadhava_amount || c.startingPrice || (c.packages && c.packages[0] && (c.packages[0].price || c.packages[0].amount)),
 		}))
 		: FALLBACK_ITEMS.map((c) => ({ ...c, image: c.image || PLACEHOLDER }));
 
@@ -111,6 +108,8 @@ const ChadhavaSection = ({ chadhava }) => {
 					flex-direction: column;
 					width: 100%;
 					height: 100%;
+					text-decoration: none;
+					color: inherit;
 				}
 				.dq-section-cream .dq-puja-card img {
 					flex-shrink: 0;
@@ -138,7 +137,7 @@ const ChadhavaSection = ({ chadhava }) => {
 			<div className="dq-container">
 				<div className="dq-section-head-row">
 					<h2>Sacred Chadhava Delivered with Devotion</h2>
-					<a href="/chadhava">Explore Chadhava</a>
+					<Link to="/chadhava">Explore Chadhava</Link>
 				</div>
 
 				{/* Same card markup/classes as PujaListSection's dq-puja-card —
@@ -151,7 +150,7 @@ const ChadhavaSection = ({ chadhava }) => {
 				<div className="row g-md-5 g-3">
 					{items.map((item) => (
 						<div key={item.id} className="col-12 col-md-6 col-lg-4">
-							<a href={`/chadhava/${item.id}`} className="dq-puja-card">
+							<Link to={`/chadhava/${item.id}`} className="dq-puja-card">
 								<img
 									src={item.image}
 									alt={item.name}
@@ -163,12 +162,12 @@ const ChadhavaSection = ({ chadhava }) => {
 									{item.temple && <div className="dq-puja-sub">{item.temple}</div>}
 									<div className="dq-puja-footer" style={{ flexDirection: 'column', alignItems: 'stretch', gap: 10 }}>
 										<span className="dq-puja-price">
-											 Offer Chadhawa with Devotion
+											{item.price && Number(item.price) > 0 ? `₹${Number(item.price).toLocaleString('en-IN')}` : 'Offer Chadhawa with Devotion'}
 										</span>
 										<span className="dq-btn dq-btn-sm dq-btn-gradient">Book Now</span>
 									</div>
 								</div>
-							</a>
+							</Link>
 						</div>
 					))}
 				</div>

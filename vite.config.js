@@ -23,15 +23,7 @@ const SITE_ROUTES = [
 export default defineConfig({
   plugins: [
     // ── React with Babel (dev-only locator removed from prod) ──────────────
-    react({
-      babel: {
-        plugins: [
-          ...(process.env.NODE_ENV === 'development'
-            ? [['@locator/babel-jsx/dist', { env: 'development' }]]
-            : []),
-        ],
-      },
-    }),
+    react(),
 
     // ── Sitemap — auto-generates /sitemap.xml on build ────────────────────
     sitemap({

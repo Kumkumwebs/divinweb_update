@@ -329,7 +329,8 @@ const ReviewsSection = ({ reviews = [] }) => {
 };
 
 const PujaDetails = () => {
-  const { name, id } = useParams();
+  const params = useParams();
+  const id = params.id || params.name;
   const { isLoggedIn } = useStorage();
 
   const [showSideMenu, setShowSideMenu] = useState(false);

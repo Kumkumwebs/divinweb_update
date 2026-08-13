@@ -151,9 +151,31 @@ const AstrologerDetail = () => {
         const target = found || res.results[0];
         setAstro(target);
 
-        // The API already gives curated similar astrologers per-profile —
-        // no need to derive them by filtering the results list.
-        setSimilar(Array.isArray(target.similar_astrologers) ? target.similar_astrologers : []);
+        let sim = Array.isArray(target.similar_astrologers) ? [...target.similar_astrologers] : [];
+
+        // If similar astrologers count is less than 4, fetch additional astrologers from API
+        if (sim.length < 4) {
+          try {
+            const listRes = await apiService.postBearer('https://admin.diviniq.in/user_api/astrologer_list', {
+              search: '', page: '1', is_chat: 'on', followAstro: '',
+              is_voice_call: 'on', is_video_call: 'on', cat_id: '',
+              language_id: '', gender: '', sort_val: 'relevant', is_question: '',
+              skill_id: '', country: '', report_id: '', expert_astro: ''
+            });
+            if (listRes?.results?.length) {
+              const existingIds = new Set(sim.map(s => String(s.id || s._id)));
+              existingIds.add(String(target.id || target._id));
+              existingIds.add(String(id));
+
+              const extra = listRes.results.filter(a => !existingIds.has(String(a.id || a._id)));
+              sim = [...sim, ...extra].slice(0, 4);
+            }
+          } catch (err) {
+            console.error('Failed to load supplementary astrologers from API:', err);
+          }
+        }
+
+        setSimilar(sim);
       }
       // Wallet balance comes from get_profile → results.wallet (or results_web.wallet)
       try {
@@ -415,17 +437,17 @@ const AstrologerDetail = () => {
                 </div>
               </div>
 
-              {/* Gallery + Video side by side — 65% height */}
+              {/* Gallery + Video side by side */}
               <div className="row g-3 mb-3">
                 {/* Gallery — left */}
                 <div className="col-lg-6">
-                  <div className="ad-card" style={{ marginBottom: 0, height: '65%', display: 'flex', flexDirection: 'column' }}>
+                  <div className="ad-card" style={{ marginBottom: 0, height: '100%', display: 'flex', flexDirection: 'column' }}>
                     <div className="d-flex justify-content-between align-items-center mb-2">
                       <div className="ad-card-title mb-0" style={{ fontSize: '13px', marginBottom: 0 }}><i className="fas fa-images" />Gallery</div>
                       <button className="btn btn-link p-0" style={{ fontSize: 11, color: '#7c1d40', fontWeight: 700, textDecoration: 'none' }} onClick={() => setPopup('gallery')}>View All</button>
                     </div>
                     {/* Scrollable gallery with arrows */}
-                    <div className="ad-gallery-wrap" style={{ flex: 1, display: 'flex', alignItems: 'center' }}>
+                    <div className="ad-gallery-wrap" style={{ height: '165px', display: 'flex', alignItems: 'center' }}>
                       <button className="ad-gal-arrow left" onClick={() => scrollGallery(-1)}>
                         <i className="fas fa-chevron-left" />
                       </button>
@@ -445,10 +467,10 @@ const AstrologerDetail = () => {
 
                 {/* Video — right */}
                 <div className="col-lg-6">
-                  <div className="ad-card" style={{ marginBottom: 0, height: '65%', display: 'flex', flexDirection: 'column' }}>
+                  <div className="ad-card" style={{ marginBottom: 0, height: '100%', display: 'flex', flexDirection: 'column' }}>
                     <div className="ad-card-title mb-2" style={{ fontSize: '13px', marginBottom: '8px' }}><i className="fas fa-play-circle" />Introduction Video</div>
-                    <div className="ad-vid-wrap" style={{ flex: 1 }}>
-                      <img src={astro.profile_img || '/assets/img/team/team_1_1.jpg'} alt="intro" style={{ height: '100%' }}
+                    <div className="ad-vid-wrap" style={{ height: '165px', position: 'relative' }}>
+                      <img src={astro.profile_img || '/assets/img/team/team_1_1.jpg'} alt="intro" style={{ width: '100%', height: '100%', objectFit: 'cover' }}
                         onError={e => { e.target.src = '/assets/img/team/team_1_1.jpg' }} />
                       <button className="ad-vid-play"><i className="fas fa-play" /></button>
                     </div>
@@ -612,14 +634,14 @@ const AstrologerDetail = () => {
             <div className="row g-4">
               {/* FAQ — left */}
               <div className="col-lg-5">
-                <div className="ad-card" style={{ marginBottom: 0, height: '100%' }}>
+                <div className="ad-card" style={{ marginBottom: 0 }}>
                   <div className="ad-card-title"><i className="fas fa-question-circle" />Frequently Asked Questions</div>
                   {FAQS.map((f, i) => <FaqItem key={i} q={f.q} a={f.a} />)}
                 </div>
               </div>
               {/* You May Also Like — right */}
               <div className="col-lg-7">
-                <div className="ad-card" style={{ marginBottom: 0, height: '100%' }}>
+                <div className="ad-card" style={{ marginBottom: 0 }}>
                   <div className="d-flex justify-content-between align-items-center mb-3">
                     <div className="ad-card-title mb-0">
                       <i className="fas fa-heart" style={{ color: '#7c1d40' }} />You May Also Like
@@ -628,11 +650,11 @@ const AstrologerDetail = () => {
                   </div>
                   <div className="row g-3">
                     {simList.map((s, i) => (
-                      <div key={i} className="col-6 col-sm-3 d-flex">
+                      <div key={i} className="col-6 col-sm-3">
                         <Link
                           to={`/astrologer/${s.id || s._id}`}
-                          className="ad-sim-card w-100"
-                          style={{ textDecoration: 'none', color: 'inherit', display: 'block' }}
+                          className="ad-sim-card"
+                          style={{ textDecoration: 'none', color: 'inherit', display: 'flex', flexDirection: 'column' }}
                         >
                           <div className="ad-sim-av-box">
                             {s.profile_img

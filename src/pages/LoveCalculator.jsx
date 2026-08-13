@@ -88,7 +88,7 @@ const LoveCalculator = () => {
             <Header />
 
             {/* CELESTIAL HERO BANNER — image + maroon gradient overlay, standalone rounded card */}
-            <div className="container pt-40">
+            <div className="container" style={{ paddingTop: '24px' }}>
                 <motion.div
                     initial={{ opacity: 0, y: 16 }}
                     animate={{ opacity: 1, y: 0 }}

@@ -97,6 +97,7 @@ function NotFound() {
 				<Route path="/chadhava/:name/:id" element={<ChadhavaDetails />} />
 				<Route path="/chadhava/:id" element={<ChadhavaDetails />} />
 				<Route path="/puja/:name/:id" element={<PujaDetails />} />
+				<Route path="/puja/:id" element={<PujaDetails />} />
 				<Route path="/astrologer" element={<AstrologerList />} />
 				<Route path="/astrologer/:id" element={<AstrologerDetail />} />
 				<Route path="/nakshatra_finder" element={<NakshatraFinder />} />

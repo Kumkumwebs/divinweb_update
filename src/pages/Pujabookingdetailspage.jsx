@@ -5,6 +5,7 @@ import Header from "../components/layout/Header";
 import Footer from "../components/layout/Footer";
 import ScrollToTop from "../components/common/ScrollToTop";
 import AppDownloadModal from "../components/common/AppDownloadModal";
+import { downloadInvoice } from "../utils/invoiceGenerator";
 import "./PujaBookingDetailsPage.css";
 
 const FAQS = [
@@ -103,23 +104,8 @@ const PujaBookingDetailsPage = () => {
     day: 'numeric', month: 'long', year: 'numeric', weekday: 'long'
   });
 
-  const handleDownloadInvoice = async () => {
-    try {
-      const blob = await apiService.getBearerBlob(
-        `https://admin.diviniq.in/puja/downloadinvoice/${booking._id}`
-      );
-      const url = window.URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `Invoice-${booking.puja_booking_id || booking._id}.pdf`;
-      document.body.appendChild(a);
-      a.click();
-      a.remove();
-      window.URL.revokeObjectURL(url);
-    } catch (err) {
-      console.error('Invoice download failed:', err);
-      alert('Could not download invoice. Please try again.');
-    }
+  const handleDownloadInvoice = () => {
+    downloadInvoice(booking, "puja");
   };
 
   return (

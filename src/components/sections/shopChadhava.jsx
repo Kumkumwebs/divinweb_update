@@ -1,10 +1,12 @@
 import React, { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import UserDetailsModal from "../common/ChadhavaUserDetailsModel";
 import apiService from "../../services/apiServices";
 import { useStorage } from '../../context/StorageContext';
 
 const ShopChadhava = ({ chadhava }) => {
-	const { setActiveChadhavaId } = useStorage();
+	const navigate = useNavigate();
+	const { setActiveChadhavaId, devoteeDetails, user } = useStorage();
 	const [isModalOpen, setIsModalOpen] = useState(false);
 	const [cart, setCart] = useState({ addons: [], prasad: [] });
 	const [localActiveChadhavaId, setLocalActiveChadhavaId] = useState(null);
@@ -238,7 +240,22 @@ const ShopChadhava = ({ chadhava }) => {
 						</div>
 						<button
 							className="sri-next-btn"
-							onClick={() => setIsModalOpen(true)}
+							onClick={() => {
+								let name = devoteeDetails?.name || '';
+								let phone = devoteeDetails?.whatsapp || '';
+								if (!name || !phone) {
+									try {
+										const u = JSON.parse(localStorage.getItem('user') || sessionStorage.getItem('user') || '{}');
+										if (!name && u.name) name = u.name;
+										if (!phone && (u.number || u.whatsapp || u.phone)) phone = u.number || u.whatsapp || u.phone;
+									} catch (e) {}
+								}
+								if (name && phone) {
+									navigate('/chadhava_review_booking');
+								} else {
+									setIsModalOpen(true);
+								}
+							}}
 						>
 							Next <span className="arrow">→</span>
 						</button>

@@ -98,7 +98,7 @@
 /* Video */
 .ad-vid-wrap { position:relative; border-radius:12px; overflow:hidden; background:#111; cursor:pointer; }
 .ad-vid-wrap img { width:100%; height:100%; object-fit:cover; display:block; opacity:.78; }
-.ad-vid-play { position:absolute; top:57%; left:50%; transform:translate(-50%,-50%); width:48px; height:48px; border-radius:50%; background:rgba(255,255,255,.92); display:flex; align-items:center; justify-content:center; font-size:16px; color:#7c1d40; border:none; cursor:pointer; box-shadow:0 4px 16px rgba(0,0,0,.22); }
+.ad-vid-play { position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); width:48px; height:48px; border-radius:50%; background:rgba(255,255,255,.92); display:flex; align-items:center; justify-content:center; font-size:16px; color:#7c1d40; border:none; cursor:pointer; box-shadow:0 4px 16px rgba(0,0,0,.22); }
 .ad-vid-lbl { font-size:11px; color:#6b7280; margin-top:6px; text-align:center; }
 
 /* ── CONSULTATION PROCESS ── */
@@ -139,7 +139,7 @@
 .ad-faq-a { font-size:12.5px; color:#6b7280; line-height:1.6; margin-top:9px; }
 
 /* ── SIMILAR CARDS ── */
-.ad-sim-card { background:#fff; border-radius:14px; border:1px solid #ebebeb; padding:18px 14px 14px; text-align:center; display:flex; flex-direction:column; align-items:center; height:100%; cursor:pointer; transition:all .2s; box-shadow:0 1px 5px rgba(0,0,0,.04); }
+.ad-sim-card { background:#fff; border-radius:14px; border:1px solid #ebebeb; padding:18px 14px 14px; text-align:center; display:flex; flex-direction:column; align-items:center; height:auto; cursor:pointer; transition:all .2s; box-shadow:0 1px 5px rgba(0,0,0,.04); }
 .ad-sim-card:hover { border-color:#e8b4c8; box-shadow:0 6px 20px rgba(124,29,64,.1); transform:translateY(-3px); }
 .ad-sim-av-box { width:88px; height:88px; border-radius:50%; overflow:hidden; border:3px solid #fbeef3; margin:0 auto 10px; flex-shrink:0; background:#fbeef3; }
 .ad-sim-av-box img { width:100%; height:100%; object-fit:cover; object-position:center top; display:block; }
@@ -148,8 +148,8 @@
 .ad-sim-rating { display:flex; align-items:center; justify-content:center; gap:4px; margin-bottom:5px; }
 .ad-sim-rating i { color:#f59e0b; font-size:12px; }
 .ad-sim-rating span { font-size:12.5px; font-weight:600; color:#374151; }
-.ad-sim-price { font-size:12.5px; color:#374151; margin-bottom:12px; }
-.ad-sim-btn { width:100%; padding:10px; font-size:13px; font-weight:700; margin-top:auto; background:linear-gradient(135deg,#6b1a3a,#7c1d40); color:#fff; border:none; border-radius:9px; cursor:pointer; transform:none !important; box-shadow:none !important; transition:opacity .18s; }
+.ad-sim-price { font-size:12.5px; color:#374151; margin-bottom:8px; }
+.ad-sim-btn { width:100%; padding:10px; font-size:13px; font-weight:700; margin-top:8px; background:linear-gradient(135deg,#6b1a3a,#7c1d40); color:#fff; border:none; border-radius:9px; cursor:pointer; transform:none !important; box-shadow:none !important; transition:opacity .18s; }
 .ad-sim-btn:hover { opacity:.88; }
 
 /* ── VIEW ALL POPUP ── */

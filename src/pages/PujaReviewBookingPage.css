@@ -202,11 +202,11 @@
 .prb-right { display: flex; flex-direction: column; gap: 20px; }
 
 /* ── CARD ── */
-.prb-card{
-    background:#fff;
-    border-radius:20px;
-    padding: 36px;
-    box-shadow:0 10px 30px rgba(0,0,0,.08);
+.prb-card {
+  background: #fff;
+  border-radius: 16px;
+  padding: 24px;
+  box-shadow: 0 4px 20px rgba(0,0,0,.06);
 }
 
 /* ── SECTION HEADER ── */
@@ -344,17 +344,34 @@
 }
 
 /* ── PUJA SUMMARY ── */
-.prb-puja-grid {
+.prb-sec-header {
+  font-size: 16px;
+  font-weight: 700;
+  color: #1a1a2e;
   display: flex;
-  gap: 20px;
+  align-items: center;
+  gap: 8px;
 }
-.prb-puja-img {
-  /* width: 350px; */
-  /* height: 165px; */
+.prb-sec-header i { color: #7c2d8e; }
+
+.prb-puja-header-row {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  background: #fdf8ff;
+  padding: 12px 14px;
   border-radius: 12px;
+  border: 1px solid #f3e5f8;
+}
+.prb-puja-img-thumb {
+  width: 120px;
+  height: 90px;
+  border-radius: 10px;
   object-fit: cover;
   flex-shrink: 0;
+  box-shadow: 0 2px 8px rgba(124, 45, 142, 0.12);
 }
+.prb-puja-header-info { flex: 1; }
 .prb-puja-info { flex: 1; }
 .prb-puja-name {
   font-size: 18px;
@@ -390,20 +407,51 @@
 }
 .prb-meta-grid {
   display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 8px 16px;
-  margin-bottom: 12px;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 12px;
+  background: #f9fafb;
+  padding: 12px 14px;
+  border-radius: 12px;
+  border: 1px solid #f3f4f6;
+  margin-bottom: 16px;
 }
 .prb-meta-item { display: flex; flex-direction: column; gap: 2px; }
 .prb-meta-label {
   font-size: 11px;
-  color: #888;
+  color: #6b7280;
   display: flex;
   align-items: center;
   gap: 5px;
 }
 .prb-meta-label i { color: #7c2d8e; }
-.prb-meta-val { font-size: 13px; font-weight: 600; color: #1a1a2e; }
+.prb-meta-val { font-size: 13px; font-weight: 700; color: #1a1a2e; }
+
+.prb-pkg-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: #fcf8ff;
+  border: 1px solid #eedbf5;
+  padding: 12px 16px;
+  border-radius: 12px;
+}
+.prb-pkg-label {
+  font-size: 10px;
+  color: #7c2d8e;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+.prb-pkg-name {
+  font-size: 15px;
+  font-weight: 700;
+  color: #1a1a2e;
+}
+.prb-pkg-price {
+  font-size: 18px;
+  font-weight: 800;
+  color: #7c2d8e;
+}
 .prb-avail-badge {
   background: #fff8e6;
   border: 1px solid #f5a623;
@@ -917,7 +965,7 @@
 /* ── Phones (≤600px) ── */
 @media (max-width: 600px) {
   .prb-puja-grid { flex-direction: column; }
-  .prb-puja-img { width: 100%; height: 200px!important; }
+  .prb-puja-img { width: 100%; max-width: 100%; height: 160px!important; }
   .prb-hero-title { font-size: 22px; }
   .prb-included-grid { grid-template-columns: repeat(3, 1fr); }
   .prb-trust-grid { grid-template-columns: repeat(2, 1fr); }
@@ -983,25 +1031,26 @@
     width: 100%;
   }
   .prb-puja-name {
-    font-size: 12px;
+    font-size: 14px;
     margin-bottom: 3px;
   }
   .prb-puja-location {
-    font-size: 9px;
+    font-size: 11px;
     margin-bottom: 8px;
   }
   .prb-purpose-label {
-    font-size: 9.5px;
+    font-size: 10px;
   }
   .prb-purpose-box {
-    padding: 7px 7px 6px 6px;
-    font-size: 8px;
-    margin-bottom: 8px;
-    margin-right: 8px;
+    padding: 10px 12px;
+    font-size: 12px;
+    margin-bottom: 10px;
   }
   .prb-meta-grid {
-    gap: 6px 10px;
-    margin-bottom: 10px;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 10px;
+    padding: 10px;
+    margin-bottom: 12px;
   }
   .prb-meta-label {
     font-size: 10px;
@@ -1012,7 +1061,7 @@
   .prb-avail-badge {
     font-size: 11px;
     padding: 5px 12px;
-    white-space: normal;   /* lets "Limited Availability – Final Day..." wrap instead of overflowing */
+    white-space: normal;
   }
 }
 

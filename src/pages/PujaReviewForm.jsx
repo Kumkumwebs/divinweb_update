@@ -10,6 +10,7 @@ import { useStorage } from "../context/StorageContext";
 import SideMenu from "../components/layout/SideMenu";
 import PopupSearch from "../components/layout/PopupSearch";
 import MobileMenu from "../components/layout/MobileMenu";
+import "../components/sections/Chadhavacartpage.css";
 
 /* ── Razorpay loader ── */
 
@@ -37,169 +38,120 @@ import MobileMenu from "../components/layout/MobileMenu";
 ══════════════════════════════════════════════ */
 const StatusModal = ({ status, onClose }) => {
 	if (!status) return null;
- 
+
 	const config = {
 		pending: {
+			icon: "fas fa-fire",
 			title: "Confirming Sankalp",
 			desc: "Connecting with the temple server\nand registering your names...",
+			color: "#F5A623",
+			ring: true,
 			btn: null,
-			accentColor: "#f59e0b",
-			iconRing: "#fde68a",
 		},
 		success: {
+			icon: "fas fa-check",
 			title: "Offering Accepted!",
-			desc: "Your Sankalp has been registered\nsuccessfully. You can track the\nstatus in My Bookings.",
+			desc: "Your Sankalp has been registered\nsuccessfully. May you be blessed. 🙏",
+			color: "#0b845c",
 			btn: "View Bookings",
-			accentColor: "#0b845c",
-			iconRing: "#a7f3d0",
 		},
 		failed: {
+			icon: "fas fa-times",
 			title: "Booking Failed",
 			desc: "Something went wrong while\ncommunicating with the temple.\nPlease try again.",
+			color: "#B33A3A",
 			btn: "Go Back & Retry",
-			accentColor: "#7B1F3A",
-			iconRing: "#f9c5d5",
 		},
 	};
- 
-	const c = config[status];
- 
+
+	const current = config[status];
+
 	return (
 		<AnimatePresence>
 			<div
-				style={{
-					position: "fixed", inset: 0,
-					background: "rgba(30,10,40,0.55)",
-					zIndex: 11000,
-					display: "flex", alignItems: "center", justifyContent: "center",
-					padding: 20,
-				}}
+				className="diviniq-modal-overlay"
 				onClick={status !== "pending" ? onClose : undefined}
 			>
 				<motion.div
-					initial={{ scale: 0.88, opacity: 0, y: 20 }}
-					animate={{ scale: 1, opacity: 1, y: 0 }}
-					exit={{ scale: 0.88, opacity: 0, y: 20 }}
-					transition={{ type: "spring", damping: 22, stiffness: 280 }}
+					initial={{ y: 50, opacity: 0, scale: 0.95 }}
+					animate={{ y: 0, opacity: 1, scale: 1 }}
+					exit={{ y: 50, opacity: 0, scale: 0.95 }}
+					transition={{ duration: 0.35, ease: "easeOut" }}
 					onClick={(e) => e.stopPropagation()}
-					style={{
-						width: "100%", maxWidth: 400,
-						borderRadius: 28,
-						background: "linear-gradient(160deg, #fff8f2 0%, #fff3ec 50%, #ffeee4 100%)",
-						boxShadow: "0 24px 64px rgba(80,20,40,0.22)",
-						position: "relative",
-						overflow: "hidden",
-						padding: "40px 32px 36px",
-						textAlign: "center",
-					}}
+					className="diviniq-modal-card text-center"
 				>
-					{/* ── Temple watermark left ── */}
-					<svg style={{ position: "absolute", left: -10, top: 20, width: 130, opacity: 0.12, pointerEvents: "none" }} viewBox="0 0 120 180" fill="none">
-						<path d="M60 10 L60 170 M40 170 L80 170 M50 40 L70 40 M45 60 Q60 30 75 60 M35 80 Q60 45 85 80 M30 100 Q60 60 90 100 M25 120 Q60 75 95 120 M20 140 Q60 90 100 140 M15 160 Q60 110 105 160" stroke="#9B1C1C" strokeWidth="1.2" strokeLinecap="round" />
-						<path d="M60 10 L55 25 L65 25 Z" fill="#9B1C1C" opacity="0.6" />
-						<rect x="55" y="25" width="10" height="8" fill="#9B1C1C" opacity="0.4" />
-					</svg>
- 
-					{/* ── Temple watermark right ── */}
-					<svg style={{ position: "absolute", right: -10, top: 20, width: 130, opacity: 0.12, pointerEvents: "none", transform: "scaleX(-1)" }} viewBox="0 0 120 180" fill="none">
-						<path d="M60 10 L60 170 M40 170 L80 170 M50 40 L70 40 M45 60 Q60 30 75 60 M35 80 Q60 45 85 80 M30 100 Q60 60 90 100 M25 120 Q60 75 95 120 M20 140 Q60 90 100 140 M15 160 Q60 110 105 160" stroke="#9B1C1C" strokeWidth="1.2" strokeLinecap="round" />
-						<path d="M60 10 L55 25 L65 25 Z" fill="#9B1C1C" opacity="0.6" />
-						<rect x="55" y="25" width="10" height="8" fill="#9B1C1C" opacity="0.4" />
-					</svg>
- 
-					{/* ── Sand dune bottom decoration ── */}
-					<svg style={{ position: "absolute", bottom: 0, left: 0, right: 0, width: "100%", pointerEvents: "none" }} viewBox="0 0 400 70" preserveAspectRatio="none">
-						<path d="M0 70 Q100 30 200 50 Q300 70 400 40 L400 70 Z" fill="#f5c4a0" opacity="0.25" />
-						<path d="M0 70 Q80 45 180 60 Q280 75 400 55 L400 70 Z" fill="#f0b48a" opacity="0.2" />
-					</svg>
- 
-					{/* ── Om symbol bottom-left ── */}
-					<div style={{ position: "absolute", left: 20, bottom: 18, fontSize: 32, color: "#d4956a", opacity: 0.45, fontFamily: "serif", lineHeight: 1 }}>ॐ</div>
- 
-					{/* ── Diya bottom-right ── */}
-					<svg style={{ position: "absolute", right: 16, bottom: 10, width: 56, opacity: 0.9, pointerEvents: "none" }} viewBox="0 0 60 60">
-						<ellipse cx="30" cy="14" rx="4" ry="7" fill="#f97316" opacity="0.9" />
-						<ellipse cx="30" cy="16" rx="2.5" ry="4" fill="#fbbf24" />
-						<rect x="29" y="20" width="2" height="6" fill="#78350f" rx="1" />
-						<path d="M14 32 Q18 26 30 26 Q42 26 46 32 Q50 40 30 44 Q10 40 14 32Z" fill="#f59e0b" />
-						<path d="M16 32 Q20 28 30 28 Q40 28 44 32 Q47 38 30 42 Q13 38 16 32Z" fill="#fcd34d" />
-						<ellipse cx="30" cy="30" rx="10" ry="4" fill="#92400e" opacity="0.3" />
-						<ellipse cx="22" cy="46" rx="3" ry="1.5" fill="#fca5a5" opacity="0.7" transform="rotate(-20 22 46)" />
-						<ellipse cx="28" cy="48" rx="2.5" ry="1.2" fill="#f9a8d4" opacity="0.7" />
-						<ellipse cx="35" cy="47" rx="3" ry="1.5" fill="#fca5a5" opacity="0.6" transform="rotate(15 35 47)" />
-					</svg>
- 
-					{/* ── Sparkle dots ── */}
-					{status === "failed" && <>
-						<div style={{ position: "absolute", top: 28, left: "38%", width: 6, height: 6, borderRadius: "50%", background: "#f9c5d5" }} />
-						<div style={{ position: "absolute", top: 44, right: "22%", color: "#f5a623", fontSize: 14, lineHeight: 1 }}>✦</div>
-						<div style={{ position: "absolute", top: 20, right: "32%", width: 5, height: 5, borderRadius: "50%", background: "#f87171", opacity: 0.6 }} />
-						<div style={{ position: "absolute", top: 60, left: "20%", color: "#f5a623", fontSize: 10, lineHeight: 1 }}>✦</div>
-					</>}
- 
-					{/* ── Icon ── */}
-					<div style={{ position: "relative", marginBottom: 24, display: "flex", justifyContent: "center" }}>
-						<div style={{ width: 90, height: 90, borderRadius: "50%", background: c.iconRing, display: "flex", alignItems: "center", justifyContent: "center" }}>
-							<div style={{ width: 70, height: 70, borderRadius: "50%", background: c.accentColor, display: "flex", alignItems: "center", justifyContent: "center", boxShadow: `0 8px 24px ${c.accentColor}55` }}>
-								{status === "pending" && <i className="fas fa-spinner fa-spin" style={{ fontSize: 30, color: "#fff" }} />}
-								{status === "success" && <i className="fas fa-check" style={{ fontSize: 30, color: "#fff" }} />}
-								{status === "failed" && (
-									<svg width="34" height="34" viewBox="0 0 34 34" fill="none">
-										<path d="M8 8 L26 26 M26 8 L8 26" stroke="#fff" strokeWidth="4" strokeLinecap="round" />
-									</svg>
-								)}
-							</div>
+					{(status === "success" || status === "failed" || status === "pending") && (
+						<div className="diviniq-hang-diyas">
+							<img
+								src="/assets/img/chadawa_detail/diya_chadhawa.png"
+								alt=""
+								className="diviniq-diya diviniq-diya-1"
+							/>
+							<img
+								src="/assets/img/chadawa_detail/diya_chadhawa.png"
+								alt=""
+								className="diviniq-diya diviniq-diya-2"
+							/>
+						</div>
+					)}
+
+					{status !== "pending" && (
+						<button className="diviniq-close-btn" onClick={onClose} aria-label="Close">
+							<i className="fas fa-times"></i>
+						</button>
+					)}
+
+					<div className="diviniq-badge-wrap">
+						<div className="diviniq-mandala" />
+						<div
+							className="diviniq-icon-wrap"
+							style={{ borderColor: current.color, color: current.color }}
+						>
+							{current.ring && (
+								<motion.div
+									className="diviniq-icon-ring"
+									animate={{ rotate: 360 }}
+									transition={{ duration: 6, repeat: Infinity, ease: "linear" }}
+								/>
+							)}
+							<i className={current.icon} style={{ fontSize: "30px" }}></i>
 						</div>
 					</div>
- 
-					{/* ── Title ── */}
-					<div style={{ fontSize: 26, fontWeight: 800, color: "#3d1520", marginBottom: 14, lineHeight: 1.2, letterSpacing: "-0.3px" }}>
-						{c.title}
+
+					<h3 className="diviniq-title">{current.title}</h3>
+
+					<div className="diviniq-lotus-divider">
+						<span className="line" />
+						<i className="fas fa-spa"></i>
+						<span className="line" />
 					</div>
- 
-					{/* ── Golden divider with flower ── */}
-					<div style={{ display: "flex", alignItems: "center", gap: 10, margin: "0 auto 16px", maxWidth: 220 }}>
-						<div style={{ flex: 1, height: 1.5, background: "linear-gradient(to right, transparent, #f5a623)" }} />
-						<svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-							<circle cx="8" cy="8" r="2" fill="#f5a623" />
-							<path d="M8 1 Q10 4 8 6 Q6 4 8 1Z" fill="#f5a623" opacity="0.7" />
-							<path d="M8 10 Q10 12 8 15 Q6 12 8 10Z" fill="#f5a623" opacity="0.7" />
-							<path d="M1 8 Q4 10 6 8 Q4 6 1 8Z" fill="#f5a623" opacity="0.7" />
-							<path d="M10 8 Q12 10 15 8 Q12 6 10 8Z" fill="#f5a623" opacity="0.7" />
-						</svg>
-						<div style={{ flex: 1, height: 1.5, background: "linear-gradient(to left, transparent, #f5a623)" }} />
-					</div>
- 
-					{/* ── Description ── */}
-					<p style={{ fontSize: 15, color: "#4b2030", lineHeight: 1.75, margin: "0 0 28px", whiteSpace: "pre-line" }}>
-						{c.desc}
+
+					<p className="diviniq-desc" style={{ whiteSpace: "pre-line" }}>
+						{current.desc}
 					</p>
- 
-					{/* ── Button ── */}
-					{c.btn && (
+
+					{(status === "success" || status === "failed" || status === "pending") && (
+						<img
+							src="/assets/img/chadawa_detail/kalashchadawa.png"
+							alt="Kalash offering"
+							className="diviniq-kalash-img"
+							onError={(e) => { e.target.style.display = "none"; }}
+						/>
+					)}
+
+					{current.btn && (
 						<button
+							className="diviniq-btn"
+							style={{ background: current.color }}
 							onClick={onClose}
-							style={{
-								width: "100%", padding: "15px 24px",
-								background: "linear-gradient(135deg, #9B1C3A 0%, #7B1428 100%)",
-								border: "none", borderRadius: 50,
-								color: "#fff", fontSize: 16, fontWeight: 700,
-								cursor: "pointer", letterSpacing: 0.2,
-								display: "flex", alignItems: "center", justifyContent: "center", gap: 10,
-								boxShadow: "0 6px 20px rgba(123,20,40,0.4)",
-								transition: "opacity 0.15s",
-							}}
-							onMouseEnter={(e) => e.currentTarget.style.opacity = "0.9"}
-							onMouseLeave={(e) => e.currentTarget.style.opacity = "1"}
 						>
-							{status === "failed" && (
-								<svg width="20" height="20" viewBox="0 0 20 20" fill="none">
-									<path d="M3 10 A7 7 0 1 0 10 3" stroke="#fff" strokeWidth="2" strokeLinecap="round" />
-									<path d="M3 5 L3 10 L8 10" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-								</svg>
-							)}
-							{status === "success" && <i className="fas fa-calendar-check" style={{ fontSize: 16 }} />}
-							{c.btn}
+							<span className="diviniq-btn-dots">
+								<i className="fas fa-gem"></i>
+							</span>
+							{current.btn}
+							<span className="diviniq-btn-dots">
+								<i className="fas fa-gem"></i>
+							</span>
 						</button>
 					)}
 				</motion.div>
@@ -326,6 +278,14 @@ const [aashirwadOption, setAashirwadOption] = useState("Yes");
 			lineTotal: Number(details?.pamount || 0) * (item.qty || 1),
 		};
 	});
+	const basePkgVal = Number(cart?.base_total ?? selectedPackage?.packagePrice ?? 0);
+	const addonsVal = Number(cart?.addons_total ?? templeAddons.reduce((acc, item) => acc + (item.lineTotal || 0), 0));
+	const homeAddonsVal = Number(cart?.home_addons_total ?? homeAddons.reduce((acc, item) => acc + (item.lineTotal || 0), 0));
+	const discountVal = Number(cart?.discount || 0);
+	const subtotalVal = Math.max(0, basePkgVal + addonsVal + homeAddonsVal - discountVal);
+	const gstVal = Number((subtotalVal * 0.18).toFixed(2));
+	const grandTotalVal = Number((subtotalVal + gstVal).toFixed(2));
+
 	const handleInputChange = (e) => { const { name, value } = e.target; setFormData((prev) => ({ ...prev, [name]: value })); };
 	const handleAddressChange = (e) => { const { name, value } = e.target; setFormData((prev) => ({ ...prev, address: { ...prev.address, [name]: value } })); };
 
@@ -598,8 +558,8 @@ const [aashirwadOption, setAashirwadOption] = useState("Yes");
         .pff-card-title { font-size: 18px; font-weight: 700; color: #9B1C1C; margin: 0; }
         .pff-card-sub { font-size: 13px; color: #9ca3af; margin: 2px 0 0; }
         .pff-card-watermark {
-          position: absolute; right: 0px; top: 50%; transform: translateY(-50%);
-          width: 130px; pointer-events: none;
+          position: absolute; right: 16px; top: 20px;
+          width: 110px; opacity: 0.12; pointer-events: none;
         }
 
         /* ── FORM FIELDS ── */
@@ -675,28 +635,31 @@ const [aashirwadOption, setAashirwadOption] = useState("Yes");
         .pff-check-box.checked { background: #9B1C1C; border-color: #9B1C1C; }
         .pff-check-label { font-size: 13px; color: #6b7280; }
 
-        /* ── AASHIRWAD OPTIONS (new smaller design) ── */
-        .pff-aashirwad-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 16px; }
+        /* ── AASHIRWAD OPTIONS ── */
+        .pff-aashirwad-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 16px; }
 
         .pff-aashirwad-opt {
-          border: 2px solid #e5e7eb; border-radius: 14px;
+          border: 2px solid #e5e7eb; border-radius: 16px;
           cursor: pointer; background: #fff;
-          overflow: hidden; transition: border-color 0.2s, box-shadow 0.2s;
+          overflow: hidden; transition: border-color 0.2s, box-shadow 0.2s, transform 0.15s;
           position: relative;
+          display: flex; flex-direction: column; justify-content: space-between;
+          height: 100%;
         }
-        .pff-aashirwad-opt.active { border-color: #d4a04a; box-shadow: 0 0 0 1px #d4a04a22; }
-        .pff-aashirwad-opt:hover { border-color: #c5a068; }
+        .pff-aashirwad-opt.active { border-color: #d4a04a; box-shadow: 0 4px 14px rgba(212,160,74,0.18); }
+        .pff-aashirwad-opt:hover { border-color: #c5a068; transform: translateY(-1px); }
 
         .pff-recommended-badge {
           position: absolute; top: 0; right: 0;
           background: #d4a04a; color: #fff;
-          font-size: 9px; font-weight: 800; letter-spacing: 0.8px; text-transform: uppercase;
+          font-size: 9.5px; font-weight: 800; letter-spacing: 0.8px; text-transform: uppercase;
           padding: 5px 14px 5px 10px;
           clip-path: polygon(0 0, 100% 0, 100% 100%, 10px 100%);
-          border-radius: 0 13px 0 0;
+          border-radius: 0 14px 0 0;
+          z-index: 2;
         }
 
-        .pff-aashirwad-radio-row { padding: 10px 12px 0; display: flex; align-items: center; }
+        .pff-aashirwad-radio-row { padding: 12px 14px 0; display: flex; align-items: center; }
         .pff-aashirwad-radio {
           width: 18px; height: 18px; border-radius: 50%;
           border: 2px solid #d1d5db;
@@ -707,33 +670,36 @@ const [aashirwadOption, setAashirwadOption] = useState("Yes");
         .pff-aashirwad-radio.active::after { content:''; width:8px; height:8px; border-radius:50%; background:#7B1C38; }
 
         .pff-aashirwad-img-area {
-          width: 100%; height: 130px;
+          width: 100%; height: 110px;
           display: flex; align-items: center; justify-content: center;
-          background: #fdf5ef; overflow: hidden;
+          background: #fdf5ef; overflow: hidden; padding: 8px;
         }
-        .pff-aashirwad-img-area img { width: 100%; height: 100%; object-fit: cover; }
+        .pff-aashirwad-img-area img { width: 100%; height: 100%; object-fit: contain; }
         .pff-aashirwad-img-area.gray-bg { background: #fafafa; }
 
-        .pff-aashirwad-label-area { padding: 10px 12px 4px; text-align: center; }
+        .pff-aashirwad-label-area {
+          padding: 10px 12px 6px; text-align: center;
+          flex: 1; display: flex; flex-direction: column; justify-content: center; align-items: center;
+        }
         .pff-aashirwad-deco { display: flex; align-items: center; justify-content: center; gap: 6px; margin-bottom: 2px; }
         .pff-aashirwad-deco-line { height: 1px; width: 22px; background: #e2b96a; }
-        .pff-aashirwad-name { font-size: 18px; font-weight: 800; color: #2d1010; margin: 0 0 1px; }
-        .pff-aashirwad-desc { font-size: 12px; color: #9ca3af; margin: 0 0 10px; }
-        .pff-aashirwad-desc.maroon { color: #7B1C38; }
+        .pff-aashirwad-name { font-size: 17px; font-weight: 800; color: #2d1010; margin: 0 0 1px; }
+        .pff-aashirwad-desc { font-size: 11.5px; color: #9ca3af; margin: 0 0 6px; }
+        .pff-aashirwad-desc.maroon { color: #7B1C38; font-weight: 600; }
 
         .pff-aashirwad-btn {
-          margin: 0 12px 12px;
-          padding: 10px 14px;
+          margin: 0 10px 12px;
+          padding: 9px 10px;
           border-radius: 9px;
-          width: calc(100% - 24px);
-          display: flex; align-items: center; justify-content: center; gap: 6px;
-          font-size: 13px; font-weight: 700; cursor: pointer;
-          transition: opacity 0.15s; border: none;
-          box-sizing: border-box;
+          width: calc(100% - 20px);
+          display: flex; align-items: center; justify-content: center; gap: 5px;
+          font-size: 12px; font-weight: 700; cursor: pointer;
+          transition: opacity 0.15s, transform 0.15s; border: none;
+          box-sizing: border-box; white-space: nowrap;
         }
-        .pff-aashirwad-btn.primary { background: #7B1C38; color: #fff; }
+        .pff-aashirwad-btn.primary { background: #7B1C38; color: #fff; box-shadow: 0 2px 8px rgba(123,28,56,0.25); }
         .pff-aashirwad-btn.outline { background: #fff; color: #7B1C38; border: 1.5px solid #7B1C38; }
-        .pff-aashirwad-btn:hover { opacity: 0.88; }
+        .pff-aashirwad-btn:hover { opacity: 0.9; transform: translateY(-1px); }
 
         .pff-aashirwad-footer {
           display: flex; align-items: center; justify-content: center; gap: 16px;
@@ -747,42 +713,71 @@ const [aashirwadOption, setAashirwadOption] = useState("Yes");
         /* address inside aashirwad card */
         .pff-aashirwad-address-box {
           margin-top: 18px;
-          padding: 18px;
+          padding: 20px;
           background: #fff9f5;
-          border-radius: 12px;
+          border-radius: 14px;
           border: 1.5px solid #f0d9c8;
         }
         .pff-aashirwad-address-header {
           display: flex; align-items: center; gap: 10px; margin-bottom: 14px;
         }
         .pff-aashirwad-address-icon {
-          width: 30px; height: 30px; border-radius: 8px;
+          width: 32px; height: 32px; border-radius: 8px;
           background: #fef3f2; display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+          color: #9B1C1C;
         }
 
-        /* ── SUBMIT BUTTON ── */
+        /* ── SUBMIT BUTTON WRAPPER ── */
+        .pff-submit-wrap {
+          background: #fff;
+          border-radius: 20px;
+          padding: 24px;
+          box-shadow: 0 2px 16px rgba(0,0,0,0.06);
+          margin-bottom: 20px;
+        }
         .pff-submit-btn {
-          width: 100%; padding: 18px;
+          width: 100%; padding: 16px 24px;
           background: linear-gradient(135deg, #f5a623 0%, #e8920d 100%);
           color: #fff; border: none; border-radius: 14px;
-          font-size: 17px; font-weight: 700; cursor: pointer;
+          font-size: 16.5px; font-weight: 700; cursor: pointer;
           display: flex; align-items: center; justify-content: center; gap: 10px;
-          transition: opacity 0.2s; box-shadow: 0 4px 16px rgba(245,166,35,0.35);
+          transition: transform 0.15s, opacity 0.2s, box-shadow 0.2s;
+          box-shadow: 0 4px 16px rgba(245,166,35,0.35);
           letter-spacing: 0.2px;
         }
-        .pff-submit-btn:hover { opacity: 0.92; }
-        .pff-submit-btn:disabled { opacity: 0.6; cursor: not-allowed; }
-        .pff-secure-note { text-align: center; margin-top: 12px; font-size: 13px; color: #6b7280; display: flex; align-items: center; justify-content: center; gap: 6px; }
-        .pff-secure-note i { color: #9B1C1C; }
+        .pff-submit-btn:hover { transform: translateY(-1px); box-shadow: 0 6px 20px rgba(245,166,35,0.45); }
+        .pff-submit-btn:disabled { opacity: 0.6; cursor: not-allowed; transform: none; }
+        .pff-secure-note { text-align: center; margin-top: 12px; font-size: 12.5px; color: #6b7280; display: flex; align-items: center; justify-content: center; gap: 6px; }
+        .pff-secure-note i { color: #16a34a; }
 
         /* ── TRUST STRIP ── */
-        .pff-trust-strip { display: grid; grid-template-columns: repeat(4,1fr); gap: 12px; margin-top: 28px; }
-        @media(max-width:600px){ .pff-trust-strip{ grid-template-columns:repeat(2,1fr); } }
-        .pff-trust-item { text-align: center; }
-        .pff-trust-icon { width: 40px; height: 40px; margin: 0 auto 8px; }
+        .pff-trust-strip {
+          max-width: 1200px;
+          margin: 0 auto 40px;
+          padding: 0 20px;
+          display: grid;
+          grid-template-columns: repeat(4,1fr);
+          gap: 16px;
+        }
+        @media(max-width:600px){ .pff-trust-strip{ grid-template-columns:repeat(2,1fr); gap: 10px; } }
+        .pff-trust-item {
+          text-align: center;
+          background: #fff;
+          border-radius: 16px;
+          padding: 16px 12px;
+          border: 1px solid #f3e8e0;
+          box-shadow: 0 2px 10px rgba(0,0,0,0.03);
+          transition: transform 0.2s, box-shadow 0.2s, border-color 0.2s;
+        }
+        .pff-trust-item:hover {
+          transform: translateY(-3px);
+          box-shadow: 0 6px 18px rgba(155, 28, 28, 0.08);
+          border-color: #f0d5c5;
+        }
+        .pff-trust-icon { width: 44px; height: 44px; margin: 0 auto 10px; }
         .pff-trust-icon img { width: 100%; height: 100%; object-fit: contain; }
-        .pff-trust-name { font-size: 12px; font-weight: 700; color: #9B1C1C; }
-        .pff-trust-sub { font-size: 11px; color: #9ca3af; }
+        .pff-trust-name { font-size: 13px; font-weight: 700; color: #9B1C1C; margin-bottom: 2px; }
+        .pff-trust-sub { font-size: 11px; color: #6b7280; }
 
         /* ── RIGHT SIDEBAR ── */
         .pff-sidebar { position: sticky; top: 100px; }
@@ -819,11 +814,56 @@ const [aashirwadOption, setAashirwadOption] = useState("Yes");
         .pff-secure-banner { background: #fffbeb; border-radius: 10px; padding: 10px 14px; display: flex; align-items: center; gap: 8px; margin-top: 14px; }
         .pff-secure-banner i { color: #f5a623; font-size: 14px; }
         .pff-secure-banner span { font-size: 13px; color: #92400e; font-weight: 500; }
-        .pff-sidebar-trust { padding: 18px 24px; border-top: 1px solid #f3f4f6; display: flex; flex-direction: column; gap: 14px; }
-        .pff-sidebar-trust-item { display: flex; align-items: center; gap: 12px; }
-        .pff-sidebar-trust-icon { width: 36px; height: 36px; border-radius: 10px; background: #f9fafb; display: flex; align-items: center; justify-content: center; flex-shrink: 0; color: #9B1C1C; font-size: 16px; }
-        .pff-sidebar-trust-name { font-size: 13px; font-weight: 700; color: #111827; }
-        .pff-sidebar-trust-sub { font-size: 12px; color: #9ca3af; }
+        .pff-sidebar-trust {
+          padding: 16px 14px 18px;
+          border-top: 1px solid #f3f4f6;
+          display: grid;
+          grid-template-columns: repeat(3, 1fr);
+          gap: 8px;
+          background: #fff;
+        }
+        .pff-sidebar-trust-item {
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          text-align: center;
+          padding: 10px 4px;
+          background: #fdf8f5;
+          border-radius: 12px;
+          border: 1px solid #f9ece4;
+          transition: all 0.2s ease;
+        }
+        .pff-sidebar-trust-item:hover {
+          transform: translateY(-2px);
+          background: #fcf1ea;
+          border-color: #f5dacc;
+        }
+        .pff-sidebar-trust-icon {
+          width: 32px;
+          height: 32px;
+          border-radius: 50%;
+          background: #fff;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          flex-shrink: 0;
+          color: #9B1C1C;
+          font-size: 13px;
+          margin-bottom: 6px;
+          box-shadow: 0 2px 6px rgba(155, 28, 28, 0.08);
+        }
+        .pff-sidebar-trust-name {
+          font-size: 11px;
+          font-weight: 700;
+          color: #111827;
+          line-height: 1.2;
+          margin-bottom: 2px;
+        }
+        .pff-sidebar-trust-sub {
+          font-size: 10px;
+          color: #6b7280;
+          line-height: 1.2;
+        }
         .pff-devotion-banner {
           border-radius: 16px; overflow: hidden; position: relative;
           height: 189px; margin-top: 30px;
@@ -836,6 +876,68 @@ const [aashirwadOption, setAashirwadOption] = useState("Yes");
         }
         .pff-devotion-text { font-size: 14px; color: #fff; line-height: 1.5; font-weight: 500; }
         .pff-devotion-text strong { color: #f5a623; }
+
+        /* ── WHAT HAPPENS NEXT CARD ── */
+        .pff-next-card {
+          background: #fff;
+          border-radius: 20px;
+          padding: 20px 22px;
+          box-shadow: 0 2px 16px rgba(0,0,0,0.06);
+          margin-top: 18px;
+          border: 1.5px solid #f3e8e0;
+        }
+        .pff-next-header {
+          display: flex; align-items: center; gap: 12px;
+          margin-bottom: 16px; padding-bottom: 12px;
+          border-bottom: 1px solid #f9ece4;
+        }
+        .pff-next-header-icon {
+          width: 38px; height: 38px; border-radius: 10px;
+          background: #fef3f2; color: #9B1C1C;
+          display: flex; align-items: center; justify-content: center;
+          font-size: 18px; flex-shrink: 0;
+        }
+        .pff-next-title { font-size: 15px; font-weight: 700; color: #111827; }
+        .pff-next-sub { font-size: 11.5px; color: #9ca3af; }
+        .pff-next-list { display: flex; flex-direction: column; gap: 14px; }
+        .pff-next-item { display: flex; align-items: flex-start; gap: 12px; }
+        .pff-next-num {
+          width: 26px; height: 26px; border-radius: 50%;
+          background: #fdf3e7; color: #c87a3a; border: 1px solid #f5dacc;
+          display: flex; align-items: center; justify-content: center;
+          font-size: 12px; font-weight: 800; flex-shrink: 0; margin-top: 1px;
+        }
+        .pff-next-item-title { font-size: 13px; font-weight: 700; color: #2d1010; line-height: 1.3; }
+        .pff-next-item-desc { font-size: 11.5px; color: #6b7280; line-height: 1.35; margin-top: 2px; }
+
+        /* ── NEED HELP CARD ── */
+        .pff-help-card {
+          background: linear-gradient(135deg, #fffcf7 0%, #fff6eb 100%);
+          border-radius: 20px;
+          padding: 18px 20px;
+          margin-top: 18px;
+          border: 1.5px solid #f5e3ca;
+          box-shadow: 0 2px 14px rgba(245,166,35,0.08);
+        }
+        .pff-help-top { display: flex; align-items: center; gap: 12px; margin-bottom: 12px; }
+        .pff-help-icon {
+          width: 42px; height: 42px; border-radius: 50%;
+          background: #e8f5e9; color: #25D366;
+          display: flex; align-items: center; justify-content: center;
+          font-size: 22px; flex-shrink: 0;
+          box-shadow: 0 2px 8px rgba(37,211,102,0.18);
+        }
+        .pff-help-title { font-size: 14px; font-weight: 700; color: #1a1a2e; }
+        .pff-help-desc { font-size: 11.5px; color: #666; margin-top: 1px; }
+        .pff-wa-chat-btn {
+          display: flex; align-items: center; justify-content: center; gap: 8px;
+          width: 100%; padding: 11px;
+          background: #25D366; color: #fff;
+          border-radius: 10px; font-size: 13px; font-weight: 700;
+          text-decoration: none; transition: transform 0.15s, background 0.15s;
+          box-shadow: 0 3px 10px rgba(37,211,102,0.25);
+        }
+        .pff-wa-chat-btn:hover { background: #20bd5a; color: #fff; transform: translateY(-1px); }
       .pff-addr-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
         .pff-addr-grid .full { grid-column: 1 / -1; }
         @media(max-width:500px){ .pff-addr-grid{ grid-template-columns:1fr; } }
@@ -931,12 +1033,11 @@ const [aashirwadOption, setAashirwadOption] = useState("Yes");
           .pff-trust-sub { font-size: 10.5px; }
         }
 
-        /* ── Sidebar summary ── */
         @media (max-width: 600px) {
           .pff-summary-header { padding: 16px 18px 12px; }
           .pff-summary-body { padding: 16px 18px; }
           .pff-pkg-price, .pff-total-val { font-size: 18px; }
-          .pff-sidebar-trust { padding: 14px 18px; }
+          .pff-sidebar-trust { padding: 12px 10px 14px; gap: 6px; }
         }
 
         /* ── Devotion banner ── */
@@ -981,7 +1082,7 @@ const [aashirwadOption, setAashirwadOption] = useState("Yes");
 
 					{/* ── LEFT COLUMN ── */}
 					<div>
-						<form onSubmit={handleProceed}>
+						<form id="puja-fill-form" onSubmit={handleProceed}>
 
 							{/* ── WHATSAPP CONTACT ── */}
 							<div className="pff-card pff-wa-card" style={{ padding: "24px", overflow: "visible" }}>
@@ -1026,12 +1127,10 @@ const [aashirwadOption, setAashirwadOption] = useState("Yes");
 										)}
 									</div>
 								</div>
-
-								<div className="pff-wa-dot" />
 							</div>
 
 							{/* ── PARTICIPANT DETAILS ── */}
-							<div className="pff-card" style={{ paddingRight: 130 }}>
+							<div className="pff-card">
 								<div className="pff-card-header">
 									<div className="pff-card-icon"><i className="fas fa-user" /></div>
 									<div>
@@ -1257,9 +1356,9 @@ const [aashirwadOption, setAashirwadOption] = useState("Yes");
 								<div className="pff-pkg-row">
 									<div>
 										<div className="pff-pkg-label">Selected Package</div>
-										<div className="pff-pkg-name">{cart.package?.packageName || "Individual"}</div>
+										<div className="pff-pkg-name">{cart?.package?.packageName || selectedPackage?.packageName || "Individual"}</div>
 									</div>
-									<div className="pff-pkg-price">₹{cart.base_total ?? selectedPackage?.packagePrice ?? 0}</div>
+									<div className="pff-pkg-price">₹{cart?.base_total ?? selectedPackage?.packagePrice ?? 0}</div>
 								</div>
 
 								{homeAddons.length > 0 && (
@@ -1303,21 +1402,46 @@ const [aashirwadOption, setAashirwadOption] = useState("Yes");
 								<hr className="pff-divider-dashed" />
 								<div className="pff-billing-row">
 									<span className="pff-billing-label">Addons Total</span>
-									<span className="pff-billing-val">₹{cart.addons_total ?? 0}</span>
+									<span className="pff-billing-val">₹{addonsVal}</span>
 								</div>
 								<div className="pff-billing-row">
 									<span className="pff-billing-label">Home Delivery</span>
-									<span className="pff-billing-val">₹{cart.home_addons_total ?? 0}</span>
+									<span className="pff-billing-val">₹{homeAddonsVal}</span>
+								</div>
+								{discountVal > 0 && (
+									<div className="pff-billing-row">
+										<span className="pff-billing-label">Discount</span>
+										<span className="pff-billing-val" style={{ color: "#22c55e" }}>-₹{discountVal}</span>
+									</div>
+								)}
+								<div className="pff-billing-row">
+									<span className="pff-billing-label">GST (18%)</span>
+									<span className="pff-billing-val">₹{gstVal}</span>
 								</div>
 								<div className="pff-billing-row">
 									<span className="pff-billing-label">Platform Fee</span>
-									<span className="pff-billing-val">₹10</span>
+									<span className="pff-billing-val">
+										<span style={{ textDecoration: "line-through", color: "#9ca3af", marginRight: "6px" }}>₹10</span>
+										<span style={{ color: "#16a34a", fontWeight: "700" }}>₹0</span>
+									</span>
 								</div>
 								<hr className="pff-divider-dashed" />
 								<div className="pff-total-row">
 									<span className="pff-total-label">Total Payable</span>
-									<span className="pff-total-val">₹{(cart.grand_total ?? 0) + 10}</span>
+									<span className="pff-total-val">₹{grandTotalVal}</span>
 								</div>
+
+								<button
+									type="submit"
+									form="puja-fill-form"
+									disabled={isLoading}
+									className="pff-submit-btn"
+									style={{ marginTop: "16px", padding: "14px 18px", fontSize: "16px" }}
+								>
+									<i className="fas fa-lock" style={{ fontSize: 15 }} />
+									{isLoading ? "Updating Sankalp..." : "Confirm & Proceed To Payment"}
+									{!isLoading && <i className="fas fa-arrow-right" style={{ fontSize: 13 }} />}
+								</button>
 
 								<div className="pff-secure-banner">
 									<i className="fas fa-lock" />
@@ -1327,16 +1451,14 @@ const [aashirwadOption, setAashirwadOption] = useState("Yes");
 
 							<div className="pff-sidebar-trust">
 								{[
-									{ icon: "fas fa-shield-alt", name: "Secure Payments", sub: "100% secure & trusted" },
-									{ icon: "fas fa-check-circle", name: "Instant Confirmation", sub: "Booking confirmed instantly" },
-									{ icon: "fas fa-headset", name: "Dedicated Support", sub: "We're here to help you 24x7" },
+									{ icon: "fas fa-shield-alt", name: "Secure Payments", sub: "100% secure" },
+									{ icon: "fas fa-check-circle", name: "Instant Confirm", sub: "Confirmed" },
+									{ icon: "fas fa-headset", name: "Dedicated Support", sub: "24×7 support" },
 								].map((t, i) => (
 									<div key={i} className="pff-sidebar-trust-item">
 										<div className="pff-sidebar-trust-icon"><i className={t.icon} /></div>
-										<div>
-											<div className="pff-sidebar-trust-name">{t.name}</div>
-											<div className="pff-sidebar-trust-sub">{t.sub}</div>
-										</div>
+										<div className="pff-sidebar-trust-name">{t.name}</div>
+										<div className="pff-sidebar-trust-sub">{t.sub}</div>
 									</div>
 								))}
 							</div>
@@ -1351,6 +1473,62 @@ const [aashirwadOption, setAashirwadOption] = useState("Yes");
 									<strong>authentic rituals</strong>
 								</div>
 							</div>
+						</div>
+
+						{/* ── WHAT HAPPENS NEXT CARD ── */}
+						<div className="pff-next-card">
+							<div className="pff-next-header">
+								<div className="pff-next-header-icon"><i className="fas fa-om" /></div>
+								<div>
+									<div className="pff-next-title">What Happens Next?</div>
+									<div className="pff-next-sub">3 simple steps after booking</div>
+								</div>
+							</div>
+							<div className="pff-next-list">
+								<div className="pff-next-item">
+									<div className="pff-next-num">1</div>
+									<div>
+										<div className="pff-next-item-title">Sankalp &amp; Chanting</div>
+										<div className="pff-next-item-desc">Punditji recites your Name &amp; Gotra during the sacred ritual</div>
+									</div>
+								</div>
+								<div className="pff-next-item">
+									<div className="pff-next-num">2</div>
+									<div>
+										<div className="pff-next-item-title">Video &amp; Photos</div>
+										<div className="pff-next-item-desc">Receive full ritual video proof directly on WhatsApp</div>
+									</div>
+								</div>
+								<div className="pff-next-item">
+									<div className="pff-next-num">3</div>
+									<div>
+										<div className="pff-next-item-title">Prasad Dispatch</div>
+										<div className="pff-next-item-desc">Blessed Prasad box delivered directly to your home</div>
+									</div>
+								</div>
+							</div>
+						</div>
+
+						{/* ── LIVE ASSISTANCE & SUPPORT CARD ── */}
+						<div className="pff-help-card">
+							<div className="pff-help-top">
+								<div className="pff-help-icon">
+									<i className="fab fa-whatsapp" />
+								</div>
+								<div>
+									<div className="pff-help-title">Need Help With Booking?</div>
+									<div className="pff-help-desc">Our Puja Sevak is online to assist you</div>
+								</div>
+							</div>
+							<a
+								href="https://wa.me/919999999999?text=Namaste!%20I%20need%20help%20with%20my%20Puja%20Sankalp%20booking."
+								target="_blank"
+								rel="noreferrer"
+								className="pff-wa-chat-btn"
+							>
+								<i className="fab fa-whatsapp" style={{ fontSize: 15 }} />
+								Chat On WhatsApp
+							</a>
 						</div>
 					</div>
 

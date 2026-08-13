@@ -251,7 +251,8 @@ const DEFAULT_REVIEWS = [
 ];
 
 const ChadhavaDetails = () => {
-  const { id } = useParams();
+  const params = useParams();
+  const id = params.id || params.name;
   const navigate = useNavigate();
   const { isLoggedIn } = useStorage();
 

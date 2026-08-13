@@ -119,6 +119,28 @@ const PujaReviewBookingPage = () => {
       const res = await apiService.postBearer("https://admin.diviniq.in/puja/getPujaCart", {});
       if (res?.status && res.data) {
         const cart = res.data;
+        const serverPujaId = cart?.puja_id || cart?.pujaDetails?.puja_id || cart?.pujaDetails?._id;
+        const serverPackageId = cart?.package_id || cart?.package?.package_id || cart?.package?._id;
+
+        // If server cart belongs to a different puja/package, sync current selection to server immediately
+        if (puja?._id && selectedPackage?._id && (serverPujaId !== puja._id || serverPackageId !== selectedPackage._id)) {
+          const payload = {
+            puja_id: puja._id,
+            package_id: selectedPackage._id,
+            addons_selected: [],
+            home_addons_selected: [],
+            is_home_delivery_required: false,
+            userDetails: { name: devoteeDetails?.name || "" },
+          };
+          const addRes = await apiService.postBearer("https://admin.diviniq.in/puja/pujaaddToCart", payload);
+          if (addRes?.status && addRes.data) {
+            setCartData(addRes.data);
+            setTempleAddonsQty({});
+            setHomeAddonsQty({});
+            return;
+          }
+        }
+
         setCartData(cart);
         const tQty = {};
         (cart.addons_selected || []).forEach((a) => (tQty[a.addon_id] = a.qty));
@@ -126,11 +148,24 @@ const PujaReviewBookingPage = () => {
         const hQty = {};
         (cart.home_addons_selected || []).forEach((h) => (hQty[h.addon_id] = h.qty));
         setHomeAddonsQty(hQty);
+      } else if (puja?._id && selectedPackage?._id) {
+        const payload = {
+          puja_id: puja._id,
+          package_id: selectedPackage._id,
+          addons_selected: [],
+          home_addons_selected: [],
+          is_home_delivery_required: false,
+          userDetails: { name: devoteeDetails?.name || "" },
+        };
+        const addRes = await apiService.postBearer("https://admin.diviniq.in/puja/pujaaddToCart", payload);
+        if (addRes?.status && addRes.data) {
+          setCartData(addRes.data);
+        }
       }
     } catch (err) {
       console.error("Cart fetch error", err);
     }
-  }, []);
+  }, [puja?._id, selectedPackage?._id, devoteeDetails?.name]);
 
   useEffect(() => { fetchCartFromServer(); }, [fetchCartFromServer]);
 
@@ -173,7 +208,22 @@ const PujaReviewBookingPage = () => {
     navigate("/puja_fill_form", { state: { pujaData: puja, selectedPackage } });
   };
 
-  const grandTotal = isSyncing ? "..." : cartData?.grand_total ?? selectedPackage?.packagePrice ?? 0;
+  const templeAddonsTotal = addons
+    .filter((a) => templeAddonsQty[a._id])
+    .reduce((s, a) => s + Number(a.pamount || 0) * (templeAddonsQty[a._id] || 0), 0);
+
+  const homeAddonsTotal = homeDeliveryAddons
+    .filter((a) => homeAddonsQty[a._id])
+    .reduce((s, a) => s + Number(a.pamount || 0) * (homeAddonsQty[a._id] || 0), 0);
+
+  const packagePrice = Number(selectedPackage?.packagePrice || 0);
+  const couponDiscount = Number(cartData?.discount || 0);
+  const subtotalBeforeTax = Math.max(0, packagePrice + templeAddonsTotal + homeAddonsTotal - couponDiscount);
+  const gstAmount = Number((subtotalBeforeTax * 0.18).toFixed(2));
+  const taxAmount = gstAmount;
+
+  const calculatedTotal = Number((subtotalBeforeTax + gstAmount).toFixed(2));
+  const grandTotal = isSyncing ? "..." : calculatedTotal;
 
   if (!puja) {
     return (
@@ -361,8 +411,7 @@ const PujaReviewBookingPage = () => {
       </div>
 
       {/* ── BODY ── */}
-      {/* <div className="container prb-page-wrap"> */}
-      <div className="container py-5">
+      <div className="container py-4">
         <div className="row">
           {/* ══ LEFT ══ */}
           {/* <div className="prb-left"> */}
@@ -370,53 +419,61 @@ const PujaReviewBookingPage = () => {
 
             {/* PUJA SUMMARY */}
             <div className="prb-card mb-4">
-              <div className="prb-sec-header">
+              <div className="prb-sec-header mb-3">
                 <i className="fa-solid fa-gopuram" /><span> Puja Summary</span>
               </div>
-              {/* <div className="row prb-puja-grid"> */}
-              <div className="row pt-3">
-                <div className="col-xxl-6 mb-4">
-                  <img
-                    className="prb-puja-img w-100"
-                    src={puja?.pujaImage || "/assets/img/pooja/kalash.png"}
-                    alt={puja?.title || "Puja"}
-                    onError={(e) => { e.target.onerror = null; e.target.src = "/assets/img/pooja/kalash.png"; }}
-                  />
-                </div>
-                <div className="col-xxl-6 prb-puja-info">
+
+              <div className="prb-puja-header-row mb-3">
+                <img
+                  className="prb-puja-img-thumb"
+                  src={puja?.pujaImage || "/assets/img/pooja/kalash.png"}
+                  alt={puja?.title || "Puja"}
+                  onError={(e) => { e.target.onerror = null; e.target.src = "/assets/img/pooja/kalash.png"; }}
+                />
+                <div className="prb-puja-header-info">
                   <div className="prb-puja-name">{puja.title}</div>
-                  <div className="prb-puja-location"><i className="fa-solid fa-location-dot" /> {puja.mandirName}</div>
+                  <div className="prb-puja-location">
+                    <i className="fa-solid fa-location-dot" /> {puja.mandirName}
+                  </div>
+                </div>
+              </div>
+
+              <div className="prb-meta-grid mb-3">
+                <div className="prb-meta-item">
+                  <div className="prb-meta-label"><i className="fa-solid fa-calendar-days" /> Puja Date</div>
+                  <div className="prb-meta-val">{fmt(puja.pujaDatetime)}</div>
+                </div>
+                <div className="prb-meta-item">
+                  <div className="prb-meta-label"><i className="fa-regular fa-clock" /> Puja Time</div>
+                  <div className="prb-meta-val">{fmtTime(puja.pujaDatetime)}</div>
+                </div>
+                <div className="prb-meta-item">
+                  <div className="prb-meta-label"><i className="fa-solid fa-om" /> Puja Type</div>
+                  <div className="prb-meta-val">{puja.pujaType || "Vedic Ritual"}</div>
+                </div>
+                <div className="prb-meta-item">
+                  <div className="prb-meta-label"><i className="fa-regular fa-hourglass-half" /> Duration</div>
+                  <div className="prb-meta-val">{puja.duration || "45–60 Min"}</div>
+                </div>
+              </div>
+
+              {puja?.purposeOfPooja && (
+                <div className="mb-3">
                   <div className="prb-purpose-label">// Purpose of Puja</div>
                   <div className="prb-purpose-box">"{puja.purposeOfPooja}"</div>
-                  <div className="prb-meta-grid">
-                    <div className="prb-meta-item">
-                      <div className="prb-meta-label"><i className="fa-solid fa-calendar-days" /> Puja Date</div>
-                      <div className="prb-meta-val">{fmt(puja.pujaDatetime)}</div>
-                    </div>
-                    <div className="prb-meta-item">
-                      <div className="prb-meta-label"><i className="fa-regular fa-clock" /> Puja Time</div>
-                      <div className="prb-meta-val">{fmtTime(puja.pujaDatetime)}</div>
-                    </div>
-                    <div className="prb-meta-item">
-                      <div className="prb-meta-label"><i className="fa-solid fa-om" /> Puja Type</div>
-                      <div className="prb-meta-val">{puja.pujaType || "Vedic Ritual"}</div>
-                    </div>
-                    <div className="prb-meta-item">
-                      <div className="prb-meta-label"><i className="fa-regular fa-hourglass-half" /> Duration</div>
-                      <div className="prb-meta-val">{puja.duration || "45–60 Min"}</div>
-                    </div>
-                  </div>
-                  <div className="prb-pkg-row">
-                    <div>
-                      <div className="prb-pkg-label">Selected Package</div>
-                      <div className="prb-pkg-name">{selectedPackage?.packageName}</div>
-                    </div>
-                    <div className="prb-pkg-price">₹{selectedPackage?.packagePrice}</div>
-                  </div>
-                  <div className="prb-avail-badge">
-                    <i className="fa-solid fa-shield-halved" /> Limited Availability – Final Day to Participate!
-                  </div>
                 </div>
+              )}
+
+              <div className="prb-pkg-row mb-3">
+                <div>
+                  <div className="prb-pkg-label">Selected Package</div>
+                  <div className="prb-pkg-name">{selectedPackage?.packageName}</div>
+                </div>
+                <div className="prb-pkg-price">₹{selectedPackage?.packagePrice}</div>
+              </div>
+
+              <div className="prb-avail-badge">
+                <i className="fa-solid fa-shield-halved" /> Limited Availability – Final Day to Participate!
               </div>
             </div>
 
@@ -523,7 +580,7 @@ const PujaReviewBookingPage = () => {
                   <div className="prb-order-sublabel">Selected Package</div>
                   <div className="prb-order-line">
                     <span className="prb-order-pkg">{selectedPackage?.packageName || "Individual"}</span>
-                    <span className="prb-order-val">₹{selectedPackage?.packagePrice ?? 0}</span>
+                    <span className="prb-order-val">₹{packagePrice}</span>
                   </div>
                   <div className="prb-order-divider" />
                   <div className="prb-order-line">
@@ -531,7 +588,7 @@ const PujaReviewBookingPage = () => {
                     <span className="prb-order-val">
                       {Object.keys(templeAddonsQty).length === 0
                         ? <span className="prb-not-added">Not Added Yet</span>
-                        : `₹${addons.filter((a) => templeAddonsQty[a._id]).reduce((s, a) => s + a.pamount * templeAddonsQty[a._id], 0)}`}
+                        : `₹${templeAddonsTotal}`}
                     </span>
                   </div>
                   <div className="prb-order-line" style={{ marginTop: 8 }}>
@@ -539,18 +596,25 @@ const PujaReviewBookingPage = () => {
                     <span className="prb-order-val">
                       {Object.keys(homeAddonsQty).length === 0
                         ? <span className="prb-not-added">Not Added Yet</span>
-                        : `₹${homeDeliveryAddons.filter((a) => homeAddonsQty[a._id]).reduce((s, a) => s + a.pamount * homeAddonsQty[a._id], 0)}`}
+                        : `₹${homeAddonsTotal}`}
                     </span>
                   </div>
                   <div className="prb-order-divider" />
                   <div className="prb-order-line">
                     <span className="prb-order-label">Coupon Discount</span>
-                    <span className="prb-order-val prb-discount">{cartData?.discount ? `-₹${cartData.discount}` : "-₹0"}</span>
+                    <span className="prb-order-val prb-discount">{couponDiscount ? `-₹${couponDiscount}` : "-₹0"}</span>
                   </div>
                   {!couponApplied && <div className="prb-apply-coupon">Apply Coupon</div>}
                   <div className="prb-order-line">
-                    <span className="prb-order-label">Taxes & Charges <i className="fa-solid fa-circle-info" style={{ fontSize: 10, opacity: 0.5 }} /></span>
-                    <span className="prb-order-val">₹{cartData?.tax_amount ?? 0}</span>
+                    <span className="prb-order-label">GST (18%) <i className="fa-solid fa-circle-info" style={{ fontSize: 10, opacity: 0.5 }} /></span>
+                    <span className="prb-order-val">₹{taxAmount}</span>
+                  </div>
+                  <div className="prb-order-line" style={{ marginTop: 8 }}>
+                    <span className="prb-order-label">Platform Fee</span>
+                    <span className="prb-order-val">
+                      <span style={{ textDecoration: "line-through", color: "#9ca3af", marginRight: "6px" }}>₹10</span>
+                      <span style={{ color: "#16a34a", fontWeight: "700" }}>₹0</span>
+                    </span>
                   </div>
                   <div className="prb-order-divider" />
                   <div className="prb-total-row">
@@ -586,56 +650,55 @@ const PujaReviewBookingPage = () => {
                 <img className="prb-why-temple" src="/assets/img/pooja/temple.png" alt="Temple" />
               </div>
             </div>
-          </div>Online Payment (UPI / Card)
-
+          </div>
         </div>
-      </div>
 
-      {/* WHAT'S INCLUDED */}
-      <div className="prb-card py-4" style={{ margin: "20px" }}>
-        <div className="prb-sec-header"><i className="fa-solid fa-list-check" /><span>   What's Included in This Puja</span></div>
-        <div className="prb-included-grid">
-          {INCLUDED.map(({ icon, label }) => (
-            <div className="prb-inc-item" key={label}>
-              <div className="prb-inc-icon">
-                <i className={icon} />
-                <span className="prb-inc-check"><i className="fa-solid fa-check" /></span>
+        {/* WHAT'S INCLUDED */}
+        <div className="prb-card mb-4">
+          <div className="prb-sec-header mb-3"><i className="fa-solid fa-list-check" /><span> What's Included in This Puja</span></div>
+          <div className="prb-included-grid">
+            {INCLUDED.map(({ icon, label }) => (
+              <div className="prb-inc-item" key={label}>
+                <div className="prb-inc-icon">
+                  <i className={icon} />
+                  <span className="prb-inc-check"><i className="fa-solid fa-check" /></span>
+                </div>
+                <div className="prb-inc-label">{label}</div>
               </div>
-              <div className="prb-inc-label">{label}</div>
-            </div>
-          ))}
+            ))}
+          </div>
+          <div className="prb-trust-grid">
+            {TRUST.map(({ icon, name, sub }) => (
+              <div className="prb-trust-item" key={name}>
+                <div className="prb-trust-icon"><i className={icon} /></div>
+                <div className="prb-trust-name">{name}</div>
+                <div className="prb-trust-sub">{sub}</div>
+              </div>
+            ))}
+          </div>
         </div>
-        <div className="prb-trust-grid">
-          {TRUST.map(({ icon, name, sub }) => (
-            <div className="prb-trust-item" key={name}>
-              <div className="prb-trust-icon"><i className={icon} /></div>
-              <div className="prb-trust-name">{name}</div>
-              <div className="prb-trust-sub">{sub}</div>
-            </div>
-          ))}
-        </div>
-      </div>
 
-      {/* NEED HELP */}
-      <div className="prb-help-section mx-4">
-        <div className="prb-help-left">
-          <div className="prb-help-main-icon"><i className="fa-solid fa-headset"></i></div>
-          <div><h5>Need Help?</h5><p>We are here to help you at every step</p></div>
-        </div>
-        <div className="prb-help-right">
-          <div className="prb-help-item">
-            <div className="prb-help-icon prb-help-purple"><i className="fa-solid fa-phone"></i></div>
-            <div><span>Call Support</span><strong>+91 7311104573</strong></div>
+        {/* NEED HELP */}
+        <div className="prb-help-section mb-4">
+          <div className="prb-help-left">
+            <div className="prb-help-main-icon"><i className="fa-solid fa-headset"></i></div>
+            <div><h5>Need Help?</h5><p>We are here to help you at every step</p></div>
           </div>
-          <div className="prb-help-divider"></div>
-          <div className="prb-help-item">
-            <div className="prb-help-icon prb-help-green"><i className="fa-brands fa-whatsapp"></i></div>
-            <div><span>WhatsApp</span><strong>Chat with us</strong></div>
-          </div>
-          <div className="prb-help-divider"></div>
-          <div className="prb-help-item">
-            <div className="prb-help-icon prb-help-yellow"><i className="fa-solid fa-envelope"></i></div>
-            <div><span>Email Us</span><strong>support@diviniq.com</strong></div>
+          <div className="prb-help-right">
+            <div className="prb-help-item">
+              <div className="prb-help-icon prb-help-purple"><i className="fa-solid fa-phone"></i></div>
+              <div><span>Call Support</span><strong>+91 7311104573</strong></div>
+            </div>
+            <div className="prb-help-divider"></div>
+            <div className="prb-help-item">
+              <div className="prb-help-icon prb-help-green"><i className="fa-brands fa-whatsapp"></i></div>
+              <div><span>WhatsApp</span><strong>Chat with us</strong></div>
+            </div>
+            <div className="prb-help-divider"></div>
+            <div className="prb-help-item">
+              <div className="prb-help-icon prb-help-yellow"><i className="fa-solid fa-envelope"></i></div>
+              <div><span>Email Us</span><strong>support@diviniq.com</strong></div>
+            </div>
           </div>
         </div>
       </div>

@@ -8,6 +8,7 @@ import AppDownloadModal from "../components/common/AppDownloadModal";
 import SideMenu from "../components/layout/SideMenu";
 import PopupSearch from "../components/layout/PopupSearch";
 import MobileMenu from "../components/layout/MobileMenu";
+import { downloadInvoice } from "../utils/invoiceGenerator";
 import "./ChadhavaBookingDetailsPage.css";
 
 const FAQS = [
@@ -122,23 +123,8 @@ const ChadhavaBookingDetailsPage = () => {
     day: 'numeric', month: 'long', year: 'numeric', weekday: 'long'
   });
 
-  const handleDownloadInvoice = async () => {
-    try {
-      const blob = await apiService.getBearerBlob(
-        `https://admin.diviniq.in/puja/downloadchadhavainvoice/${booking._id}`
-      );
-      const url = window.URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `Invoice-${booking.chadhava_booking_id || booking._id}.pdf`;
-      document.body.appendChild(a);
-      a.click();
-      a.remove();
-      window.URL.revokeObjectURL(url);
-    } catch (err) {
-      console.error('Invoice download failed:', err);
-      alert('Could not download invoice. Please try again.');
-    }
+  const handleDownloadInvoice = () => {
+    downloadInvoice(booking, "chadhava");
   };
 
  return (

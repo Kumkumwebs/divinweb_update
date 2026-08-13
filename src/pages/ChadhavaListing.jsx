@@ -61,6 +61,20 @@ const ChadhavaCard = ({ item, index, onView }) => {
   const [imgErr, setImgErr] = useState(false);
   const { label, cls, icon } = getBadge(index);
 
+  const priceVal =
+    item.price ||
+    item.chadhava_price ||
+    item.chadhavaPrice ||
+    item.amount ||
+    item.chadhava_amount ||
+    item.startingPrice ||
+    (Array.isArray(item.packages) && item.packages[0] && (item.packages[0].price || item.packages[0].amount)) ||
+    (Array.isArray(item.chadhava_packages) && item.chadhava_packages[0] && (item.chadhava_packages[0].price || item.chadhava_packages[0].amount)) ||
+    (Array.isArray(item.addons) && item.addons[0] && (item.addons[0].pamount || item.addons[0].price)) ||
+    (Array.isArray(item.prasad) && item.prasad[0] && (item.prasad[0].amount || item.prasad[0].price));
+
+  const displayPrice = priceVal && Number(priceVal) > 0 ? `₹${Number(priceVal).toLocaleString('en-IN')}` : '₹251';
+
   return (
     <motion.div className="ch-card"
       initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: .28, delay: Math.min(index * .04, .32) }}
@@ -77,7 +91,6 @@ const ChadhavaCard = ({ item, index, onView }) => {
         <i className={liked ? 'fas fa-heart' : 'far fa-heart'} />
       </button>
 
-      {/* Image */}
       {/* Image */}
       <div className="ch-img-wrap">
         {(() => {
@@ -105,8 +118,8 @@ const ChadhavaCard = ({ item, index, onView }) => {
       {/* Footer */}
       <div className="ch-card-footer">
         <div>
-          <span className="ch-price-from">Chadhawa Seva</span>
-          <div className="ch-price">Sacred Offering</div>
+          <span className="ch-price-from">Starts from</span>
+          <div className="ch-price">{displayPrice}</div>
         </div>
         <button className="ch-details-btn" onClick={e => { e.stopPropagation(); onView(item) }}>
           Details View <i className="fas fa-arrow-right" />
@@ -402,17 +415,87 @@ const ChadhavaListing = () => {
 
   useEffect(() => { fetchItems(); }, [fetchItems]);
 
-  // Since the API returns everything in one shot, pagination here is
-  // purely a client-side slice of the already-fetched full list — the
-  // "page" state just picks which 9-item window of allItems to show.
+  // Client-side filtering, sorting, and pagination of allItems
   useEffect(() => {
+    let result = [...allItems];
+
+    // Search filter
+    const q = (searchVal || filters.search || '').trim().toLowerCase();
+    if (q) {
+      result = result.filter(item =>
+        (item.title || item.name || '').toLowerCase().includes(q) ||
+        (item.templeName || item.temple || '').toLowerCase().includes(q) ||
+        (item.description || '').toLowerCase().includes(q)
+      );
+    }
+
+    // Category filter
+    if (filters.category && filters.category !== 'all') {
+      const cat = filters.category.toLowerCase();
+      result = result.filter(item => {
+        const title = (item.title || item.name || '').toLowerCase();
+        const itemCat = (item.category || '').toLowerCase();
+        return title.includes(cat) || itemCat.includes(cat);
+      });
+    }
+
+    // Temple filter
+    if (filters.temple) {
+      const t = filters.temple.toLowerCase();
+      result = result.filter(item =>
+        (item.templeName || item.temple || '').toLowerCase().includes(t)
+      );
+    }
+
+    // Occasion filter
+    if (filters.occasion) {
+      const occ = filters.occasion.toLowerCase();
+      result = result.filter(item =>
+        (item.occasion || item.description || item.title || '').toLowerCase().includes(occ)
+      );
+    }
+
+    // Price Bucket filter
+    if (filters.priceBucket) {
+      const p = filters.priceBucket;
+      result = result.filter(item => {
+        const amt = Number(item.price || item.amount || 0);
+        if (p === '0-499') return amt <= 499;
+        if (p === '500-1499') return amt >= 500 && amt <= 1499;
+        if (p === '1500-4999') return amt >= 1500 && amt <= 4999;
+        if (p === '5000+') return amt >= 5000;
+        return true;
+      });
+    }
+
+    // Sort By
+    if (filters.sortBy === 'price_low') {
+      result.sort((a, b) => Number(a.price || a.amount || 0) - Number(b.price || b.amount || 0));
+    } else if (filters.sortBy === 'price_high') {
+      result.sort((a, b) => Number(b.price || b.amount || 0) - Number(a.price || a.amount || 0));
+    } else if (filters.sortBy === 'az') {
+      result.sort((a, b) => (a.title || a.name || '').localeCompare(b.title || b.name || ''));
+    } else if (filters.sortBy === 'recent') {
+      result.sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0));
+    }
+
+    setTotalPages(Math.max(1, Math.ceil(result.length / PAGE_SIZE)));
     const start = (page - 1) * PAGE_SIZE;
-    setItems(allItems.slice(start, start + PAGE_SIZE));
-  }, [allItems, page]);
+    setItems(result.slice(start, start + PAGE_SIZE));
+  }, [allItems, page, filters, searchVal]);
 
   const handleSearch = () => { setFilters(f => ({ ...f, search: searchVal })); setPage(1); };
   const handleApply = () => { setPage(1); fetchItems(); setDrawerOpen(false); };
-  const handleView = (item) => navigate(`/chadhava/${item._id || item.id}`);
+  const handleView = (item) => {
+    const slug = (item.title || item.name || "chadhava")
+      .toLowerCase()
+      .replace(/\s+/g, "-")
+      .replace(/[^a-z0-9-]/g, "");
+    const id = item._id || item.id || item.chadhava_id;
+    if (id) {
+      navigate(`/chadhava/${slug}/${id}`);
+    }
+  };
   const goPage = (p) => { setPage(p); window.scrollTo({ top: 0, behavior: 'smooth' }); };
   const pages = Array.from({ length: Math.min(totalPages, 5) }, (_, i) => i + 1);
   const isSinglePage = totalPages <= 1;

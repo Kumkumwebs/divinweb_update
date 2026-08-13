@@ -24,6 +24,26 @@ const COLORS = ['#7c3aed','#059669','#dc2626','#d97706','#2563eb','#db2777'];
 const initials = (n='') => n.trim().split(' ').slice(0,2).map(w=>w[0]).join('').toUpperCase();
 const avColor  = (n='') => COLORS[(n.charCodeAt(0)||0) % COLORS.length];
 
+const getAstroRating = (item) => {
+  const r = item?.avg_rate ?? item?.rating ?? item?.avg_rating ?? item?.star_rating ?? item?.rate;
+  if (r !== undefined && r !== null && r !== '') {
+    const val = parseFloat(r);
+    if (!isNaN(val) && val > 0) return val;
+  }
+  return 4.8;
+};
+
+const getAstroPrice = (item) => {
+  const p = item?.per_min_chat ?? item?.per_min_voice_call ?? item?.charge ?? 0;
+  const val = parseFloat(p);
+  return isNaN(val) ? 0 : val;
+};
+
+const getAstroExp = (item) => {
+  const exp = parseInt(item?.experience || 0, 10);
+  return isNaN(exp) ? 0 : exp;
+};
+
 /* Custom Radio */
 const RadioOpt = ({ label, checked, onChange }) => (
   <div className="al-opt" onClick={onChange}>
@@ -99,7 +119,7 @@ const AstrologerCard = ({ astro, onChat }) => {
       <div className="al-stats">
         <div className="al-rat">
           <i className="fas fa-star" />
-          <span>{parseFloat(astro.avg_rate||4.8).toFixed(1)}</span>
+          <span>{getAstroRating(astro).toFixed(1)}</span>
           <span className="al-rev">({astro.total_review||80})</span>
         </div>
         <div className="al-price">₹{astro.per_min_chat||'5'}/min</div>
@@ -274,8 +294,8 @@ const RecommendCard = ({ onOpen }) => (
 const SidebarContent = ({ filters, setFilters, onApply }) => {
   const set    = (k,v) => setFilters(f=>({...f,[k]:v}));
   const toggle = (s)   => setFilters(f=>({...f, specs: f.specs.includes(s)?f.specs.filter(x=>x!==s):[...f.specs,s]}));
-  const reset  = ()    => setFilters({experience:'all',payBucket:'',sortBy:'relevant',specs:[],language:''});
-  const [rv, setRv]    = useState(50);
+  const reset  = ()    => setFilters({experience:'all',payBucket:'',maxPrice:50,sortBy:'relevant',specs:[],language:''});
+  const maxPrice = filters.maxPrice ?? 50;
 
   return (
     <>
@@ -292,11 +312,11 @@ const SidebarContent = ({ filters, setFilters, onApply }) => {
       <div className="al-div" />
 
       <div className="al-fh">Payment Range</div>
-      <input type="range" className="al-range-input" min={0} max={50} value={rv}
-        onChange={e=>setRv(+e.target.value)}
-        style={{background:`linear-gradient(to right,#7c3aed ${rv*2}%,#e5e7eb ${rv*2}%)`}}
+      <input type="range" className="al-range-input" min={0} max={50} value={maxPrice}
+        onChange={e=>set('maxPrice',+e.target.value)}
+        style={{background:`linear-gradient(to right,#7c3aed ${(maxPrice/50)*100}%,#e5e7eb ${(maxPrice/50)*100}%)`}}
       />
-      <div className="al-range-ends"><span>₹0</span><span>₹50/min+</span></div>
+      <div className="al-range-ends"><span>₹0</span><span>{maxPrice===50?'₹50/min+':`₹${maxPrice}/min`}</span></div>
       <div className="al-buckets">
         {[['₹0-₹10','0-10'],['₹10-₹20','10-20'],['₹20+','20+']].map(([l,v])=>(
           <button key={v} className={`al-bucket${filters.payBucket===v?' on':''}`}
@@ -316,7 +336,7 @@ const SidebarContent = ({ filters, setFilters, onApply }) => {
       <div className="al-div" />
 
       <div className="al-fh">Specialization</div>
-      {['Career','Marriage','Health','Finance','Kids','Business'].map(s=>(
+      {['Career','Marriage','Health','Finance','Kids','Business','Education','Love'].map(s=>(
         <CheckOpt key={s} label={s} checked={filters.specs.includes(s)} onChange={()=>toggle(s)} />
       ))}
 
@@ -344,21 +364,11 @@ const AstrologerList = () => {
   const [selectedAstro, setSelectedAstro] = useState(null);
   const [drawerOpen,    setDrawerOpen]    = useState(false);
   const [page,          setPage]          = useState(1);
-  // The API returns no total-page/count field at all, so we can't know the
-  // real total up front. Instead we track the highest page we've confirmed
-  // exists, and whether the current page came back "full" (== PAGE_SIZE
-  // results) as a signal that a next page likely exists.
   const PAGE_SIZE = 9;
   const [maxKnownPage, setMaxKnownPage] = useState(1);
   const [hasNextPage,  setHasNextPage]  = useState(false);
-  // Some backends ignore the `page` param entirely and just return the
-  // same first-page results every time. We detect that by fingerprinting
-  // each successful response's result IDs and comparing to the last
-  // genuinely-new page we saw — if page 2+ comes back identical to an
-  // earlier page, there is no real next page, no matter how many results
-  // it contains.
   const lastSeenIdsRef = React.useRef(null);
-  const [filters, setFilters] = useState({experience:'all',payBucket:'',sortBy:'relevant',specs:[],language:''});
+  const [filters, setFilters] = useState({experience:'all',payBucket:'',maxPrice:50,sortBy:'relevant',specs:[],language:''});
   // Nav menus
   const [showSideMenu,   setShowSideMenu]   = useState(false);
   const [showMobileMenu, setShowMobileMenu] = useState(false);
@@ -370,8 +380,8 @@ const AstrologerList = () => {
     try {
       const res = await apiService.postBearer('https://admin.diviniq.in/user_api/astrologer_list',{
         search:'',page:String(p),is_chat:'on',followAstro:'',
-        is_voice_call:'on',is_video_call:'on',cat_id:filters.specs.join(','),
-        language_id:'',gender:'',sort_val:filters.sortBy,is_question:'',
+        is_voice_call:'on',is_video_call:'on',cat_id:'',
+        language_id:'',gender:'',sort_val:'relevant',is_question:'',
         skill_id:'',country:'',report_id:'',expert_astro:''
       });
       if (res?.results){
@@ -379,9 +389,6 @@ const AstrologerList = () => {
         const isDuplicate = p > 1 && idsStr === lastSeenIdsRef.current;
 
         if (isDuplicate) {
-          // The API just handed back the same data as a prior page — it
-          // isn't really paginating. Snap back to the last genuinely
-          // distinct page and stop offering to go further.
           const realLastPage = Math.max(1, p - 1);
           setMaxKnownPage(realLastPage);
           setHasNextPage(false);
@@ -389,11 +396,6 @@ const AstrologerList = () => {
         } else {
           setAstrologers(res.results);
           lastSeenIdsRef.current = idsStr;
-          // Only mark THIS page as confirmed/known — never guess that
-          // p+1 exists just because this page happened to be full. A
-          // full page is merely a *hint* that another page might exist
-          // (used to enable the › arrow below); it is not proof, so it
-          // must never make an unvisited page number appear in the list.
           setMaxKnownPage(prev => Math.max(prev, p));
           const full = res.results.length >= PAGE_SIZE;
           setHasNextPage(full);
@@ -402,7 +404,126 @@ const AstrologerList = () => {
       else setError(true);
     } catch { setError(true); }
     finally   { setLoading(false); }
-  },[filters.specs,filters.sortBy]);
+  }, []);
+
+  const filteredAstrologers = React.useMemo(() => {
+    let list = [...astrologers];
+
+    // Specialization filter
+    if (filters.specs && filters.specs.length > 0) {
+      list = list.filter(a => {
+        const cats = [];
+        if (Array.isArray(a.category)) {
+          a.category.forEach(c => {
+            if (typeof c === 'object' && c !== null) {
+              if (c.name) cats.push(c.name.toLowerCase());
+              if (c.cat_name) cats.push(c.cat_name.toLowerCase());
+            } else if (typeof c === 'string') {
+              cats.push(c.toLowerCase());
+            }
+          });
+        }
+        if (Array.isArray(a.all_category)) {
+          a.all_category.forEach(c => {
+            if (typeof c === 'object' && c !== null && c.name) cats.push(c.name.toLowerCase());
+            else if (typeof c === 'string') cats.push(c.toLowerCase());
+          });
+        }
+        if (Array.isArray(a.skills)) {
+          a.skills.forEach(s => {
+            if (typeof s === 'object' && s !== null && s.name) cats.push(s.name.toLowerCase());
+            else if (typeof s === 'string') cats.push(s.toLowerCase());
+          });
+        }
+        return filters.specs.some(s => cats.some(c => c.includes(s.toLowerCase())));
+      });
+    }
+
+    // Experience filter
+    if (filters.experience && filters.experience !== 'all') {
+      list = list.filter(a => {
+        const exp = parseInt(a.experience || 0, 10);
+        if (filters.experience === '0-2') return exp <= 2;
+        if (filters.experience === '3-5') return exp >= 3 && exp <= 5;
+        if (filters.experience === '5-10') return exp >= 5 && exp <= 10;
+        if (filters.experience === '10+') return exp >= 10;
+        return true;
+      });
+    }
+
+    // Pay Bucket filter
+    if (filters.payBucket) {
+      list = list.filter(a => {
+        const price = parseFloat(a.per_min_chat || a.per_min_voice_call || a.charge || 0);
+        if (filters.payBucket === '0-10') return price <= 10;
+        if (filters.payBucket === '10-20') return price >= 10 && price <= 20;
+        if (filters.payBucket === '20+') return price >= 20;
+        return true;
+      });
+    }
+
+    // Max Price filter (range slider)
+    if (filters.maxPrice !== undefined && filters.maxPrice !== null && filters.maxPrice < 50) {
+      list = list.filter(a => {
+        const price = parseFloat(a.per_min_chat || a.per_min_voice_call || a.charge || 0);
+        return price <= filters.maxPrice;
+      });
+    }
+
+    // Language filter
+    if (filters.language) {
+      const lang = filters.language.toLowerCase();
+      list = list.filter(a => {
+        if (Array.isArray(a.language)) {
+          const hasMatch = a.language.some(l => {
+            if (typeof l === 'object' && l !== null) {
+              return (l.name || l.lang_name || l.language_name || '').toLowerCase().includes(lang);
+            }
+            return String(l).toLowerCase().includes(lang);
+          });
+          if (hasMatch) return true;
+        }
+        const prim = (a.primary_language || (typeof a.language === 'string' ? a.language : '')).toLowerCase();
+        return prim.includes(lang);
+      });
+    }
+
+    // Sorting
+    if (filters.sortBy) {
+      list.sort((a, b) => {
+        const expA = getAstroExp(a);
+        const expB = getAstroExp(b);
+        const priceA = getAstroPrice(a);
+        const priceB = getAstroPrice(b);
+        const rateA = getAstroRating(a);
+        const rateB = getAstroRating(b);
+
+        switch (filters.sortBy) {
+          case 'exp_high':
+            return expB - expA;
+          case 'exp_low':
+            return expA - expB;
+          case 'price_low':
+            return priceA - priceB;
+          case 'price_high':
+            return priceB - priceA;
+          case 'highest_rated': {
+            const diff = rateB - rateA;
+            if (Math.abs(diff) > 0.001) return diff;
+            // Secondary sort: total reviews descending, then experience descending
+            const revA = parseInt(a.total_review || 0, 10);
+            const revB = parseInt(b.total_review || 0, 10);
+            if (revB !== revA) return revB - revA;
+            return expB - expA;
+          }
+          default:
+            return 0;
+        }
+      });
+    }
+
+    return list;
+  }, [astrologers, filters.specs, filters.experience, filters.payBucket, filters.maxPrice, filters.language, filters.sortBy]);
 
   useEffect(()=>{ fetchAstrologers(page); },[fetchAstrologers,page]);
 
@@ -512,7 +633,7 @@ const AstrologerList = () => {
                   <p>Connect with experienced Vedic astrologers for accurate guidance and solutions.</p>
                 </div>
                 <div className="al-mhdr-right">
-                  {!loading && <span className="al-showing">Showing 1–{astrologers.length} of {astrologers.length}+ astrologers</span>}
+                  {!loading && <span className="al-showing">Showing {filteredAstrologers.length} of {astrologers.length} astrologers</span>}
                   <select className="al-sort-sel" value={filters.sortBy} onChange={e=>setFilters(f=>({...f,sortBy:e.target.value}))}>
                     <option value="relevant">Relevance</option>
                     <option value="exp_high">Experience: High to Low</option>
@@ -535,6 +656,19 @@ const AstrologerList = () => {
                 </div>
               )}
 
+              {/* No matching results empty state */}
+              {!loading && !error && astrologers.length > 0 && filteredAstrologers.length === 0 && (
+                <div className="text-center py-5 my-4 bg-light rounded-3 p-4">
+                  <i className="fas fa-filter fa-3x d-block mb-3 text-muted" />
+                  <h5 className="fw-bold text-dark mb-1">No astrologers found</h5>
+                  <p className="small text-muted mb-3">No astrologers matched your selected filter criteria.</p>
+                  <button className="al-chat" style={{width:'auto',display:'inline-block',borderRadius:9,padding:'10px 28px'}}
+                    onClick={()=>setFilters({experience:'all',payBucket:'',maxPrice:50,sortBy:'relevant',specs:[],language:''})}>
+                    Reset Filters
+                  </button>
+                </div>
+              )}
+
               {/* Grid */}
               {!error && (
                 <div className="row g-3">
@@ -543,7 +677,7 @@ const AstrologerList = () => {
                         <div key={i} className="col-6 col-md-4"><SkeletonCard /></div>
                       ))
                     : <>
-                        {astrologers.map((a,i)=>(
+                        {filteredAstrologers.map((a,i)=>(
                           <div key={a.id||i} className="col-6 col-md-4">
                             <AstrologerCard astro={a} onChat={(astro, type) => {
                               if (type === 'call') { setSelectedAstro(astro); }

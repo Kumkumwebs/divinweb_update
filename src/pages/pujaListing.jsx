@@ -549,6 +549,21 @@ const PujaListing = () => {
       );
     }
 
+    if (filters.category && filters.category !== "all") {
+      const cat = filters.category.toLowerCase();
+      list = list.filter((i) => {
+        const title = (i.title || "").toLowerCase();
+        const purpose = (i.purposeOfPooja || "").toLowerCase();
+        const category = (i.category || "").toLowerCase();
+        return title.includes(cat) || purpose.includes(cat) || category.includes(cat);
+      });
+    }
+
+    if (filters.duration && filters.duration !== "all") {
+      const dur = filters.duration.toLowerCase();
+      list = list.filter((i) => (i.duration || "").toLowerCase().includes(dur));
+    }
+
     if (filters.temple) {
       list = list.filter((i) =>
         (i.mandirName || "").includes(filters.temple)
@@ -598,7 +613,7 @@ const PujaListing = () => {
 
   /* ─────────────────────────────────────────────────
      FIX: Navigate to PujaDetails with name slug + id
-     Route must be: /puja/:name/:id
+     Route must be: /puja/:name/:id or /puja/:id
   ───────────────────────────────────────────────── */
   const handleView = (item) => {
     // Build a URL-safe slug from the puja title
@@ -606,8 +621,10 @@ const PujaListing = () => {
       .toLowerCase()
       .replace(/\s+/g, "-")
       .replace(/[^a-z0-9-]/g, "");
-    const id = item._id || item.instaId;
-    navigate(`/puja/${slug}/${id}`);
+    const id = item._id || item.id || item.instaId || item.puja_id;
+    if (id) {
+      navigate(`/puja/${slug}/${id}`);
+    }
   };
 
   const handleApply = () => {

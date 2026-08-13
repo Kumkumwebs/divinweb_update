@@ -1,3 +1,4 @@
+import { Link } from 'react-router-dom';
 import '../../pages/home.css';
 
 const FALLBACK_PUJAS = [
@@ -23,6 +24,13 @@ const formatDate = (iso) => {
 	return d.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
 };
 
+const slugify = (text) =>
+	(text || 'puja')
+		.toLowerCase()
+		.trim()
+		.replace(/\s+/g, '-')
+		.replace(/[^a-z0-9-]/g, '');
+
 const handleImgError = (e) => {
 	const img = e.currentTarget;
 	if (img.dataset.fallback === 'done') return; // already swapped once — stop the loop
@@ -47,6 +55,26 @@ const PujaListSection = ({ puja }) => {
 	return (
 		<section className="dq-section">
 			<style>{`
+				.dq-cards-scroll .dq-puja-card {
+					text-decoration: none;
+					color: inherit;
+					display: flex;
+					flex-direction: column;
+					cursor: pointer;
+					transition: transform 0.25s ease, box-shadow 0.25s ease, border-color 0.25s ease;
+				}
+				.dq-cards-scroll .dq-puja-card:hover {
+					transform: translateY(-4px);
+					box-shadow: 0 10px 24px rgba(109, 18, 48, 0.16);
+					border-color: #c9973f;
+				}
+				.dq-cards-scroll .dq-puja-card h4 {
+					color: var(--text-dark, #2b2020);
+					transition: color 0.2s ease;
+				}
+				.dq-cards-scroll .dq-puja-card:hover h4 {
+					color: var(--maroon, #6d1230);
+				}
 				.dq-btn-gradient {
 					display: block;
 					width: 100%;
@@ -67,35 +95,42 @@ const PujaListSection = ({ puja }) => {
 			<div className="dq-container">
 				<div className="dq-section-head-row">
 					<h2>Most Booked Pujas</h2>
-					<a href="/puja">View All Pujas</a>
+					<Link to="/puja">View All Pujas</Link>
 				</div>
 
 				<div className="dq-cards-row dq-cards-scroll">
-					{items.map((item) => (
-						<div className="dq-puja-card" key={item.id || item.name}>
-							<img
-								src={item.image}
-								alt={item.name}
-								loading="lazy"
-								onError={handleImgError}
-								style={{ width: "100%", height: 130, minHeight: 130, maxHeight: 130, objectFit: "cover", objectPosition: "center", display: "block" }}
-							/>
-							<div className="dq-puja-body">
-								<h4>{item.name}</h4>
-								{item.date && <div className="dq-puja-meta">📅 {item.date}</div>}
-								<div className="dq-puja-sub">{item.mandir}</div>
-								{/* {item.purpose && <p className="dq-puja-purpose">{item.purpose}</p>} */}
-								<div className="dq-puja-footer">
-									<a
-										href={`/puja/${item.name}/${item.id}`}
-										className="dq-btn dq-btn-sm dq-btn-gradient"
-									>
-										Book Now
-									</a>
+					{items.map((item) => {
+						const targetUrl = item.id
+							? `/puja/${slugify(item.name)}/${item.id}`
+							: '/puja';
+
+						return (
+							<Link
+								to={targetUrl}
+								className="dq-puja-card"
+								key={item.id || item.name}
+							>
+								<img
+									src={item.image}
+									alt={item.name}
+									loading="lazy"
+									onError={handleImgError}
+									style={{ width: "100%", height: 130, minHeight: 130, maxHeight: 130, objectFit: "cover", objectPosition: "center", display: "block" }}
+								/>
+								<div className="dq-puja-body">
+									<h4>{item.name}</h4>
+									{item.date && <div className="dq-puja-meta">📅 {item.date}</div>}
+									{item.mandir && <div className="dq-puja-sub">{item.mandir}</div>}
+									{/* {item.purpose && <p className="dq-puja-purpose">{item.purpose}</p>} */}
+									<div className="dq-puja-footer">
+										<span className="dq-btn dq-btn-sm dq-btn-gradient">
+											Book Now
+										</span>
+									</div>
 								</div>
-							</div>
-						</div>
-					))}
+							</Link>
+						);
+					})}
 				</div>
 			</div>
 		</section>
