@@ -693,7 +693,7 @@ const [aashirwadOption, setAashirwadOption] = useState("Yes");
           border-radius: 9px;
           width: calc(100% - 20px);
           display: flex; align-items: center; justify-content: center; gap: 5px;
-          font-size: 12px; font-weight: 700; cursor: pointer;
+          font-size: 9px; font-weight: 700; cursor: pointer;
           transition: opacity 0.15s, transform 0.15s; border: none;
           box-sizing: border-box; white-space: nowrap;
         }
@@ -996,7 +996,7 @@ const [aashirwadOption, setAashirwadOption] = useState("Yes");
         @media (max-width: 600px) {
           .pff-aashirwad-img-area { height: 110px; }
           .pff-aashirwad-name { font-size: 16px; }
-          .pff-aashirwad-btn { font-size: 12px; padding: 9px 12px; }
+          .pff-aashirwad-btn { font-size: 9px; padding: 9px 12px; }
           .pff-aashirwad-footer { flex-direction: column; gap: 8px; }
           .pff-aashirwad-footer-sep { display: none; }
         }
